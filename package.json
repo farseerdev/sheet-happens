@@ -4,7 +4,7 @@
   "description": "React Spreadsheet",
   "author": "Luka-M",
   "license": "MIT",
-  "repository": "Luka-M/sheet-happens",
+  "repository": "farseerdev/sheet-happens",
   "main": "dist/index.js",
   "module": "dist/index.modern.js",
   "source": "src/index.js",
