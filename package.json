@@ -4,7 +4,10 @@
   "description": "React Spreadsheet",
   "author": "Luka-M",
   "license": "MIT",
-  "repository": "farseerdev/sheet-happens",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farseerdev/sheet-happens.git"
+  },
   "main": "dist/index.js",
   "module": "dist/index.modern.js",
   "source": "src/index.js",
@@ -52,5 +55,12 @@
   ],
   "dependencies": {
     "use-resize-observer": "^7.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/farseerdev/sheet-happens/issues"
+  },
+  "homepage": "https://farseerdev.github.io/sheet-happens/",
+  "directories": {
+    "example": "example"
   }
 }
