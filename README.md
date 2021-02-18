@@ -10,6 +10,8 @@
 npm install --save sheet-happens
 ```
 
+![Alt Text](https://media.giphy.com/media/in6mnJNYjGKpq/source.gif)
+
 ## Usage
 
 ```jsx
@@ -20,10 +22,12 @@ import 'sheet-happens/dist/index.css'
 
 class Example extends Component {
   render() {
-    return <MyComponent />
+    return <Sheet />
   }
 }
 ```
+
+
 
 ## License
 
