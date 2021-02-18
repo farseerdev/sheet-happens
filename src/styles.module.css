@@ -1,9 +1,18 @@
-/* add css module styles here (optional) */
-
-.test {
-  margin: 2em;
-  padding: 0.5em;
-  border: 2px solid #000;
-  font-size: 2em;
-  text-align: center;
+.sheetscroll::-webkit-scrollbar {
+  -webkit-appearance: none;
+}
+.sheetscroll::-webkit-scrollbar:vertical {
+  width: 13px;
+}
+.sheetscroll::-webkit-scrollbar:horizontal {
+  height: 13px;
+}
+.sheetscroll::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background-color: #c1c1c1;
+  border: 2px solid #fff;
+}
+.sheetscroll::-webkit-scrollbar-track {
+  background-color: #fff;
+  border-radius: 0px;
 }

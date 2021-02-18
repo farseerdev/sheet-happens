@@ -15,7 +15,7 @@ npm install --save sheet-happens
 ```jsx
 import React, { Component } from 'react'
 
-import MyComponent from 'sheet-happens'
+import Sheet from 'sheet-happens'
 import 'sheet-happens/dist/index.css'
 
 class Example extends Component {
