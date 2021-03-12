@@ -5,7 +5,7 @@ function Footer() {
         <div className="footer">
             <p className="copy">made by farseer</p>
         </div>
-    )
+    );
 }
 
 export default Footer;

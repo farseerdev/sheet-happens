@@ -5,7 +5,7 @@ function SheetBox() {
         <div className="sheet-box">
             // To Do
         </div>
-    )
+    );
 }
 
 export default SheetBox;

@@ -78,6 +78,8 @@ p {
 
 .menu {
     min-height: 86px;
+    position: fixed;
+    z-index: 100;
 }
 .logo-box {
     display: flex;
@@ -92,28 +94,27 @@ p {
 .nav {
     display: flex;
 }
-.nav a {
+.nav .nav-item {
     color: #fff;
-    display: block;
     padding: 10px;
     margin: 0 20px;
-    text-decoration: none;
+    cursor: pointer;
 }
-.nav a:first-child {
+.nav .nav-item:first-child {
     padding-left: 0px;
     margin-left: 0px;
 }
-.nav a:last-child {
+.nav .nav-item:last-child {
     padding-right: 0px;
     margin-right: 0px;
 }
-.nav a:hover {
+.nav .nav-item:hover {
     color: #fff;
     opacity: 0.6;
 }
 
 .header {
-    padding-top: 56px;
+    padding-top: 142px;
     padding-bottom: 76px;
 }
 .box {
@@ -144,9 +145,27 @@ p {
 }
 .install-box {
     background-color: #1c1c1c;
-    padding: 14px 30px;
     border-left: 6px solid #fff;
+    position: relative;
+    cursor: pointer;
+}
+.install-box input {
+    background-color: transparent;
+    padding: 14px 30px;
+    font-size: 18px;
     line-height: 1.2;
+    font-weight: 500;
+    color: #fff;
+    width: 330px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+.install-box .copy-success {
+    position: absolute;
+    right: -75px;
+    top: 15px;
+    font-size: 15px;
     font-weight: 500;
 }
 .git-box {
@@ -154,10 +173,17 @@ p {
     display: flex;
     align-items: center;
     font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
 }
 .git-box img {
     margin-right: 15px;
 }
+.git-box:hover {
+    opacity: 0.6;
+}
+
 .sheet-box {
     position: relative;
     background-color: #f6f6f6;
@@ -189,6 +215,45 @@ p {
     flex-grow: 1;
 }
 
+.code-box {
+    border: 1px solid #3b85ff;
+    padding: 30px;
+    width: 100%;
+    overflow-x: auto;
+}
+.code-space {
+    width: 100%;
+    height: 16px;
+}
+.code-line {
+    display: flex;
+    flex-wrap: nowrap;
+}
+.code-line .red {
+    color: #a81011;
+}
+.code-line .orange {
+    color: #ea7a13;
+}
+.code-line .violet {
+    color: #1713a3;
+}
+.code-line .blue {
+    color: #0068a3;
+}
+.code-line .green {
+    color: #11a32e;
+}
+.code-line .padd-10 {
+    padding-right: 10px;
+}
+.code-line.padd-20 {
+    padding-left: 20px;
+}
+.code-line.padd-40 {
+    padding-left: 40px;
+}
+
 .footer {
     margin-top: 60px;
     padding: 50px 0px;
@@ -202,7 +267,6 @@ p {
     font-weight: 700;
     margin: 0px;
 }
-
 
 @media only screen and (max-width: 1399px) {
     .lib-box {
@@ -222,15 +286,22 @@ p {
     }
     .menu .logo-box {
         width: 100%;
-        padding-top: 30px;
+        padding-top: 20px;
+        padding-bottom: 15px;
+    }
+    .nav {
         padding-bottom: 20px;
     }
 }
 
 @media only screen and (max-width: 600px) {
-    .nav a {
+    .nav .nav-item {
         margin: 0px;
         padding: 0 7px;
         font-size: 15px;
+    }
+    .install-box input {
+        padding: 14px 20px;
+        width: 310px;
     }
 }
