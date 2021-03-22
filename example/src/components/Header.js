@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRef, useState } from 'react';
-import SheetBox from './SheetBox';
+import { SheetBoxHeader } from './SheetBox';
 import GitIcon from '../assets/git.svg';
 
 function Header() {
@@ -24,8 +24,9 @@ function Header() {
                     <div>
                         <h1>Beautiful and fast spreadsheet component for React</h1>
                         <p className="lightblue-p">
-                            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis.
-                            Nunc sit amet fringilla nisl. In nec tortor tellus.
+                            Sheet Happens is easy to implement and extend. 
+                            <br></br>
+                            And it's super fast.
                         </p>
                     </div>
                     <div className="lib-box">
@@ -40,7 +41,7 @@ function Header() {
                     </div>
                 </div>
                 <div className="box">
-                    <SheetBox />
+                    <SheetBoxHeader />
                 </div>
             </div>
         </div>

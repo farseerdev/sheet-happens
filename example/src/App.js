@@ -6,7 +6,7 @@ import Header from './components/Header';
 import TitleSeparator from './components/TitleSeparator';
 import Wrap from './components/Wrap';
 import Code from './components/Code';
-import SheetBox from './components/SheetBox';
+import { SheetBoxStyle, SheetBoxBasic, SheetBoxFormatting } from './components/SheetBox';
 import Footer from './components/Footer';
 
 const App = () => {
@@ -17,65 +17,44 @@ const App = () => {
 
             <TitleSeparator title="usage" id="usage" />
             <Wrap>
-                <div className="box">
-                    <p>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Nunc sit amet fringilla nisl. In nec tortor
-                        tellus.
-                    </p>
-
-                    <p className="spacer-30">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Proin efficitur sodales convallis.
-                    </p>
-                </div>
-                <div className="box">
+                <div className="box full-width" style={{ overflowX: 'auto' }}>
                     <Code />
                 </div>
             </Wrap>
 
-            <TitleSeparator title="features" id="features" />
+            <TitleSeparator title="Let me show you its features" id="features" />
             <Wrap>
                 <div className="box">
-                    <SheetBox />
+                    <SheetBoxBasic />
                 </div>
                 <div className="box">
-                    <h3>Feature naslov</h3>
+                    <h3>Basic spreadsheet</h3>
                     <p>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Nunc sit amet fringilla nisl. In nec tortor
-                        tellus.
+                        It has all the features you'd expect from the spreadsheet: keyboard navigation, copy cells by
+                        dragging the small square, copy/paste from and to Excel and Google Sheets, resize columns and
+                        rows.
                     </p>
                 </div>
             </Wrap>
             <Wrap>
                 <div className="box">
-                    <SheetBox />
+                    <SheetBoxStyle />
                 </div>
                 <div className="box">
-                    <h3>Feature naslov</h3>
+                    <h3>Styling</h3>
                     <p>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Nunc sit amet fringilla nisl. In nec tortor
-                        tellus.
+                        You can change the cell color, alignment, font weight, margins and more. It's also possible to freeze first rows or columns.
                     </p>
                 </div>
             </Wrap>
             <Wrap>
                 <div className="box">
-                    <SheetBox />
+                    <SheetBoxFormatting />
                 </div>
                 <div className="box">
-                    <h3>Feature naslov</h3>
+                    <h3>Formatting</h3>
                     <p>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Nunc sit amet fringilla nisl. In nec tortor
-                        tellus.
+                        Sheet Happens uses different datasets for display and edit so you can apply different formatting when displaying the cell and editing the cell.
                     </p>
                 </div>
             </Wrap>
@@ -83,12 +62,7 @@ const App = () => {
             <TitleSeparator title="documentation" id="documentation" />
             <Wrap>
                 <div className="box full-width">
-                    <p>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur sodales convallis. Nunc
-                        sit amet fringilla nisl. In nec tortor tellus. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit. Proin efficitur sodales convallis. Nunc sit amet fringilla nisl. In nec tortor
-                        tellus.
-                    </p>
+                    <p>Comming soon</p>
                 </div>
             </Wrap>
 

@@ -13,6 +13,7 @@
     "react": "link:../node_modules/react",
     "react-dom": "link:../node_modules/react-dom",
     "react-scripts": "link:../node_modules/react-scripts",
+    "react-syntax-highlighter": "^15.4.3",
     "sheet-happens": "link:.."
   },
   "devDependencies": {
