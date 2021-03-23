@@ -1468,7 +1468,6 @@ function Sheet(props) {
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
                 ref={copyPasteTextAreaRef}
                 onFocus={(e) => e.target.select()}
-                autoFocus
                 tabIndex="0"
                 onKeyDown={onGridKeyDown}
                 onKeyUp={onGridKeyUp}

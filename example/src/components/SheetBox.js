@@ -300,7 +300,7 @@ export function SheetBoxFormatting() {
         return data?.[y]?.[x];
     };
     const displayData = (x, y) => {
-        return data?.[y]?.[x]?.toFixed(2);
+        return data?.[y]?.[x]?.toFixed?.(2);
     };
     const sourceData = (x, y) => {
         return data?.[y]?.[x];
@@ -312,7 +312,7 @@ export function SheetBoxFormatting() {
             if (!newData[change.y]) {
                 newData[change.y] = [];
             }
-            newData[change.y][change.x] = change.value;
+            newData[change.y][change.x] = Number(change.value);
         }
         setData(newData);
     };
