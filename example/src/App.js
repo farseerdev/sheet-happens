@@ -6,7 +6,7 @@ import Header from './components/Header';
 import TitleSeparator from './components/TitleSeparator';
 import Wrap from './components/Wrap';
 import Code from './components/Code';
-import { SheetBoxStyle, SheetBoxBasic, SheetBoxFormatting } from './components/SheetBox';
+import { SheetBoxStyle, SheetBoxBasic, SheetBoxFormatting, SheetBoxVeryBigData } from './components/SheetBox';
 import Footer from './components/Footer';
 
 const App = () => {
@@ -56,6 +56,13 @@ const App = () => {
                     <p>
                         Sheet Happens uses different datasets for display and edit so you can apply different formatting when displaying the cell and editing the cell.
                     </p>
+                </div>
+            </Wrap>
+
+            <TitleSeparator title="big dataset example" id="big dataset example" />
+            <Wrap>
+                <div className="box full-width">
+                    <SheetBoxVeryBigData />
                 </div>
             </Wrap>
 

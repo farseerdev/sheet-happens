@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Sheet from 'sheet-happens';
 import 'sheet-happens/dist/index.css';
-
-import { useState } from 'React';
 
 const initialDataBig = [];
 for (let row = 0; row < 1000; row++) {
@@ -359,5 +357,102 @@ export function SheetBoxFormatting() {
                 freezeRows={0}
             />
         </div>
+    );
+}
+
+export function SheetBoxVeryBigData() {
+    const [loadingStatus, setLoadingStatus] = useState('initial');
+    const [data, setData] = useState([]);
+    const [cellWidth, setCellWidth] = useState([]);
+    const [cellHeight, setCellHeight] = useState([]);
+
+    const loadClick = (e) => {
+        e.preventDefault();
+        setLoadingStatus('loading');
+        fetch('./out.json')
+            .then((response) => {
+                return response.json();
+            })
+            .then((dataset) => {
+                setData(dataset);
+                setLoadingStatus('done');
+            });
+    };
+
+    const cellStyle = (x, y) => {
+        return {};
+    };
+    const editData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+    const displayData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+    const sourceData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+
+    const onChange = (changes) => {
+        const newData = [...data];
+        for (const change of changes) {
+            if (!newData[change.y]) {
+                newData[change.y] = [];
+            }
+            newData[change.y][change.x] = change.value;
+        }
+        setData(newData);
+    };
+
+    const isReadOnly = (x, y) => {
+        return false;
+    };
+
+    const onCellWidthChange = (columnIdx, newWidth) => {
+        const cw = [...cellWidth];
+        if (columnIdx > cw.length) {
+            for (let i = cw.length; i <= columnIdx; i++) {
+                cw.push(100);
+            }
+        }
+        cw[columnIdx] = newWidth;
+        setCellWidth(cw);
+    };
+    const onCellHeightChange = (rowIdx, newHeight) => {
+        const ch = [...cellHeight];
+        if (rowIdx > ch.length) {
+            for (let i = ch.length; i <= rowIdx; i++) {
+                ch.push(22);
+            }
+        }
+        ch[rowIdx] = newHeight;
+        setCellHeight(ch);
+    };
+
+    return (
+        <>
+            {loadingStatus === 'initial' ? (
+                <a href="#" onClick={loadClick}>
+                    Load global database of power plants
+                </a>
+            ) : loadingStatus === 'loading' ? (
+                'Loading...'
+            ) : null}
+            <div className="sheet-box">
+                <Sheet
+                    cellStyle={cellStyle}
+                    editData={editData}
+                    displayData={displayData}
+                    sourceData={sourceData}
+                    cellWidth={cellWidth}
+                    cellHeight={cellHeight}
+                    onChange={onChange}
+                    readOnly={isReadOnly}
+                    onCellWidthChange={onCellWidthChange}
+                    onCellHeightChange={onCellHeightChange}
+                    freezeColumns={0}
+                    freezeRows={1}
+                />
+            </div>
+        </>
     );
 }
