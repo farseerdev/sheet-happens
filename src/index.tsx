@@ -71,7 +71,7 @@ export interface Change {
 }
 
 export interface CellContentItem {
-    content: HTMLImageElement | string;
+    content: HTMLImageElement | string | number;
     x: number;
     y: number;
     width: number;
@@ -238,8 +238,8 @@ function drawCell(
         for (const obj of cellContent.items) {
             if (obj.content instanceof HTMLImageElement) {
                 context.drawImage(obj.content, xCoord + obj.x, yy + obj.y, obj.width, obj.height);
-            } else if (typeof obj.content === 'string') {
-                context.fillText(obj.content, xCoord + obj.x, yy + obj.y);
+            } else if (typeof obj.content === 'string' || typeof obj.content === 'number') {
+                context.fillText('' + obj.content, xCoord + obj.x, yy + obj.y);
             }
         }
     }
@@ -745,8 +745,8 @@ function Sheet(props: SheetProps) {
                 const xx = xCoord;
                 const yy = yCoord + cellHeight(y) * 0.5;
 
-                if (Array.isArray(cellContent)) {
-                    for (const obj of cellContent) {
+                if (typeof cellContent === 'object') {
+                    for (const obj of cellContent.items) {
                         if (obj.onClick) {
                             const absX1 = xx + obj.x;
                             const absY1 = yy + obj.y;
@@ -790,7 +790,7 @@ function Sheet(props: SheetProps) {
             yCoord += cellHeight(y);
         }
         return hitM;
-    }, [displayData, props.cellWidth, props.cellHeight, dataOffset.x, dataOffset.y]);
+    }, [displayData, props.cellWidth, props.cellHeight, canvasRef, columnSizes, rowSizes, dataOffset.x, dataOffset.y]);
 
     useEffect(() => {
         const canvas = canvasRef.current;

@@ -192,6 +192,12 @@ export function SheetBoxBasic() {
     );
 }
 
+const faCheck = new Image();
+faCheck.src =
+    'data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJjaGVjay1jaXJjbGUiIGNsYXNzPSJzdmctaW5saW5lLS1mYSBmYS1jaGVjay1jaXJjbGUgZmEtdy0xNiIgcm9sZT0iaW1nIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjMGFkNjZiIiBkPSJNNTA0IDI1NmMwIDEzNi45NjctMTExLjAzMyAyNDgtMjQ4IDI0OFM4IDM5Mi45NjcgOCAyNTYgMTE5LjAzMyA4IDI1NiA4czI0OCAxMTEuMDMzIDI0OCAyNDh6TTIyNy4zMTQgMzg3LjMxNGwxODQtMTg0YzYuMjQ4LTYuMjQ4IDYuMjQ4LTE2LjM3OSAwLTIyLjYyN2wtMjIuNjI3LTIyLjYyN2MtNi4yNDgtNi4yNDktMTYuMzc5LTYuMjQ5LTIyLjYyOCAwTDIxNiAzMDguMTE4bC03MC4wNTktNzAuMDU5Yy02LjI0OC02LjI0OC0xNi4zNzktNi4yNDgtMjIuNjI4IDBsLTIyLjYyNyAyMi42MjdjLTYuMjQ4IDYuMjQ4LTYuMjQ4IDE2LjM3OSAwIDIyLjYyN2wxMDQgMTA0YzYuMjQ5IDYuMjQ5IDE2LjM3OSA2LjI0OSAyMi42MjguMDAxeiI+PC9wYXRoPjwvc3ZnPg==';
+faCheck.width = 16;
+faCheck.height = 16;
+
 export function SheetBoxStyle() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const [cellWidth, setCellWidth] = useState([]);
@@ -220,7 +226,37 @@ export function SheetBoxStyle() {
     const editData = (x, y) => {
         return data?.[y]?.[x];
     };
+    const incrementCell = (x, y) => {
+        const newData = [...data];
+        if (newData[y] && newData[y][x] !== undefined) {
+            newData[y][x] += 1;
+        }
+        setData(newData);
+    };
     const displayData = (x, y) => {
+        if (x === 0 && y > 0 && y < 9) {
+            return {
+                items: [
+                    {
+                        content: faCheck,
+                        x: 8,
+                        y: -8,
+                        width: 16,
+                        height: 16,
+                        onClick: () => {
+                            incrementCell(x, y);
+                        },
+                    },
+                    {
+                        content: data?.[y]?.[x],
+                        x: 32,
+                        y: 0,
+                        width: 0,
+                        height: 0,
+                    },
+                ],
+            };
+        }
         return data?.[y]?.[x];
     };
     const sourceData = (x, y) => {

@@ -43,7 +43,7 @@ const App = () => {
                 <div className="box">
                     <h3>Styling</h3>
                     <p>
-                        You can change the cell color, alignment, font weight, margins and more. It's also possible to freeze first rows or columns.
+                        You can change the cell color, alignment, font weight, margins and more. It's also possible to freeze first rows or columns, and add clickable images.
                     </p>
                 </div>
             </Wrap>
