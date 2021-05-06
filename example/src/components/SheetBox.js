@@ -214,6 +214,7 @@ export function SheetBoxStyle() {
         if (x === 0 || y === 0) {
             return {
                 fillColor: '#6DA2FB22',
+                marginRight: 10,
             };
         }
         return {
@@ -239,20 +240,20 @@ export function SheetBoxStyle() {
                 items: [
                     {
                         content: faCheck,
-                        x: 8,
+                        x: 0,
                         y: -8,
                         width: 16,
                         height: 16,
+                        horiozntalAlign: 'right',
                         onClick: () => {
                             incrementCell(x, y);
                         },
                     },
                     {
                         content: data?.[y]?.[x],
-                        x: 32,
+                        x: 0,
                         y: 0,
-                        width: 0,
-                        height: 0,
+                        horiozntalAlign: 'left',
                     },
                 ],
             };

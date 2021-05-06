@@ -74,8 +74,9 @@ export interface CellContentItem {
     content: HTMLImageElement | string | number;
     x: number;
     y: number;
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
+    horiozntalAlign?: 'left' | 'right' | 'center';
     onClick?: () => void;
 }
 
@@ -194,6 +195,26 @@ function createCellPropFunction<T extends PropTypes>(
     }
 }
 
+function applyAlignment(
+    start: number,
+    cellSize: number,
+    style: Required<Style>,
+    imageWidth: number,
+    alignment?: 'left' | 'center' | 'right'
+): number {
+    if (!alignment) {
+        alignment = style.textAlign;
+    }
+    if (alignment === 'left') {
+        return start + style.marginLeft;
+    } else if (alignment === 'center') {
+        return start + cellSize * 0.5 - imageWidth / 2;
+    } else if (alignment === 'right') {
+        return start + (cellSize - style.marginRight - imageWidth);
+    }
+    return start;
+}
+
 function drawCell(
     context: CanvasRenderingContext2D,
     cellContent: CellContentType,
@@ -212,13 +233,6 @@ function drawCell(
     context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
     context.textAlign = finalStyle.textAlign;
 
-    const adjustment =
-        finalStyle.textAlign === 'right'
-            ? cellWidth - finalStyle.marginRight
-            : finalStyle.textAlign === 'center'
-            ? cellWidth * 0.5
-            : finalStyle.marginLeft;
-    const xx = xCoord + adjustment;
     const yy = yCoord + cellHeight * 0.5;
 
     context.save();
@@ -233,13 +247,26 @@ function drawCell(
     }
 
     if (typeof cellContent === 'string' || typeof cellContent === 'number') {
+        const xx = applyAlignment(xCoord, cellWidth, finalStyle, 0);
         context.fillText('' + cellContent, xx, yy);
     } else if (typeof cellContent === 'object') {
         for (const obj of cellContent.items) {
             if (obj.content instanceof HTMLImageElement) {
-                context.drawImage(obj.content, xCoord + obj.x, yy + obj.y, obj.width, obj.height);
+                const w = obj.width || cellWidth;
+                const finalX = applyAlignment(xCoord, cellWidth, finalStyle, w, obj.horiozntalAlign);
+                context.drawImage(
+                    obj.content,
+                    finalX + obj.x,
+                    yy + obj.y,
+                    obj.width || cellWidth,
+                    obj.height || cellHeight
+                );
             } else if (typeof obj.content === 'string' || typeof obj.content === 'number') {
-                context.fillText('' + obj.content, xCoord + obj.x, yy + obj.y);
+                if (obj.horiozntalAlign) {
+                    context.textAlign = obj.horiozntalAlign;
+                }
+                const finalX = applyAlignment(xCoord, cellWidth, finalStyle, 0, obj.horiozntalAlign);
+                context.fillText('' + obj.content, finalX + obj.x, yy + obj.y);
             }
         }
     }
@@ -737,8 +764,9 @@ function Sheet(props: SheetProps) {
             let xCoord = rowHeaderWidth;
             for (const x of columnSizes.index) {
                 const cellContent = displayData(x, y);
+                const cellW = cellWidth(x);
                 if (cellContent === null || cellContent === undefined) {
-                    xCoord += cellWidth(x);
+                    xCoord += cellW;
                     continue;
                 }
 
@@ -746,12 +774,17 @@ function Sheet(props: SheetProps) {
                 const yy = yCoord + cellHeight(y) * 0.5;
 
                 if (typeof cellContent === 'object') {
+                    let finalStyle;
                     for (const obj of cellContent.items) {
                         if (obj.onClick) {
-                            const absX1 = xx + obj.x;
+                            if (!finalStyle) {
+                                finalStyle = createStyleObject(cellStyle(x, y), defaultCellStyle);
+                            }
+                            const w = obj.content instanceof HTMLImageElement ? obj.width || cellW : 0;
+                            const absX1 = applyAlignment(xx, cellW, finalStyle, w, obj.horiozntalAlign) + obj.x;
                             const absY1 = yy + obj.y;
-                            const absX2 = absX1 + obj.width;
-                            const absY2 = absY1 + obj.height;
+                            const absX2 = absX1 + (obj.width || 0);
+                            const absY2 = absY1 + (obj.height || 0);
 
                             const hitTarget = {
                                 cellX: x,
@@ -785,7 +818,7 @@ function Sheet(props: SheetProps) {
                         }
                     }
                 }
-                xCoord += cellWidth(x);
+                xCoord += cellW;
             }
             yCoord += cellHeight(y);
         }
