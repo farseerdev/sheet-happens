@@ -1424,9 +1424,27 @@ function Sheet(props: SheetProps) {
         if (!e.target || !(e.target instanceof Element)) {
             return;
         }
+
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+
+        // check if we clicked on a button and don't start editing if we did
+        const hitTargetKeyX = Math.floor(x / xBinSize);
+        const hitTargetKeyY = Math.floor(y / yBinSize);
+
+        if (hitMap[hitTargetKeyX] && hitMap[hitTargetKeyX][hitTargetKeyY]) {
+            for (const hitTarget of hitMap[hitTargetKeyX][hitTargetKeyY]) {
+                if (
+                    hitTarget.x <= x &&
+                    x <= hitTarget.x + hitTarget.w &&
+                    hitTarget.y <= y &&
+                    y <= hitTarget.y + hitTarget.h
+                ) {
+                    return;
+                }
+            }
+        }
         const editCell = absCoordianteToCell(x, y, rowSizes, columnSizes);
         setArrowKeyCommitMode(false);
         startEditingCell(editCell);
