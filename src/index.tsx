@@ -760,8 +760,59 @@ function Sheet(props: SheetProps) {
         }
         resizeCanvas(canvas);
         let yCoord = columnHeaderHeight;
+        let xCoord = rowHeaderWidth;
+
+        for (const x of columnSizes.index) {
+            const ch = columnHeaders(x);
+            const cellW = cellWidth(x);
+            if (ch && typeof ch === 'object') {
+                let finalStyle;
+                for (const obj of ch.items) {
+                    if (obj.onClick) {
+                        if (!finalStyle) {
+                            finalStyle = createStyleObject(columnHeaderStyle(x), defaultCellStyle);
+                        }
+                        const w = obj.content instanceof HTMLImageElement ? obj.width || cellW : 0;
+                        const absX1 = applyAlignment(xCoord, cellW, finalStyle, w, obj.horiozntalAlign) + obj.x;
+                        const absY1 = columnHeaderHeight * 0.5 + obj.y;
+                        const absX2 = absX1 + (obj.width || 0);
+                        const absY2 = absY1 + (obj.height || 0);
+
+                        const hitTarget = {
+                            x: absX1,
+                            y: absY1,
+                            w: obj.width,
+                            h: obj.height,
+                            onClick: obj.onClick,
+                        };
+
+                        // add to hit map
+                        const x1key = Math.floor(absX1 / xBinSize);
+                        const x2key = Math.floor(absX2 / xBinSize);
+
+                        const y1key = Math.floor(absY1 / yBinSize);
+                        const y2key = Math.floor(absY2 / yBinSize);
+
+                        for (let xkey = x1key; xkey <= x2key; xkey++) {
+                            if (!hitM[xkey]) {
+                                hitM[xkey] = {};
+                            }
+                            const xbin = hitM[xkey];
+                            for (let ykey = y1key; ykey <= y2key; ykey++) {
+                                if (!xbin[ykey]) {
+                                    xbin[ykey] = [];
+                                }
+                                xbin[ykey].push(hitTarget);
+                            }
+                        }
+                    }
+                }
+            }
+            xCoord += cellW;
+        }
+
         for (const y of rowSizes.index) {
-            let xCoord = rowHeaderWidth;
+            xCoord = rowHeaderWidth;
             for (const x of columnSizes.index) {
                 const cellContent = displayData(x, y);
                 const cellW = cellWidth(x);
@@ -787,8 +838,6 @@ function Sheet(props: SheetProps) {
                             const absY2 = absY1 + (obj.height || 0);
 
                             const hitTarget = {
-                                cellX: x,
-                                cellY: y,
                                 x: absX1,
                                 y: absY1,
                                 w: obj.width,

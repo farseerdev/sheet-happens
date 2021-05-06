@@ -32,6 +32,12 @@ for (let row = 0; row < 1000; row++) {
     initialDataFormatting.push(r);
 }
 
+const triangleDown = new Image();
+triangleDown.src =
+    'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiDQoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBvdmVyZmxvdz0idmlzaWJsZSIgPg0KPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAwLDAgNTAsMTAwIiBzdHlsZT0iZmlsbDojOTk5OTk5OyIvPg0KPC9zdmc+DQo=';
+triangleDown.width = 10;
+triangleDown.height = 10;
+
 export function SheetBoxHeader() {
     const [data, setData] = useState(initialDataBig);
     const [cellWidth, setCellWidth] = useState(Array(100).fill(150));
@@ -205,7 +211,33 @@ export function SheetBoxStyle() {
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
-    const columnHeaders = [];
+    const columnHeaders = (index) => {
+        if (index === 0) {
+            return {
+                items: [
+                    {
+                        content: 'A',
+                        x: 0,
+                        y: 0,
+                        horiozntalAlign: 'center',
+                    },
+                    {
+                        content: triangleDown,
+                        x: 0,
+                        y: -6,
+                        width: 12,
+                        height: 12,
+                        horiozntalAlign: 'right',
+                        onClick: () => {
+                            console.log('click');
+                        },
+                    },
+                ],
+            };
+        } else {
+            return null;
+        }
+    };
     const colors = ['#f00', '#0f0', '#00f', '#000'];
     const alignment = ['left', 'right', 'center'];
     const weight = ['normal', 'bold', 'lighter'];
