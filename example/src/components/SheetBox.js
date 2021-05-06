@@ -113,7 +113,7 @@ export function SheetBoxHeader() {
 }
 
 export function SheetBoxBasic() {
-    const [data, setData] = useState(initialDataBasic);
+    const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const [cellWidth, setCellWidth] = useState([]);
     const [cellHeight, setCellHeight] = useState([]);
 
@@ -193,7 +193,7 @@ export function SheetBoxBasic() {
 }
 
 export function SheetBoxStyle() {
-    const [data, setData] = useState(initialDataBasic);
+    const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const [cellWidth, setCellWidth] = useState([]);
     const [cellHeight, setCellHeight] = useState([]);
 
@@ -202,7 +202,7 @@ export function SheetBoxStyle() {
     const columnHeaders = [];
     const colors = ['#f00', '#0f0', '#00f', '#000'];
     const alignment = ['left', 'right', 'center'];
-    const weight = ['normal ', 'bold ', 'lighter '];
+    const weight = ['normal', 'bold', 'lighter'];
     const marginRight = [0, 0, 0, 0, 20];
     const cellStyle = (x, y) => {
         if (x === 0 || y === 0) {
@@ -226,7 +226,6 @@ export function SheetBoxStyle() {
     const sourceData = (x, y) => {
         return data?.[y]?.[x];
     };
-
     const onChange = (changes) => {
         const newData = [...data];
         for (const change of changes) {
@@ -380,12 +379,39 @@ export function SheetBoxVeryBigData() {
     };
 
     const cellStyle = (x, y) => {
+        if (y === 0) {
+            return {
+                weight: 'bold',
+                fontSize: 14,
+            };
+        }
+        if (x === 4) {
+            return {
+                textAlign: 'right',
+            };
+        } else if (x === 1) {
+            return {
+                weight: 'bold',
+                color: '#3b85ff',
+            };
+        } else if (x === 2) {
+            return {
+                color: '#fc3bff',
+            };
+        }
         return {};
     };
     const editData = (x, y) => {
         return data?.[y]?.[x];
     };
     const displayData = (x, y) => {
+        if (x === 4 && y > 0) {
+            if (data && data[y] && data[y][x]) {
+                return Number(data[y][x]).toFixed(2);
+            } else {
+                return '';
+            }
+        }
         return data?.[y]?.[x];
     };
     const sourceData = (x, y) => {
@@ -428,6 +454,20 @@ export function SheetBoxVeryBigData() {
         setCellHeight(ch);
     };
 
+    const headerStyle = (index) => {
+        const r = ((index * 2421) % 255).toString(16).padStart(2, '0');
+        const g = ((index * 3215) % 255).toString(16).padStart(2, '0');
+        const b = ((index * 1243) % 255).toString(16).padStart(2, '0');
+        const color = `#${r}${g}${b}55`;
+        return {
+            backgroundColor: color,
+        };
+    };
+
+    const columnHeaders = (index) => {
+        return '' + index;
+    };
+
     return (
         <>
             {loadingStatus === 'initial' ? (
@@ -449,6 +489,8 @@ export function SheetBoxVeryBigData() {
                     readOnly={isReadOnly}
                     onCellWidthChange={onCellWidthChange}
                     onCellHeightChange={onCellHeightChange}
+                    columnHeaderStyle={headerStyle}
+                    columnHeaders={columnHeaders}
                     freezeColumns={0}
                     freezeRows={1}
                 />

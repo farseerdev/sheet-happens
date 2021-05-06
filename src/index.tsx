@@ -1,8 +1,131 @@
 import styles from './styles.module.css';
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, MouseEvent, KeyboardEvent, UIEvent } from 'react';
 import useResizeObserver from 'use-resize-observer';
 
-function resizeCanvas(canvas) {
+const selBorderColor = '#1b73e7';
+const selBackColor = '#e9f0fd';
+const knobSize = 6;
+const gridColor = '#e2e3e3';
+const knobAreaBorderColor = '#707070';
+const rowHeaderWidth = 50;
+const rowHeaderBackgroundColor = '#f8f9fa';
+const rowHeaderTextColor = '#666666';
+const rowHeaderSelectedBackgroundColor = '#e8eaed';
+const columnHeaderHeight = 22;
+const columnHeaderBackgroundColor = rowHeaderBackgroundColor;
+const columnHeaderSelectedBackgroundColor = rowHeaderSelectedBackgroundColor;
+const xBinSize = 10;
+const yBinSize = 10;
+const scrollSpeed = 30;
+const resizeColumnRowMouseThreshold = 4;
+const minimumColumnWidth = 50;
+const minimumRowHeight = 22;
+
+const defaultCellStyle: Required<Style> = {
+    textAlign: 'left',
+    fontSize: 13,
+    marginRight: 5,
+    marginLeft: 5,
+    color: '#000',
+    fontFamily: 'sans-serif',
+    weight: '',
+    fillColor: '',
+    backgroundColor: '',
+};
+
+const defaultColumnHeaderStyle: Required<Style> = {
+    textAlign: 'center',
+    fontSize: 13,
+    marginRight: 5,
+    marginLeft: 5,
+    color: '#000',
+    fontFamily: 'sans-serif',
+    weight: '',
+    fillColor: '',
+    backgroundColor: '',
+};
+
+type PropTypes = string | number | boolean | Style | CellContentType;
+type RowOrColumnProperty<T extends PropTypes> = T | Array<T> | ((index: number) => T);
+type CellProperty<T extends PropTypes> = T | Array<Array<T>> | ((x: number, y: number) => T);
+type CellContentType = null | number | string | CellContent;
+type RowOrColumnPropertyFunction<T extends PropTypes> = (rowOrColIndex: number) => T;
+type CellPropertyFunction<T extends PropTypes> = (x: number, y: number) => T;
+
+interface CellCoordinate {
+    x: number;
+    y: number;
+}
+
+interface Selection {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+}
+
+export interface Change {
+    x: number;
+    y: number;
+    value: string | number | null;
+}
+
+export interface CellContentItem {
+    content: HTMLImageElement | string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    onClick?: () => void;
+}
+
+export interface CellContent {
+    items: Array<CellContentItem>;
+}
+
+export interface SheetMouseEvent extends MouseEvent {
+    cellX: number;
+    cellY: number;
+}
+
+export interface SheetProps {
+    freezeColumns?: number;
+    freezeRows?: number;
+    cellWidth?: RowOrColumnProperty<number>;
+    cellHeight?: RowOrColumnProperty<number>;
+    columnHeaders?: RowOrColumnProperty<CellContentType>;
+    columnHeaderStyle?: RowOrColumnProperty<Style>;
+    cellStyle?: CellProperty<Style>;
+    readOnly?: CellProperty<boolean>;
+    sourceData?: CellProperty<string | number>;
+    displayData?: CellProperty<CellContentType>;
+    editData?: CellProperty<string>;
+    onSelectionChanged?: (x1: number, y1: number, x2: number, y2: number) => void;
+    onRightClick?: (e: SheetMouseEvent) => void;
+    onChange?: (changes: Array<Change>) => void;
+    onCellWidthChange?: (index: number, value: number) => void;
+    onCellHeightChange?: (index: number, value: number) => void;
+}
+
+export interface Style {
+    color?: string;
+    fontSize?: number;
+    fontFamily?: string;
+    textAlign?: 'right' | 'left' | 'center';
+    marginRight?: number;
+    marginLeft?: number;
+    weight?: string;
+    fillColor?: string;
+    backgroundColor?: string;
+}
+
+interface RowOrColumnSize {
+    index: number[];
+    start: number[];
+    end: number[];
+}
+
+function resizeCanvas(canvas: HTMLCanvasElement) {
     const { width, height } = canvas.getBoundingClientRect();
     let { devicePixelRatio: ratio = 1 } = window;
     if (ratio < 1) {
@@ -13,36 +136,45 @@ function resizeCanvas(canvas) {
 
     if (canvas.width !== newCanvasWidth || canvas.height !== newCanvasHeight) {
         const context = canvas.getContext('2d');
-        canvas.width = newCanvasWidth;
-        canvas.height = newCanvasHeight;
-        context.scale(ratio, ratio);
+        if (context) {
+            canvas.width = newCanvasWidth;
+            canvas.height = newCanvasHeight;
+            context.scale(ratio, ratio);
+        }
         return true;
     }
 
     return false;
 }
 
-function createRowOrColumnPropFunction(sizeProp, defaultValue) {
-    return (cell) => {
-        if (Array.isArray(sizeProp)) {
-            if (cell >= 0 && cell < sizeProp.length) {
-                return sizeProp[cell];
+// todo first figure out the function
+function createRowOrColumnPropFunction<T extends PropTypes>(
+    rowColProp: RowOrColumnProperty<T> | undefined,
+    defaultValue: T
+): RowOrColumnPropertyFunction<T> {
+    if (Array.isArray(rowColProp)) {
+        return (rowOrColIndex: number) => {
+            if (rowOrColIndex >= 0 && rowOrColIndex < rowColProp.length) {
+                return rowColProp[rowOrColIndex];
             } else {
                 return defaultValue;
             }
-        } else if (typeof sizeProp === 'function') {
-            return sizeProp(cell);
-        } else if (typeof sizeProp === 'number') {
-            return sizeProp;
-        } else {
-            return defaultValue;
-        }
-    };
+        };
+    } else if (typeof rowColProp === 'function') {
+        return rowColProp;
+    } else if (rowColProp !== null && rowColProp !== undefined) {
+        return () => rowColProp;
+    } else {
+        return () => defaultValue;
+    }
 }
 
-function createCellPropFunction(cellProp, defaultValue) {
-    return (x, y) => {
-        if (Array.isArray(cellProp)) {
+function createCellPropFunction<T extends PropTypes>(
+    cellProp: CellProperty<T> | undefined,
+    defaultValue: T
+): CellPropertyFunction<T> {
+    if (Array.isArray(cellProp)) {
+        return (x: number, y: number) => {
             if (y >= 0 && y < cellProp.length) {
                 if (x >= 0 && x < cellProp[y].length) {
                     return cellProp[y][x];
@@ -52,30 +184,40 @@ function createCellPropFunction(cellProp, defaultValue) {
             } else {
                 return defaultValue;
             }
-        } else if (typeof cellProp === 'function') {
-            return cellProp(x, y);
-        } else if (cellProp !== null && cellProp !== undefined) {
-            return cellProp;
-        } else {
-            return defaultValue;
-        }
-    };
+        };
+    } else if (typeof cellProp === 'function') {
+        return cellProp;
+    } else if (cellProp !== null && cellProp !== undefined) {
+        return () => cellProp;
+    } else {
+        return () => defaultValue;
+    }
 }
 
-function drawCell(context, cellContent, style, defaultCellStyle, xCoord, yCoord, cellWidth, cellHeight) {
-    style.color = style.color || defaultCellStyle.color;
-    style.fontSize = style.fontSize || defaultCellStyle.fontSize;
-    style.fontFamily = style.fontFamily || defaultCellStyle.fontFamily;
-    style.textAlign = style.textAlign || defaultCellStyle.textAlign;
-    style.marginRight = style.marginRight || defaultCellStyle.marginRight;
-    style.marginLeft = style.marginLeft || defaultCellStyle.marginLeft;
-    style.weight = style.weight || defaultCellStyle.weight;
+function drawCell(
+    context: CanvasRenderingContext2D,
+    cellContent: CellContentType,
+    style: Style,
+    defaultCellStyle: Required<Style>,
+    xCoord: number,
+    yCoord: number,
+    cellWidth: number,
+    cellHeight: number
+) {
+    if (cellContent === null) {
+        return;
+    }
+    const finalStyle = createStyleObject(style, defaultCellStyle);
+    context.fillStyle = finalStyle.color;
+    context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
+    context.textAlign = finalStyle.textAlign;
 
-    context.fillStyle = style.color;
-    context.font = style.weight + style.fontSize + 'px ' + style.fontFamily;
-    context.textAlign = style.textAlign;
-
-    const adjustment = style.textAlign === 'right' ? cellWidth - style.marginRight : style.marginLeft;
+    const adjustment =
+        finalStyle.textAlign === 'right'
+            ? cellWidth - finalStyle.marginRight
+            : finalStyle.textAlign === 'center'
+            ? cellWidth * 0.5
+            : finalStyle.marginLeft;
     const xx = xCoord + adjustment;
     const yy = yCoord + cellHeight * 0.5;
 
@@ -84,27 +226,33 @@ function drawCell(context, cellContent, style, defaultCellStyle, xCoord, yCoord,
     context.rect(xCoord, yCoord, cellWidth, cellHeight);
     context.clip();
 
-    if (style.backgroundColor) {
-        context.fillStyle = style.backgroundColor;
+    if (finalStyle.backgroundColor !== '') {
+        context.fillStyle = finalStyle.backgroundColor;
         context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
-        context.fillStyle = style.color;
+        context.fillStyle = finalStyle.color;
     }
 
-    if (Array.isArray(cellContent)) {
-        for (const obj of cellContent) {
+    if (typeof cellContent === 'string' || typeof cellContent === 'number') {
+        context.fillText('' + cellContent, xx, yy);
+    } else if (typeof cellContent === 'object') {
+        for (const obj of cellContent.items) {
             if (obj.content instanceof HTMLImageElement) {
                 context.drawImage(obj.content, xCoord + obj.x, yy + obj.y, obj.width, obj.height);
             } else if (typeof obj.content === 'string') {
                 context.fillText(obj.content, xCoord + obj.x, yy + obj.y);
             }
         }
-    } else {
-        context.fillText(cellContent, xx, yy);
     }
     context.restore();
 }
 
-function calculateRowsOrColsSizes(freezeCount, size, startingSize, startingIndex, visibleArea) {
+function calculateRowsOrColsSizes(
+    freezeCount: number,
+    size: (index: number) => number,
+    startingSize: number,
+    startingIndex: number,
+    visibleArea: number
+): RowOrColumnSize {
     const visible = [];
     const start = [];
     const end = [];
@@ -139,16 +287,323 @@ function calculateRowsOrColsSizes(freezeCount, size, startingSize, startingIndex
         ind++;
     }
     return {
-        visible,
+        index: visible,
         start,
         end,
     };
 }
 
-function Sheet(props) {
-    const canvasRef = useRef(null);
-    const overlayRef = useRef(null);
-    const copyPasteTextAreaRef = useRef(null);
+function createStyleObject(optionalStyle: Style, defaultStyle: Required<Style>): Required<Style> {
+    return {
+        ...defaultStyle,
+        ...optionalStyle,
+    };
+}
+
+function excelHeaderString(num: number) {
+    let s = '';
+    let t = 0;
+    while (num > 0) {
+        t = (num - 1) % 26;
+        s = String.fromCharCode(65 + t) + s;
+        num = ((num - t) / 26) | 0;
+    }
+    return s || '';
+}
+
+function absCoordianteToCell(
+    absX: number,
+    absY: number,
+    rowSizes: RowOrColumnSize,
+    columnSizes: RowOrColumnSize
+): CellCoordinate {
+    let cellX = 0;
+    let cellY = 0;
+
+    for (let i = 0; i < columnSizes.index.length; i++) {
+        if (absX >= columnSizes.start[i] && absX <= columnSizes.end[i]) {
+            cellX = columnSizes.index[i];
+            break;
+        }
+    }
+    for (let i = 0; i < rowSizes.index.length; i++) {
+        if (absY >= rowSizes.start[i] && absY <= rowSizes.end[i]) {
+            cellY = rowSizes.index[i];
+            break;
+        }
+    }
+
+    return { x: cellX, y: cellY };
+}
+
+function cellToAbsCoordinate(
+    cellX: number,
+    cellY: number,
+    rowSizes: RowOrColumnSize,
+    columnSizes: RowOrColumnSize,
+    dataOffset: CellCoordinate,
+    cellWidth: RowOrColumnPropertyFunction<number>,
+    cellHeight: RowOrColumnPropertyFunction<number>
+): CellCoordinate {
+    let absX = rowHeaderWidth;
+    const indX = columnSizes.index.findIndex((i) => i === cellX);
+    if (indX !== -1) {
+        absX = columnSizes.start[indX];
+    } else {
+        for (let i = 0; i < dataOffset.x; i++) {
+            absX -= cellWidth(i);
+        }
+        for (let i = 0; i < cellX; i++) {
+            absX += cellWidth(i);
+        }
+    }
+
+    let absY = columnHeaderHeight;
+    const indY = rowSizes.index.findIndex((i) => i === cellY);
+    if (indY !== -1) {
+        absY = rowSizes.start[indY];
+    } else {
+        for (let i = 0; i < dataOffset.y; i++) {
+            absY -= cellHeight(i);
+        }
+        for (let i = 0; i < cellY; i++) {
+            absY += cellHeight(i);
+        }
+    }
+    return { x: absX, y: absY };
+}
+
+function renderOnCanvas(
+    context: CanvasRenderingContext2D,
+    rowSizes: RowOrColumnSize,
+    columnSizes: RowOrColumnSize,
+    cellStyle: CellPropertyFunction<Style>,
+    cellWidth: RowOrColumnPropertyFunction<number>,
+    cellHeight: RowOrColumnPropertyFunction<number>,
+    selection: Selection,
+    knobDragInProgress: boolean,
+    columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
+    columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
+    knobArea: Selection,
+    displayData: CellPropertyFunction<CellContentType>,
+    dataOffset: CellCoordinate
+) {
+    resizeCanvas(context.canvas);
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+
+    // apply cell fill color
+    let yCoord1 = columnHeaderHeight;
+    for (const y of rowSizes.index) {
+        let xCoord1 = rowHeaderWidth;
+        for (const x of columnSizes.index) {
+            const style = cellStyle(x, y);
+            if (style.fillColor) {
+                context.fillStyle = style.fillColor;
+                context.fillRect(xCoord1, yCoord1, cellWidth(x), cellHeight(y));
+            }
+            xCoord1 += cellWidth(x);
+        }
+        yCoord1 += cellHeight(y);
+    }
+
+    let hideKnob = false;
+
+    let selx1 = selection.x1;
+    let selx2 = selection.x2;
+
+    if (selection.x1 > selection.x2) {
+        selx1 = selection.x2;
+        selx2 = selection.x1;
+    }
+
+    let sely1 = selection.y1;
+    let sely2 = selection.y2;
+
+    if (selection.y1 > selection.y2) {
+        sely1 = selection.y2;
+        sely2 = selection.y1;
+    }
+
+    const selectionActive = selx1 !== -1 && selx2 !== -1 && sely1 !== -1 && sely2 !== -1;
+
+    const p1 = cellToAbsCoordinate(selx1, sely1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+    const p2 = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+    p2.x += cellWidth(selx2);
+    p2.y += cellHeight(sely2);
+
+    if (p1.x >= p2.x) {
+        // recalculate if the selection span covers both frozen and unfrozen columns
+        p2.x = p1.x;
+        let currentCol = selx1;
+        while (columnSizes.index.includes(currentCol)) {
+            p2.x += cellWidth(currentCol);
+            currentCol++;
+        }
+        hideKnob = true;
+    }
+
+    if (p1.y >= p2.y) {
+        // recalculate if the selection span covers both frozen and unfrozen rows
+        p2.y = p1.y;
+        let currentRow = sely1;
+        while (rowSizes.index.includes(currentRow)) {
+            p2.y += cellHeight(currentRow);
+            currentRow++;
+        }
+        hideKnob = true;
+    }
+
+    // selection fill
+    if (selectionActive) {
+        context.fillStyle = selBackColor;
+        context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+    }
+
+    // row header background
+    context.fillStyle = rowHeaderBackgroundColor;
+    context.fillRect(0, 0, rowHeaderWidth, context.canvas.height);
+
+    // row header selection
+    if (selectionActive) {
+        context.fillStyle = rowHeaderSelectedBackgroundColor;
+        context.fillRect(0, p1.y, rowHeaderWidth, p2.y - p1.y);
+    }
+
+    // column header background
+    context.fillStyle = columnHeaderBackgroundColor;
+    context.fillRect(0, 0, context.canvas.width, columnHeaderHeight);
+
+    // column header selection
+    if (selectionActive) {
+        context.fillStyle = columnHeaderSelectedBackgroundColor;
+        context.fillRect(p1.x, 0, p2.x - p1.x, columnHeaderHeight);
+    }
+
+    // grid
+    context.strokeStyle = gridColor;
+    context.lineWidth = 1;
+    let startX = rowHeaderWidth;
+
+    for (const col of columnSizes.index) {
+        context.beginPath();
+        context.moveTo(startX, 0);
+        context.lineTo(startX, context.canvas.height);
+        context.stroke();
+        startX += cellWidth(col);
+    }
+
+    let startY = columnHeaderHeight;
+    for (const row of rowSizes.index) {
+        context.beginPath();
+        context.moveTo(0, startY);
+        context.lineTo(context.canvas.width, startY);
+        context.stroke();
+        startY += cellHeight(row);
+    }
+
+    // row header text
+    startY = columnHeaderHeight;
+    context.textBaseline = 'middle';
+    context.textAlign = 'center';
+    context.font = defaultCellStyle.fontSize + 'px ' + defaultCellStyle.fontFamily;
+    context.fillStyle = rowHeaderTextColor;
+    for (const row of rowSizes.index) {
+        const xx = rowHeaderWidth * 0.5;
+        const yy = startY + cellHeight(row) * 0.5;
+        const cellContent = row + 1;
+        context.fillText('' + cellContent, xx, yy);
+        startY += cellHeight(row);
+    }
+
+    // column header text
+    startX = rowHeaderWidth;
+    context.textBaseline = 'middle';
+    context.textAlign = 'center';
+    for (const col of columnSizes.index) {
+        const cw = cellWidth(col);
+        const ch = columnHeaders(col);
+        const chcontent = ch !== null ? ch : excelHeaderString(col + 1);
+        const chStyle = columnHeaderStyle(col);
+        drawCell(context, chcontent, chStyle, defaultColumnHeaderStyle, startX, 0, cw, columnHeaderHeight);
+        startX += cw;
+    }
+
+    // selection outline
+    if (selectionActive) {
+        context.strokeStyle = selBorderColor;
+        context.lineWidth = 1;
+        context.beginPath();
+        context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        context.stroke();
+    }
+
+    // knob drag outline
+    if (knobDragInProgress) {
+        let kx1 = knobArea.x1;
+        let kx2 = knobArea.x2;
+        if (knobArea.x1 > knobArea.x2) {
+            kx1 = knobArea.x2;
+            kx2 = knobArea.x1;
+        }
+
+        let ky1 = knobArea.y1;
+        let ky2 = knobArea.y2;
+        if (knobArea.y1 > knobArea.y2) {
+            ky1 = knobArea.y2;
+            ky2 = knobArea.y1;
+        }
+        const knobPoint1 = cellToAbsCoordinate(kx1, ky1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+        const knobPoint2 = cellToAbsCoordinate(
+            kx2 + 1,
+            ky2 + 1,
+            rowSizes,
+            columnSizes,
+            dataOffset,
+            cellWidth,
+            cellHeight
+        );
+        context.strokeStyle = knobAreaBorderColor;
+        context.setLineDash([3, 3]);
+        context.lineWidth = 1;
+        context.beginPath();
+        context.rect(knobPoint1.x, knobPoint1.y - 1, knobPoint2.x - knobPoint1.x, knobPoint2.y - knobPoint1.y);
+        context.stroke();
+        context.setLineDash([]);
+    }
+
+    // selection knob
+    if (selectionActive && !hideKnob) {
+        context.fillStyle = selBorderColor;
+        context.fillRect(p2.x - knobSize * 0.5, p2.y - knobSize * 0.5, knobSize, knobSize);
+    }
+
+    // content
+    context.textBaseline = 'middle';
+
+    // draw content
+    let yCoord = columnHeaderHeight;
+    for (const y of rowSizes.index) {
+        let xCoord = rowHeaderWidth;
+        const ch = cellHeight(y);
+        for (const x of columnSizes.index) {
+            const cellContent = displayData(x, y);
+            const cw = cellWidth(x);
+            if (cellContent !== null && cellContent !== undefined) {
+                const style = cellStyle(x, y);
+                drawCell(context, cellContent, style, defaultCellStyle, xCoord, yCoord, cw, ch);
+            }
+            xCoord += cw;
+        }
+        yCoord += ch;
+    }
+}
+
+function Sheet(props: SheetProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const copyPasteTextAreaRef = useRef<HTMLTextAreaElement>(null);
     const [maxScroll, setMaxScroll] = useState({ x: 5000, y: 5000 });
     const [dataOffset, setDataOffset] = useState({ x: 0, y: 0 });
     const [selection, setSelection] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
@@ -159,79 +614,47 @@ function Sheet(props) {
     const [shiftKeyDown, setShiftKeyDown] = useState(false);
     const [knobDragInProgress, setKnobDragInProgress] = useState(false);
     const [selectionInProgress, setSelectionInProgress] = useState(false);
-    const [columnResize, setColumnResize] = useState(null);
-    const [rowResize, setRowResize] = useState(null);
+    const [columnResize, setColumnResize] = useState<any>(null);
+    const [rowResize, setRowResize] = useState<any>(null);
     const [rowSelectionInProgress, setRowSelectionInProgress] = useState(false);
     const [columnSelectionInProgress, setColumnSelectionInProgress] = useState(false);
-    const [buttonClickMouseDownCoordinates, setButtonClickMouseDownCoordinates] = useState({
+    const [buttonClickMouseDownCoordinates, setButtonClickMouseDownCoordinates] = useState<any>({
         x: -1,
         y: -1,
         hitTarget: null,
     });
     const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: canvasRef });
 
-    const selBorderColor = '#1b73e7';
-    const selBackColor = '#e9f0fd';
-    const knobSize = 6;
-    const gridColor = '#e2e3e3';
-    const knobAreaBorderColor = '#707070';
-    const rowHeaderWidth = 50;
-    const rowHeaderBackgroundColor = '#f8f9fa';
-    const rowHeaderTextColor = '#666666';
-    const rowHeaderSelectedBackgroundColor = '#e8eaed';
-    const columnHeaderHeight = 22;
-    const columnHeaderBackgroundColor = rowHeaderBackgroundColor;
-    const columnHeaderSelectedBackgroundColor = rowHeaderSelectedBackgroundColor;
-    const columnHeaderTextColor = rowHeaderTextColor;
-    const xBinSize = 10;
-    const yBinSize = 10;
-    const scrollSpeed = 30;
-    const resizeColumnRowMouseThreshold = 4;
-    const minimumColumnWidth = 50;
-    const minimumRowHeight = 22;
-
     const freezeColumns = props.freezeColumns || 0;
     const freezeRows = props.freezeRows || 0;
 
-    const defaultCellStyle = {
-        textAlign: 'left',
-        fontSize: 13,
-        marginRight: 5,
-        marginLeft: 5,
-        color: '#000',
-        fontFamily: 'sans-serif',
-        weight: '',
-    };
+    const cellWidth = useMemo(() => createRowOrColumnPropFunction(props.cellWidth, 100), [props.cellWidth]);
+    const cellHeight = useMemo(() => createRowOrColumnPropFunction(props.cellHeight, 22), [props.cellHeight]);
+    const columnHeaders = useMemo(() => createRowOrColumnPropFunction(props.columnHeaders, null), [
+        props.columnHeaders,
+    ]);
+    const columnHeaderStyle = useMemo(() => createRowOrColumnPropFunction(props.columnHeaderStyle, {}), [
+        props.columnHeaderStyle,
+    ]);
 
-    const cellWidth = createRowOrColumnPropFunction(props.cellWidth, 100);
-    const cellHeight = createRowOrColumnPropFunction(props.cellHeight, 22);
-    const columnHeaders = createRowOrColumnPropFunction(props.columnHeaders, null);
+    const cellReadOnly = useMemo(() => createCellPropFunction(props.readOnly, false), [props.readOnly]);
 
-    const cellReadOnly = createCellPropFunction(props.readOnly, false);
+    const sourceData = useMemo(() => createCellPropFunction(props.sourceData, ''), [props.sourceData]);
+    const displayData = useMemo(() => createCellPropFunction(props.displayData, ''), [props.displayData]);
+    const editData = useMemo(() => createCellPropFunction(props.editData, ''), [props.editData]);
+    const cellStyle = useMemo(() => createCellPropFunction(props.cellStyle, defaultCellStyle), [props.cellStyle]);
 
-    const sourceData = createCellPropFunction(props.sourceData, null);
-    const displayData = createCellPropFunction(props.displayData, null);
-    const editData = createCellPropFunction(props.editData, null);
-    const cellStyle = createCellPropFunction(props.cellStyle, defaultCellStyle);
-
-    // todo: somehow memoize, or only recalculate when inputs change...
-    const { visible: visibleColumns, start: columnXStart, end: columnXEnd } = calculateRowsOrColsSizes(
-        freezeColumns,
-        cellWidth,
-        rowHeaderWidth,
-        dataOffset.x,
-        canvasWidth
+    const columnSizes = useMemo(
+        () => calculateRowsOrColsSizes(freezeColumns, cellWidth, rowHeaderWidth, dataOffset.x, canvasWidth),
+        [props.freezeColumns, cellWidth, dataOffset.x, canvasWidth]
     );
 
-    const { visible: visibleRows, start: rowYStart, end: rowYEnd } = calculateRowsOrColsSizes(
-        freezeRows,
-        cellHeight,
-        columnHeaderHeight,
-        dataOffset.y,
-        canvasHeight
+    const rowSizes = useMemo(
+        () => calculateRowsOrColsSizes(freezeRows, cellHeight, columnHeaderHeight, dataOffset.y, canvasHeight),
+        [props.freezeRows, cellHeight, dataOffset.y, canvasHeight]
     );
 
-    const changeSelection = (x1, y1, x2, y2, scrollToP2 = true) => {
+    const changeSelection = (x1: number, y1: number, x2: number, y2: number, scrollToP2 = true) => {
         setSelection({ x1, y1, x2, y2 });
 
         if (scrollToP2) {
@@ -239,15 +662,15 @@ function Sheet(props) {
             let newScrollLeft = -1;
             let newScrollTop = -1;
 
-            if (!visibleColumns.includes(x2) || visibleColumns[visibleColumns.length - 1] === x2) {
-                const increment = visibleColumns[visibleColumns.length - 1] <= x2 ? 1 : -1;
+            if (!columnSizes.index.includes(x2) || columnSizes.index[columnSizes.index.length - 1] === x2) {
+                const increment = columnSizes.index[columnSizes.index.length - 1] <= x2 ? 1 : -1;
                 const newX = Math.max(dataOffset.x, freezeColumns) + increment;
                 newDataOffset.x = newX;
                 newScrollLeft = newX * scrollSpeed;
             }
 
-            if (!visibleRows.includes(y2) || visibleRows[visibleRows.length - 1] === y2) {
-                const increment = visibleRows[visibleRows.length - 1] <= y2 ? 1 : -1;
+            if (!rowSizes.index.includes(y2) || rowSizes.index[rowSizes.index.length - 1] === y2) {
+                const increment = rowSizes.index[rowSizes.index.length - 1] <= y2 ? 1 : -1;
                 const newY = Math.max(dataOffset.y, freezeRows) + increment;
                 newDataOffset.y = newY;
                 newScrollTop = newY * scrollSpeed;
@@ -285,55 +708,6 @@ function Sheet(props) {
         }
     };
 
-    const absCoordianteToCell = (absX, absY) => {
-        let cellX = 0;
-        let cellY = 0;
-
-        for (let i = 0; i < visibleColumns.length; i++) {
-            if (absX >= columnXStart[i] && absX <= columnXEnd[i]) {
-                cellX = visibleColumns[i];
-                break;
-            }
-        }
-        for (let i = 0; i < visibleRows.length; i++) {
-            if (absY >= rowYStart[i] && absY <= rowYEnd[i]) {
-                cellY = visibleRows[i];
-                break;
-            }
-        }
-
-        return { x: cellX, y: cellY };
-    };
-
-    const cellToAbsCoordinate = (cellX, cellY) => {
-        let absX = rowHeaderWidth;
-        const indX = visibleColumns.findIndex((i) => i === cellX);
-        if (indX !== -1) {
-            absX = columnXStart[indX];
-        } else {
-            for (let i = 0; i < dataOffset.x; i++) {
-                absX -= cellWidth(i);
-            }
-            for (let i = 0; i < cellX; i++) {
-                absX += cellWidth(i);
-            }
-        }
-
-        let absY = columnHeaderHeight;
-        const indY = visibleRows.findIndex((i) => i === cellY);
-        if (indY !== -1) {
-            absY = rowYStart[indY];
-        } else {
-            for (let i = 0; i < dataOffset.y; i++) {
-                absY -= cellHeight(i);
-            }
-            for (let i = 0; i < cellY; i++) {
-                absY += cellHeight(i);
-            }
-        }
-        return { x: absX, y: absY };
-    };
-
     const knobCoordinates = useMemo(() => {
         if (selection.x2 !== -1 && selection.y2 !== -1) {
             let selx2 = selection.x2;
@@ -345,11 +719,11 @@ function Sheet(props) {
             if (selection.y1 > selection.y2) {
                 sely2 = selection.y1;
             }
-            const c = cellToAbsCoordinate(selx2, sely2);
+            const c = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
             return { x: c.x + cellWidth(selx2), y: c.y + cellHeight(sely2) };
         }
         return { x: -1, y: -1 };
-    }, [selection, visibleRows, visibleColumns]);
+    }, [selection, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight]);
 
     const hitMap = useMemo(() => {
         const hitM = {};
@@ -359,9 +733,9 @@ function Sheet(props) {
         }
         resizeCanvas(canvas);
         let yCoord = columnHeaderHeight;
-        for (const y of visibleRows) {
+        for (const y of rowSizes.index) {
             let xCoord = rowHeaderWidth;
-            for (const x of visibleColumns) {
+            for (const x of columnSizes.index) {
                 const cellContent = displayData(x, y);
                 if (cellContent === null || cellContent === undefined) {
                     xCoord += cellWidth(x);
@@ -420,246 +794,48 @@ function Sheet(props) {
 
     useEffect(() => {
         const canvas = canvasRef.current;
+        if (!canvas) {
+            return;
+        }
         const context = canvas.getContext('2d');
+        if (!context) {
+            return;
+        }
         let animationFrameId = window.requestAnimationFrame(() => {
-            resizeCanvas(canvas);
-            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-            context.fillStyle = 'white';
-            context.fillRect(0, 0, context.canvas.width, context.canvas.height);
-
-            // apply cell fill color
-            let yCoord1 = columnHeaderHeight;
-            for (const y of visibleRows) {
-                let xCoord1 = rowHeaderWidth;
-                for (const x of visibleColumns) {
-                    const style = cellStyle(x, y);
-                    if (style.fillColor) {
-                        context.fillStyle = style.fillColor;
-                        context.fillRect(xCoord1, yCoord1, cellWidth(x), cellHeight(y));
-                    }
-                    xCoord1 += cellWidth(x);
-                }
-                yCoord1 += cellHeight(y);
-            }
-
-            let hideKnob = false;
-
-            let selx1 = selection.x1;
-            let selx2 = selection.x2;
-
-            if (selection.x1 > selection.x2) {
-                selx1 = selection.x2;
-                selx2 = selection.x1;
-            }
-
-            let sely1 = selection.y1;
-            let sely2 = selection.y2;
-
-            if (selection.y1 > selection.y2) {
-                sely1 = selection.y2;
-                sely2 = selection.y1;
-            }
-
-            const selectionActive = selx1 !== -1 && selx2 !== -1 && sely1 !== -1 && sely2 !== -1;
-
-            const p1 = cellToAbsCoordinate(selx1, sely1);
-            const p2 = cellToAbsCoordinate(selx2, sely2);
-            p2.x += cellWidth(selx2);
-            p2.y += cellHeight(sely2);
-
-            if (p1.x >= p2.x) {
-                // recalculate if the selection span covers both frozen and unfrozen columns
-                p2.x = p1.x;
-                let currentCol = selx1;
-                while (visibleColumns.includes(currentCol)) {
-                    p2.x += cellWidth(currentCol);
-                    currentCol++;
-                }
-                hideKnob = true;
-            }
-
-            if (p1.y >= p2.y) {
-                // recalculate if the selection span covers both frozen and unfrozen rows
-                p2.y = p1.y;
-                let currentRow = sely1;
-                while (visibleRows.includes(currentRow)) {
-                    p2.y += cellHeight(currentRow);
-                    currentRow++;
-                }
-                hideKnob = true;
-            }
-
-            // selection fill
-            if (selectionActive) {
-                context.fillStyle = selBackColor;
-                context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
-            }
-
-            // row header background
-            context.fillStyle = rowHeaderBackgroundColor;
-            context.fillRect(0, 0, rowHeaderWidth, context.canvas.height);
-
-            // row header selection
-            if (selectionActive) {
-                context.fillStyle = rowHeaderSelectedBackgroundColor;
-                context.fillRect(0, p1.y, rowHeaderWidth, p2.y - p1.y);
-            }
-
-            // column header background
-            context.fillStyle = columnHeaderBackgroundColor;
-            context.fillRect(0, 0, context.canvas.width, columnHeaderHeight);
-
-            // column header selection
-            if (selectionActive) {
-                context.fillStyle = columnHeaderSelectedBackgroundColor;
-                context.fillRect(p1.x, 0, p2.x - p1.x, columnHeaderHeight);
-            }
-
-            // grid
-            context.strokeStyle = gridColor;
-            context.lineWidth = 1;
-            let startX = rowHeaderWidth;
-
-            for (const col of visibleColumns) {
-                context.beginPath();
-                context.moveTo(startX, 0);
-                context.lineTo(startX, context.canvas.height);
-                context.stroke();
-                startX += cellWidth(col);
-            }
-
-            let startY = columnHeaderHeight;
-            for (const row of visibleRows) {
-                context.beginPath();
-                context.moveTo(0, startY);
-                context.lineTo(context.canvas.width, startY);
-                context.stroke();
-                startY += cellHeight(row);
-            }
-
-            // row header text
-            startY = columnHeaderHeight;
-            context.textBaseline = 'middle';
-            context.textAlign = 'center';
-            context.font = defaultCellStyle.fontSize + 'px ' + defaultCellStyle.fontFamily;
-            context.fillStyle = rowHeaderTextColor;
-            for (const row of visibleRows) {
-                const xx = rowHeaderWidth * 0.5;
-                const yy = startY + cellHeight(row) * 0.5;
-                const cellContent = row + 1;
-                context.fillText(cellContent, xx, yy);
-                startY += cellHeight(row);
-            }
-
-            // column header text
-            startX = rowHeaderWidth;
-            context.textBaseline = 'middle';
-            context.textAlign = 'center';
-            for (const col of visibleColumns) {
-                const xx = startX + cellWidth(col) * 0.5;
-                const yy = columnHeaderHeight * 0.5;
-                const ch = columnHeaders(col);
-                let headerCellStyle = {};
-                let cellContent = null;
-                if (typeof ch === 'object' && ch !== null && ch.headerCellStyle) {
-                    headerCellStyle = ch.headerCellStyle;
-                }
-                if (typeof ch === 'object' && ch !== null) {
-                    cellContent = ch.cellContent;
-                } else {
-                    cellContent = ch;
-                }
-
-                headerCellStyle.color = headerCellStyle.color || columnHeaderTextColor;
-                headerCellStyle.fontSize = headerCellStyle.fontSize || defaultCellStyle.fontSize;
-                headerCellStyle.fontFamily = headerCellStyle.fontFamily || defaultCellStyle.fontFamily;
-                headerCellStyle.weight = headerCellStyle.weight || defaultCellStyle.weight;
-                context.font = headerCellStyle.weight + headerCellStyle.fontSize + 'px ' + headerCellStyle.fontFamily;
-                context.fillStyle = headerCellStyle.color;
-                if (cellContent === null || cellContent === undefined) {
-                    cellContent = col + 1;
-                }
-                context.fillText(cellContent, xx, yy);
-                startX += cellWidth(col);
-            }
-
-            // selection outline
-            if (selectionActive) {
-                context.strokeStyle = selBorderColor;
-                context.lineWidth = 1;
-                context.beginPath();
-                context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
-                context.stroke();
-            }
-
-            // knob drag outline
-            if (knobDragInProgress) {
-                let kx1 = knobArea.x1;
-                let kx2 = knobArea.x2;
-                if (knobArea.x1 > knobArea.x2) {
-                    kx1 = knobArea.x2;
-                    kx2 = knobArea.x1;
-                }
-
-                let ky1 = knobArea.y1;
-                let ky2 = knobArea.y2;
-                if (knobArea.y1 > knobArea.y2) {
-                    ky1 = knobArea.y2;
-                    ky2 = knobArea.y1;
-                }
-                const knobPoint1 = cellToAbsCoordinate(kx1, ky1);
-                const knobPoint2 = cellToAbsCoordinate(kx2 + 1, ky2 + 1);
-                context.strokeStyle = knobAreaBorderColor;
-                context.setLineDash([3, 3]);
-                context.lineWidth = 1;
-                context.beginPath();
-                context.rect(knobPoint1.x, knobPoint1.y - 1, knobPoint2.x - knobPoint1.x, knobPoint2.y - knobPoint1.y);
-                context.stroke();
-                context.setLineDash([]);
-            }
-
-            // selection knob
-            if (selectionActive && !hideKnob) {
-                context.fillStyle = selBorderColor;
-                context.fillRect(p2.x - knobSize * 0.5, p2.y - knobSize * 0.5, knobSize, knobSize);
-            }
-
-            // content
-            context.textBaseline = 'middle';
-
-            // draw content
-            let yCoord = columnHeaderHeight;
-            for (const y of visibleRows) {
-                let xCoord = rowHeaderWidth;
-                const ch = cellHeight(y);
-                for (const x of visibleColumns) {
-                    const cellContent = displayData(x, y);
-                    const cw = cellWidth(x);
-                    if (cellContent !== null && cellContent !== undefined) {
-                        const style = cellStyle(x, y);
-                        drawCell(context, cellContent, style, defaultCellStyle, xCoord, yCoord, cw, ch);
-                    }
-                    xCoord += cw;
-                }
-                yCoord += ch;
-            }
+            renderOnCanvas(
+                context,
+                rowSizes,
+                columnSizes,
+                cellStyle,
+                cellWidth,
+                cellHeight,
+                selection,
+                knobDragInProgress,
+                columnHeaders,
+                columnHeaderStyle,
+                knobArea,
+                displayData,
+                dataOffset
+            );
         });
 
         return () => {
             window.cancelAnimationFrame(animationFrameId);
         };
     }, [
-        props.displayData,
-        dataOffset.x,
-        dataOffset.y,
-        selection,
-        knobDragInProgress,
-        knobArea,
-        canvasWidth,
-        canvasHeight,
-        columnResize,
+        canvasRef,
+        rowSizes,
+        columnSizes,
+        cellStyle,
         cellWidth,
         cellHeight,
+        selection,
+        knobDragInProgress,
+        columnHeaders,
+        columnHeaderStyle,
+        knobArea,
+        displayData,
+        dataOffset,
     ]);
 
     const setFocusToTextArea = () => {
@@ -675,10 +851,10 @@ function Sheet(props) {
             if (document.activeElement === copyPasteTextAreaRef.current) {
                 setFocusToTextArea();
             } else {
-                const activeTagName = document.activeElement.tagName.toLowerCase();
+                const activeTagName = (document as any).activeElement.tagName.toLowerCase();
                 if (
                     !(
-                        (activeTagName === 'div' && document.activeElement.contentEditable === 'true') ||
+                        (activeTagName === 'div' && (document as any).activeElement.contentEditable === 'true') ||
                         activeTagName === 'input' ||
                         activeTagName === 'textarea' ||
                         activeTagName === 'select'
@@ -690,7 +866,7 @@ function Sheet(props) {
         }
     });
 
-    const onPaste = (e) => {
+    const onPaste = (e: any) => {
         if (!copyPasteTextAreaRef) {
             return;
         }
@@ -699,8 +875,7 @@ function Sheet(props) {
         }
         e.preventDefault();
 
-        const clipboardData = e.clipboardData || window.clipboardData;
-
+        const clipboardData = e.clipboardData || (window as any).clipboardData;
         const types = clipboardData.types;
         if (types.includes('text/html')) {
             const pastedHtml = clipboardData.getData('text/html');
@@ -718,7 +893,7 @@ function Sheet(props) {
         };
     });
 
-    const findTable = (element) => {
+    const findTable = (element: any): any => {
         for (const child of element.children) {
             if (child.nodeName === 'TABLE') {
                 return child;
@@ -730,7 +905,7 @@ function Sheet(props) {
         }
     };
 
-    const parsePastedHtml = (html) => {
+    const parsePastedHtml = (html: string) => {
         const div = document.createElement('div');
         div.innerHTML = html.trim();
         let pasteLocX = -1;
@@ -785,7 +960,7 @@ function Sheet(props) {
         changeSelection(pasteLocX, pasteLocY, pasteX2, pasteY2, false);
     };
 
-    const parsePastedText = (text) => {
+    const parsePastedText = (text: string) => {
         let pasteLocX = -1;
         let pasteLocY = -1;
         if (selection.x1 !== -1 && selection.x2 === -1) {
@@ -871,7 +1046,7 @@ function Sheet(props) {
         setEditCell({ x: -1, y: -1 });
     };
 
-    const startEditingCell = (editCell) => {
+    const startEditingCell = (editCell: CellCoordinate) => {
         if (cellReadOnly(editCell.x, editCell.y)) {
             return;
         }
@@ -885,7 +1060,10 @@ function Sheet(props) {
         setEditValue(val);
     };
 
-    const onScroll = (e) => {
+    const onScroll = (e: UIEvent) => {
+        if (!e.target || !(e.target instanceof Element)) {
+            return;
+        }
         const absX = e.target.scrollLeft;
         const absY = e.target.scrollTop;
 
@@ -907,12 +1085,15 @@ function Sheet(props) {
         }
     };
 
-    const onMouseLeave = (e) => {
+    const onMouseLeave = () => {
         window.document.body.style.cursor = 'auto';
     };
 
-    const onMouseDown = (e) => {
+    const onMouseDown = (e: MouseEvent) => {
         if (e.button !== 0) {
+            return;
+        }
+        if (!e.target || !(e.target instanceof Element)) {
             return;
         }
         const rect = e.target.getBoundingClientRect();
@@ -942,7 +1123,7 @@ function Sheet(props) {
 
         if (y < columnHeaderHeight) {
             let xx = rowHeaderWidth;
-            for (const col of visibleColumns) {
+            for (const col of columnSizes.index) {
                 if (Math.abs(xx - x) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'col-resize';
                     setColumnResize({
@@ -957,7 +1138,7 @@ function Sheet(props) {
         }
         if (x < rowHeaderWidth) {
             let yy = columnHeaderHeight;
-            for (const row of visibleRows) {
+            for (const row of rowSizes.index) {
                 if (Math.abs(yy - y) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'row-resize';
                     setRowResize({
@@ -978,7 +1159,7 @@ function Sheet(props) {
             return;
         }
 
-        const sel2 = absCoordianteToCell(x, y);
+        const sel2 = absCoordianteToCell(x, y, rowSizes, columnSizes);
         const sel1 = shiftKeyDown ? { x: selection.x1, y: selection.y1 } : { ...sel2 };
 
         if (editMode) {
@@ -1008,7 +1189,7 @@ function Sheet(props) {
         setEditCell({ x: -1, y: -1 });
     };
 
-    const onMouseUp = (e) => {
+    const onMouseUp = (e: MouseEvent) => {
         if (knobDragInProgress) {
             let sx1 = selection.x1;
             let sx2 = selection.x2;
@@ -1040,7 +1221,7 @@ function Sheet(props) {
             let fx2 = kx2;
             let fy2 = ky2;
 
-            const changes = [];
+            const changes: Array<Change> = [];
 
             if (fx2 - fx1 === sx2 - sx1) {
                 // vertical
@@ -1099,6 +1280,9 @@ function Sheet(props) {
             buttonClickMouseDownCoordinates.y !== -1 &&
             buttonClickMouseDownCoordinates.hitTarget !== null
         ) {
+            if (!e.target || !(e.target instanceof Element)) {
+                return;
+            }
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -1116,13 +1300,16 @@ function Sheet(props) {
     };
 
     useEffect(() => {
-        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('mouseup', onMouseUp as any);
         return () => {
-            window.removeEventListener('mouseup', onMouseUp);
+            window.removeEventListener('mouseup', onMouseUp as any);
         };
     });
 
-    const onMouseMove = (e) => {
+    const onMouseMove = (e: MouseEvent) => {
+        if (!e.target || !(e.target instanceof Element)) {
+            return;
+        }
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -1147,7 +1334,7 @@ function Sheet(props) {
 
         if (props.onCellWidthChange && y < columnHeaderHeight) {
             let xx = rowHeaderWidth;
-            for (const col of visibleColumns) {
+            for (const col of columnSizes.index) {
                 if (Math.abs(xx - x) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'col-resize';
                     break;
@@ -1158,7 +1345,7 @@ function Sheet(props) {
 
         if (props.onCellHeightChange && x < rowHeaderWidth) {
             let yy = columnHeaderHeight;
-            for (const row of visibleRows) {
+            for (const row of rowSizes.index) {
                 if (Math.abs(yy - y) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'row-resize';
                     break;
@@ -1188,7 +1375,7 @@ function Sheet(props) {
         }
 
         if (selectionInProgress) {
-            const sel2 = absCoordianteToCell(x, y);
+            const sel2 = absCoordianteToCell(x, y, rowSizes, columnSizes);
             if (rowSelectionInProgress) {
                 changeSelection(selection.x1, selection.y1, selection.x2, sel2.y, false);
             } else if (columnSelectionInProgress) {
@@ -1200,7 +1387,7 @@ function Sheet(props) {
 
         if (knobDragInProgress) {
             window.document.body.style.cursor = 'crosshair';
-            const cell = absCoordianteToCell(x, y);
+            const cell = absCoordianteToCell(x, y, rowSizes, columnSizes);
 
             let x1 = selection.x1;
             let y1 = selection.y1;
@@ -1233,16 +1420,19 @@ function Sheet(props) {
         }
     };
 
-    const onDoubleClick = (e) => {
+    const onDoubleClick = (e: MouseEvent) => {
+        if (!e.target || !(e.target instanceof Element)) {
+            return;
+        }
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        const editCell = absCoordianteToCell(x, y);
+        const editCell = absCoordianteToCell(x, y, rowSizes, columnSizes);
         setArrowKeyCommitMode(false);
         startEditingCell(editCell);
     };
 
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             setEditCell({ x: -1, y: -1 });
             return;
@@ -1280,7 +1470,7 @@ function Sheet(props) {
         }
     };
 
-    const onGridKeyDown = (e) => {
+    const onGridKeyDown = (e: KeyboardEvent) => {
         if (editMode && arrowKeyCommitMode && ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             commitEditingCell();
             return;
@@ -1313,7 +1503,7 @@ function Sheet(props) {
                 y1 = selection.y2;
                 y2 = selection.y1;
             }
-            const changes = [];
+            const changes: Change[] = [];
             for (let y = y1; y <= y2; y++) {
                 for (let x = x1; x <= x2; x++) {
                     changes.push({ x: x, y: y, value: null });
@@ -1377,24 +1567,31 @@ function Sheet(props) {
         e.preventDefault();
     };
 
-    const onGridKeyUp = (e) => {
+    const onGridKeyUp = (e: KeyboardEvent) => {
         setShiftKeyDown(e.shiftKey);
     };
 
-    const onContextMenu = (e) => {
+    const onContextMenu = (e: MouseEvent) => {
         if (!props.onRightClick) {
             return;
         }
+        if (!e.target || !(e.target instanceof Element)) {
+            return;
+        }
+
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        const cell = absCoordianteToCell(x, y);
-        e.cellX = cell.x;
-        e.cellY = cell.y;
+        const cell = absCoordianteToCell(x, y, rowSizes, columnSizes);
 
         if (y > columnHeaderHeight && x > rowHeaderWidth) {
             onMouseMove(e);
-            props.onRightClick(e);
+            const ev: SheetMouseEvent = {
+                ...e,
+                cellX: cell.x,
+                cellY: cell.y,
+            };
+            props.onRightClick(ev);
         }
     };
 
@@ -1402,16 +1599,24 @@ function Sheet(props) {
     let editTextPosition = { x: 0, y: 0 };
     let editTextWidth = 0;
     let editTextHeight = 0;
-    let editTextTextAlign = 'right';
+    let editTextTextAlign: 'right' | 'left' | 'center' = 'right';
     if (editMode) {
-        editTextPosition = cellToAbsCoordinate(editCell.x, editCell.y);
+        editTextPosition = cellToAbsCoordinate(
+            editCell.x,
+            editCell.y,
+            rowSizes,
+            columnSizes,
+            dataOffset,
+            cellWidth,
+            cellHeight
+        );
         const style = cellStyle(editCell.x, editCell.y);
         // add 1 so it doesnt cover the selection border
         editTextPosition.x += 1;
         editTextPosition.y += 1;
         editTextWidth = cellWidth(editCell.x) - 2;
         editTextHeight = cellHeight(editCell.y) - 2;
-        editTextTextAlign = style.textAlign || defaultCellStyle.textAlign;
+        editTextTextAlign = style.textAlign || defaultCellStyle.textAlign || 'left';
     }
 
     return (
@@ -1468,7 +1673,7 @@ function Sheet(props) {
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
                 ref={copyPasteTextAreaRef}
                 onFocus={(e) => e.target.select()}
-                tabIndex="0"
+                tabIndex={0}
                 onKeyDown={onGridKeyDown}
                 onKeyUp={onGridKeyUp}
             ></textarea>
