@@ -97,7 +97,7 @@ export interface SheetProps {
     columnHeaderStyle?: RowOrColumnProperty<Style>;
     cellStyle?: CellProperty<Style>;
     readOnly?: CellProperty<boolean>;
-    sourceData?: CellProperty<string | number>;
+    sourceData?: CellProperty<string | number | null>;
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
     onSelectionChanged?: (x1: number, y1: number, x2: number, y2: number) => void;
@@ -639,7 +639,7 @@ function Sheet(props: SheetProps) {
 
     const cellReadOnly = useMemo(() => createCellPropFunction(props.readOnly, false), [props.readOnly]);
 
-    const sourceData = useMemo(() => createCellPropFunction(props.sourceData, ''), [props.sourceData]);
+    const sourceData = useMemo(() => createCellPropFunction(props.sourceData, null), [props.sourceData]);
     const displayData = useMemo(() => createCellPropFunction(props.displayData, ''), [props.displayData]);
     const editData = useMemo(() => createCellPropFunction(props.editData, ''), [props.editData]);
     const cellStyle = useMemo(() => createCellPropFunction(props.cellStyle, defaultCellStyle), [props.cellStyle]);
