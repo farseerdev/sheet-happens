@@ -1,5 +1,15 @@
 import styles from './styles.module.css';
-import React, { useRef, useEffect, useState, useMemo, MouseEvent, KeyboardEvent, UIEvent } from 'react';
+import React, {
+    useRef,
+    useEffect,
+    useState,
+    useMemo,
+    MouseEvent,
+    KeyboardEvent,
+    UIEvent,
+    CSSProperties,
+    ReactElement,
+} from 'react';
 import useResizeObserver from 'use-resize-observer';
 
 const selBorderColor = '#1b73e7';
@@ -51,7 +61,27 @@ type CellProperty<T extends PropTypes> = T | Array<Array<T>> | ((x: number, y: n
 type CellContentType = null | number | string | CellContent;
 type RowOrColumnPropertyFunction<T extends PropTypes> = (rowOrColIndex: number) => T;
 type CellPropertyFunction<T extends PropTypes> = (x: number, y: number) => T;
-
+type InputStyle = Pick<
+    CSSProperties,
+    | 'position'
+    | 'top'
+    | 'left'
+    | 'width'
+    | 'height'
+    | 'outline'
+    | 'border'
+    | 'textAlign'
+    | 'color'
+    | 'fontSize'
+    | 'fontFamily'
+>;
+export interface SheetInputProps {
+    value: string;
+    autoFocus: boolean;
+    onKeyDown: React.KeyboardEventHandler<HTMLElement>;
+    onChange: (valiue: string) => void;
+    style: InputStyle;
+}
 interface CellCoordinate {
     x: number;
     y: number;
@@ -101,6 +131,12 @@ export interface SheetProps {
     sourceData?: CellProperty<string | number | null>;
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
+    inputComponent?: (
+        x: number,
+        y: number,
+        props: SheetInputProps,
+        commitEditingCell?: () => void
+    ) => ReactElement | undefined;
     onSelectionChanged?: (x1: number, y1: number, x2: number, y2: number) => void;
     onRightClick?: (e: SheetMouseEvent) => void;
     onChange?: (changes: Array<Change>) => void;
@@ -1120,9 +1156,9 @@ function Sheet(props: SheetProps) {
         }
     };
 
-    const commitEditingCell = () => {
+    const commitEditingCell = (value?: string) => {
         if (props.onChange) {
-            props.onChange([{ x: editCell.x, y: editCell.y, value: editValue }]);
+            props.onChange([{ x: editCell.x, y: editCell.y, value: value ?? editValue }]);
         }
 
         setEditCell({ x: -1, y: -1 });
@@ -1719,6 +1755,32 @@ function Sheet(props: SheetProps) {
         editTextTextAlign = style.textAlign || defaultCellStyle.textAlign || 'left';
     }
 
+    const inputProps = {
+        value: editValue,
+        autoFocus: true,
+        onKeyDown: onKeyDown,
+        style: {
+            position: 'absolute',
+            top: editTextPosition.y,
+            left: editTextPosition.x,
+            width: editTextWidth,
+            height: editTextHeight,
+            outline: 'none',
+            border: 'none',
+            textAlign: editTextTextAlign,
+            color: 'black',
+            fontSize: defaultCellStyle.fontSize,
+            fontFamily: 'sans-serif',
+        } as InputStyle,
+    };
+
+    const input = props.inputComponent?.(
+        selection.x1,
+        selection.y1,
+        { ...inputProps, onChange: setEditValue } as SheetInputProps,
+        commitEditingCell
+    );
+
     return (
         <div style={{ position: 'relative', height: '100%' }}>
             <canvas
@@ -1777,30 +1839,15 @@ function Sheet(props: SheetProps) {
                 onKeyDown={onGridKeyDown}
                 onKeyUp={onGridKeyUp}
             ></textarea>
-
-            {editMode && (
-                <input
-                    type="text"
-                    onFocus={(e) => e.target.select()}
-                    autoFocus
-                    onKeyDown={onKeyDown}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    style={{
-                        position: 'absolute',
-                        top: editTextPosition.y,
-                        left: editTextPosition.x,
-                        width: editTextWidth,
-                        height: editTextHeight,
-                        outline: 'none',
-                        border: 'none',
-                        textAlign: editTextTextAlign,
-                        color: 'black',
-                        fontSize: defaultCellStyle.fontSize,
-                        fontFamily: 'sans-serif',
-                    }}
-                />
-            )}
+            {editMode &&
+                (input ?? (
+                    <input
+                        {...inputProps}
+                        type="text"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setEditValue(e.target.value)}
+                    />
+                ))}
         </div>
     );
 }
