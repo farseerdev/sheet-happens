@@ -672,7 +672,7 @@ function Sheet(props: SheetProps) {
     const [selection, setSelection] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
     const [knobArea, setKnobArea] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
     const [editCell, setEditCell] = useState({ x: -1, y: -1 });
-    const [editValue, setEditValue] = useState('');
+    const [editValue, setEditValue] = useState<string | number>('');
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
     const [shiftKeyDown, setShiftKeyDown] = useState(false);
     const [knobDragInProgress, setKnobDragInProgress] = useState(false);
