@@ -1708,9 +1708,6 @@ function Sheet(props: SheetProps) {
     };
 
     const onContextMenu = (e: MouseEvent) => {
-        if (!props.onRightClick) {
-            return;
-        }
         if (!e.target || !(e.target instanceof Element)) {
             return;
         }
@@ -1719,16 +1716,25 @@ function Sheet(props: SheetProps) {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         const cell = absCoordianteToCell(x, y, rowSizes, columnSizes);
+        const cellX = cell.x;
+        const cellY = cell.y;
+        const { x1, x2, y1, y2 } = selection;
 
-        if (y > columnHeaderHeight && x > rowHeaderWidth) {
-            onMouseMove(e);
-            const ev: SheetMouseEvent = {
-                ...e,
-                cellX: cell.x,
-                cellY: cell.y,
-            };
-            props.onRightClick(ev);
+        if (!(y > columnHeaderHeight && x > rowHeaderWidth)) {
+            return;
         }
+        //if click is not inside of selection, select the right clicked cell
+        if (!(cellX >= x1 && cellX <= x2) || !(cellY >= y1 && cellY <= y2)) {
+            changeSelection(cellX, cellY, cellX, cellY);
+        }
+
+        onMouseMove(e);
+        const ev: SheetMouseEvent = {
+            ...e,
+            cellX,
+            cellY,
+        };
+        props.onRightClick?.(ev);
     };
 
     const editMode = editCell.x !== -1 && editCell.y !== -1;
@@ -1775,8 +1781,8 @@ function Sheet(props: SheetProps) {
     };
 
     const input = props.inputComponent?.(
-        selection.x1,
-        selection.y1,
+        editCell.x,
+        editCell.y,
         { ...inputProps, onChange: setEditValue } as SheetInputProps,
         commitEditingCell
     );
