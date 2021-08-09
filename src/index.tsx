@@ -765,7 +765,7 @@ function Sheet(props: SheetProps) {
         for (const x of columnSizes.index) {
             const ch = columnHeaders(x);
             const cellW = cellWidth(x);
-            if (ch && typeof ch === 'object') {
+            if (ch && typeof ch === 'object' && ch.items) {
                 let finalStyle;
                 for (const obj of ch.items) {
                     if (obj.onClick) {
@@ -824,7 +824,7 @@ function Sheet(props: SheetProps) {
                 const xx = xCoord;
                 const yy = yCoord + cellHeight(y) * 0.5;
 
-                if (typeof cellContent === 'object') {
+                if (typeof cellContent === 'object' && cellContent.items) {
                     let finalStyle;
                     for (const obj of cellContent.items) {
                         if (obj.onClick) {
@@ -1204,33 +1204,41 @@ function Sheet(props: SheetProps) {
         }
 
         if (y < columnHeaderHeight) {
-            let xx = rowHeaderWidth;
-            for (const col of columnSizes.index) {
-                if (Math.abs(xx - x) < resizeColumnRowMouseThreshold) {
+            for (let colIdx = 0; colIdx < columnSizes.index.length; colIdx++) {
+                const start = columnSizes.start[colIdx];
+                const end = columnSizes.end[colIdx];
+                const index = columnSizes.index[colIdx];
+                if (
+                    Math.abs(start - x) < resizeColumnRowMouseThreshold ||
+                    Math.abs(end - x) < resizeColumnRowMouseThreshold
+                ) {
                     window.document.body.style.cursor = 'col-resize';
                     setColumnResize({
-                        startX: xx,
-                        oldWidth: cellWidth(col - 1),
-                        colIdx: col - 1,
+                        startX: end,
+                        oldWidth: cellWidth(index),
+                        colIdx: index,
                     });
                     return;
                 }
-                xx += cellWidth(col);
             }
         }
         if (x < rowHeaderWidth) {
-            let yy = columnHeaderHeight;
-            for (const row of rowSizes.index) {
-                if (Math.abs(yy - y) < resizeColumnRowMouseThreshold) {
+            for (let rowIdx = 0; rowIdx < rowSizes.index.length; rowIdx++) {
+                const start = rowSizes.start[rowIdx];
+                const end = rowSizes.end[rowIdx];
+                const index = rowSizes.index[rowIdx];
+                if (
+                    Math.abs(start - y) < resizeColumnRowMouseThreshold ||
+                    Math.abs(end - y) < resizeColumnRowMouseThreshold
+                ) {
                     window.document.body.style.cursor = 'row-resize';
                     setRowResize({
-                        startY: yy,
-                        oldHeight: cellHeight(row - 1),
-                        rowIdx: row - 1,
+                        startY: end,
+                        oldHeight: cellHeight(index),
+                        rowIdx: index,
                     });
                     return;
                 }
-                yy += cellHeight(row);
             }
         }
 
