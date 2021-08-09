@@ -1178,6 +1178,10 @@ function Sheet(props: SheetProps) {
         if (!e.target || !(e.target instanceof Element)) {
             return;
         }
+
+        // cancel selection
+        setSelectionInProgress(false);
+
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
