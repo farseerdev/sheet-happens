@@ -1533,7 +1533,14 @@ function Sheet(props: SheetProps) {
             }
 
             // check if vertical or horizontal
-            if (Math.abs(cell.x - (x1 + x2) * 0.5) < Math.abs(cell.y - (y1 + y2) * 0.5)) {
+            let xCellDiff = 0; // zero or less
+            if (cell.x < x1) xCellDiff = cell.x - x1;
+            if (cell.x > x2) xCellDiff = x2 - cell.x;
+            let yCellDiff = 0; // zero or less
+            if (cell.y < y1) yCellDiff = cell.y - y1;
+            if (cell.y > y2) yCellDiff = y2 - cell.y;
+
+            if (xCellDiff > yCellDiff) {
                 if (cell.y < y1) {
                     y1 = cell.y;
                 } else {
@@ -1551,7 +1558,8 @@ function Sheet(props: SheetProps) {
     };
 
     const onDoubleClick = (e: MouseEvent) => {
-        if (!e.target || !(e.target instanceof Element)) {
+        e.preventDefault();
+        if (!e.target || !(e.target instanceof Element) || shiftKeyDown) {
             return;
         }
 
@@ -1730,7 +1738,9 @@ function Sheet(props: SheetProps) {
         const cell = absCoordianteToCell(x, y, rowSizes, columnSizes);
         const cellX = cell.x;
         const cellY = cell.y;
-        const { x1, x2, y1, y2 } = selection;
+        let { x1, x2, y1, y2 } = selection;
+        if (x1 > x2) [x1, x2] = [x2, x1];
+        if (y1 > y2) [y1, y2] = [y2, y1];
 
         if (!(y > columnHeaderHeight && x > rowHeaderWidth)) {
             return;

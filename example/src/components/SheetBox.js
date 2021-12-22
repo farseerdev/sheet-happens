@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sheet from 'sheet-happens';
 import 'sheet-happens/dist/index.css';
 

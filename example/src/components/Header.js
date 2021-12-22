@@ -24,7 +24,7 @@ function Header() {
                     <div>
                         <h1>Beautiful and fast spreadsheet component for React</h1>
                         <p className="lightblue-p">
-                            Sheet Happens is easy to implement and extend. 
+                            Sheet Happens is easy to implement and extend.
                             <br></br>
                             And it's super fast.
                         </p>
@@ -34,7 +34,12 @@ function Header() {
                             <input readOnly ref={textAreaRef} value="npm install --save sheet-happens" />
                             {copySuccess !== '' && <div className="copy-success">{copySuccess}</div>}
                         </div>
-                        <a href="https://github.com/farseerdev/sheet-happens" className="git-box" target="_blank">
+                        <a
+                            href="https://github.com/farseerdev/sheet-happens"
+                            rel="noopener noreferrer"
+                            className="git-box"
+                            target="_blank"
+                        >
                             <img src={GitIcon} alt="Git" />
                             view on github
                         </a>
