@@ -6,7 +6,13 @@ import Header from './components/Header';
 import TitleSeparator from './components/TitleSeparator';
 import Wrap from './components/Wrap';
 import Code from './components/Code';
-import { SheetBoxStyle, SheetBoxBasic, SheetBoxFormatting, SheetBoxVeryBigData } from './components/SheetBox';
+import {
+    SheetBoxStyle,
+    SheetBoxBasic,
+    SheetBoxFormatting,
+    SheetBoxVeryBigData,
+    SheetBoxCustomInput,
+} from './components/SheetBox';
 import Footer from './components/Footer';
 
 const App = () => {
@@ -43,7 +49,8 @@ const App = () => {
                 <div className="box">
                     <h3>Styling</h3>
                     <p>
-                        You can change the cell color, alignment, font weight, margins and more. It's also possible to freeze first rows or columns, and add clickable images.
+                        You can change the cell color, alignment, font weight, margins and more. It's also possible to
+                        freeze first rows or columns, and add clickable images.
                     </p>
                 </div>
             </Wrap>
@@ -54,7 +61,8 @@ const App = () => {
                 <div className="box">
                     <h3>Formatting</h3>
                     <p>
-                        Sheet Happens uses different datasets for display and edit so you can apply different formatting when displaying the cell and editing the cell.
+                        Sheet Happens uses different datasets for display and edit so you can apply different formatting
+                        when displaying the cell and editing the cell.
                     </p>
                 </div>
             </Wrap>
@@ -63,6 +71,19 @@ const App = () => {
             <Wrap>
                 <div className="box full-width">
                     <SheetBoxVeryBigData />
+                </div>
+            </Wrap>
+
+            <TitleSeparator title="custom input fields" id="custom input example" />
+            <Wrap>
+                <div className="box">
+                    <SheetBoxCustomInput />
+                </div>
+                <div className="box">
+                    <h3>Custom input component</h3>
+                    <p>
+                        If basic text input isn't enough, you can send your own React component to be displayed instead.
+                    </p>
                 </div>
             </Wrap>
 

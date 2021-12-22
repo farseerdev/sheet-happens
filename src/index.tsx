@@ -1060,7 +1060,20 @@ function Sheet(props: SheetProps) {
                     if (tr.nodeName === 'TR') {
                         for (const td of tr.children) {
                             if (td.nodeName === 'TD') {
-                                changes.push({ y: y, x: x, value: td.innerHTML });
+                                let str: string = '';
+                                if (td.children.length !== 0 && td.children[0].nodeName === 'P') {
+                                    const p = td.children[0];
+                                    if (p.children.length !== 0 && p.children[0].nodeName === 'FONT') {
+                                        str = p.children[0].innerHTML;
+                                    } else {
+                                        str = p.innerHTML;
+                                    }
+                                } else {
+                                    str = td.innerHTML;
+                                }
+                                str = str.replaceAll('\n', '');
+                                str = str.replaceAll(/\s\s+/g, ' ');
+                                changes.push({ y: y, x: x, value: str });
                                 x++;
                             }
                         }
@@ -1299,7 +1312,7 @@ function Sheet(props: SheetProps) {
         let scrollToP2 = true;
 
         if (x < rowHeaderWidth) {
-            sel2.x = 100;
+            sel2.x = dataOffset.x + 100;
             scrollToP2 = false;
             setRowSelectionInProgress(true);
         } else {
@@ -1307,7 +1320,7 @@ function Sheet(props: SheetProps) {
         }
 
         if (y < columnHeaderHeight) {
-            sel2.y = 100;
+            sel2.y = dataOffset.y + 100;
             scrollToP2 = false;
             setColumnSelectionInProgress(true);
         } else {
