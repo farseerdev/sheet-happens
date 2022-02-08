@@ -107,7 +107,7 @@ export interface CellContentItem {
     width?: number;
     height?: number;
     horiozntalAlign?: 'left' | 'right' | 'center';
-    onClick?: () => void;
+    onClick?: (e: MouseEvent) => void;
 }
 
 export interface CellContent {
@@ -1436,7 +1436,7 @@ function Sheet(props: SheetProps) {
                 hitTarget.y <= y &&
                 y <= hitTarget.y + hitTarget.h
             ) {
-                hitTarget.onClick();
+                hitTarget.onClick(e);
             }
             setButtonClickMouseDownCoordinates({ x: -1, y: -1, hitTarget: null });
         }

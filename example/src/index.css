@@ -130,6 +130,15 @@ p {
     width: 100%;
 }
 
+.unstyle-pre pre {
+    margin: 0;
+    padding: 0!important;
+}
+
+.spacer {
+    padding-top: 30px;
+}
+
 .text-box {
     display: flex;
     flex-direction: column;

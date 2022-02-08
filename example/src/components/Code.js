@@ -89,3 +89,24 @@ function Code() {
 }
 
 export default Code;
+
+export function SourceDisplayDataCode() {
+    return (
+        <SyntaxHighlighter language="javascript" style={xcode}>
+            {`const [data, setData] = useState([[1,2,3], [10,20,30]]);
+    
+const displayData = (x, y) => {
+    return data?.[y]?.[x]?.toFixed?.(2);
+};
+
+return (
+    <div className="sheet-box">
+        <Sheet
+            sourceData={data} // array of arrays of data 
+            displayData={displayData} // function example
+        />
+    </div>
+);`}
+        </SyntaxHighlighter>
+    );
+}
