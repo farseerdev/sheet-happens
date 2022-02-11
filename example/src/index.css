@@ -130,9 +130,8 @@ p {
     width: 100%;
 }
 
-.unstyle-pre pre {
+.unmargin-pre pre {
     margin: 0;
-    padding: 0!important;
 }
 
 .spacer {
@@ -262,6 +261,14 @@ p {
 .code-line.padd-40 {
     padding-left: 40px;
 }
+.unpadd {
+    padding-top: 0px;
+}
+
+span.emphased {
+    background-color: #3b85ff33;
+    padding: 0px 5px;
+}
 
 .footer {
     margin-top: 60px;
@@ -312,5 +319,11 @@ p {
     .install-box input {
         padding: 14px 20px;
         width: 310px;
+    }
+    .sheet-box {
+        min-height: 200px;
+    }
+    .sheet-box div {
+        height: 100%;
     }
 }
