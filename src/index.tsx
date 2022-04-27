@@ -131,6 +131,7 @@ export interface SheetProps {
     sourceData?: CellProperty<string | number | null>;
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
+    editKeys?: CellProperty<string>;
     inputComponent?: (
         x: number,
         y: number,
@@ -673,6 +674,7 @@ function Sheet(props: SheetProps) {
     const [knobArea, setKnobArea] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
     const [editCell, setEditCell] = useState({ x: -1, y: -1 });
     const [editValue, setEditValue] = useState<string | number>('');
+    const [editKey, setEditKey] = useState<string>('');
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
     const [shiftKeyDown, setShiftKeyDown] = useState(false);
     const [knobDragInProgress, setKnobDragInProgress] = useState(false);
@@ -693,19 +695,30 @@ function Sheet(props: SheetProps) {
 
     const cellWidth = useMemo(() => createRowOrColumnPropFunction(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnPropFunction(props.cellHeight, 22), [props.cellHeight]);
-    const columnHeaders = useMemo(() => createRowOrColumnPropFunction(props.columnHeaders, null), [
-        props.columnHeaders,
-    ]);
-    const columnHeaderStyle = useMemo(() => createRowOrColumnPropFunction(props.columnHeaderStyle, {}), [
-        props.columnHeaderStyle,
-    ]);
+    const columnHeaders = useMemo(
+        () => createRowOrColumnPropFunction(props.columnHeaders, null),
+        [props.columnHeaders]
+    );
+    const columnHeaderStyle = useMemo(
+        () => createRowOrColumnPropFunction(props.columnHeaderStyle, {}),
+        [props.columnHeaderStyle]
+    );
 
     const cellReadOnly = useMemo(() => createCellPropFunction(props.readOnly, false), [props.readOnly]);
 
     const sourceData = useMemo(() => createCellPropFunction(props.sourceData, null), [props.sourceData]);
     const displayData = useMemo(() => createCellPropFunction(props.displayData, ''), [props.displayData]);
     const editData = useMemo(() => createCellPropFunction(props.editData, ''), [props.editData]);
+    const editKeys = useMemo(() => createCellPropFunction(props.editKeys, ''), [props.editKeys]);
     const cellStyle = useMemo(() => createCellPropFunction(props.cellStyle, defaultCellStyle), [props.cellStyle]);
+
+    useEffect(() => {
+        const currEditKey = editKeys ? editKeys(editCell.x, editCell.y) : '';
+        if (currEditKey !== editKey) {
+            setEditCell({ x: -1, y: -1 });
+            setEditKey('');
+        }
+    }, [editKeys]);
 
     const columnSizes = useMemo(
         () => calculateRowsOrColsSizes(freezeColumns, cellWidth, rowHeaderWidth, dataOffset.x, canvasWidth),
@@ -1175,6 +1188,7 @@ function Sheet(props: SheetProps) {
         }
 
         setEditCell({ x: -1, y: -1 });
+        setEditKey('');
     };
 
     const startEditingCell = (editCell: CellCoordinate) => {
@@ -1187,7 +1201,9 @@ function Sheet(props: SheetProps) {
         if (editDataValue !== null && editDataValue !== undefined) {
             val = editDataValue;
         }
+        const editDataKey = editKeys ? editKeys(editCell.x, editCell.y) : '';
         setEditCell(editCell);
+        setEditKey(editDataKey);
         setEditValue(val);
     };
 
@@ -1330,6 +1346,7 @@ function Sheet(props: SheetProps) {
         setSelectionInProgress(true);
         changeSelection(sel1.x, sel1.y, sel2.x, sel2.y, scrollToP2);
         setEditCell({ x: -1, y: -1 });
+        setEditKey('');
     };
 
     const onMouseUp = (e: MouseEvent) => {
@@ -1604,6 +1621,7 @@ function Sheet(props: SheetProps) {
     const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             setEditCell({ x: -1, y: -1 });
+            setEditKey('');
             return;
         }
         if (e.key === 'Enter') {
