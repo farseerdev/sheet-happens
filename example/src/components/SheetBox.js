@@ -709,7 +709,7 @@ function CustomOption({ opt, value, clickHandler }) {
 }
 
 export function SheetBoxSourceDisplayData() {
-    const [data, setData] = useState([
+    const [data] = useState([
         [1, 2, 3],
         [10, 20, 30],
     ]);

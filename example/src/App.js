@@ -5,7 +5,7 @@ import Menu from './components/Menu';
 import Header from './components/Header';
 import TitleSeparator from './components/TitleSeparator';
 import Wrap from './components/Wrap';
-import Code, {
+import {
     InitSheetCode,
     InitSheetWithDataCode,
     SourceDisplayDataCode,

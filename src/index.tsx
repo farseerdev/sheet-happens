@@ -695,14 +695,12 @@ function Sheet(props: SheetProps) {
 
     const cellWidth = useMemo(() => createRowOrColumnPropFunction(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnPropFunction(props.cellHeight, 22), [props.cellHeight]);
-    const columnHeaders = useMemo(
-        () => createRowOrColumnPropFunction(props.columnHeaders, null),
-        [props.columnHeaders]
-    );
-    const columnHeaderStyle = useMemo(
-        () => createRowOrColumnPropFunction(props.columnHeaderStyle, {}),
-        [props.columnHeaderStyle]
-    );
+    const columnHeaders = useMemo(() => createRowOrColumnPropFunction(props.columnHeaders, null), [
+        props.columnHeaders,
+    ]);
+    const columnHeaderStyle = useMemo(() => createRowOrColumnPropFunction(props.columnHeaderStyle, {}), [
+        props.columnHeaderStyle,
+    ]);
 
     const cellReadOnly = useMemo(() => createCellPropFunction(props.readOnly, false), [props.readOnly]);
 
@@ -1008,12 +1006,15 @@ function Sheet(props: SheetProps) {
 
         const clipboardData = e.clipboardData || (window as any).clipboardData;
         const types = clipboardData.types;
-        if (types.includes('text/html')) {
-            const pastedHtml = clipboardData.getData('text/html');
-            parsePastedHtml(pastedHtml);
-        } else if (types.includes('text/plain')) {
+        if (
+            (types.includes('text/rtf') && types.includes('text/plain')) ||
+            (types.includes('text/plain') && !types.includes('text/html'))
+        ) {
             const text = clipboardData.getData('text/plain');
             parsePastedText(text);
+        } else if (types.includes('text/html')) {
+            const pastedHtml = clipboardData.getData('text/html');
+            parsePastedHtml(pastedHtml);
         }
     };
 
