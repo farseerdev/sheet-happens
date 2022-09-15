@@ -143,6 +143,7 @@ export interface SheetProps {
     onChange?: (changes: Array<Change>) => void;
     onCellWidthChange?: (index: number, value: number) => void;
     onCellHeightChange?: (index: number, value: number) => void;
+    onScrollChange?: (scrollX: number, scrolLY: number) => void;
 }
 
 export interface Style {
@@ -1219,6 +1220,9 @@ function Sheet(props: SheetProps) {
         const cellY = Math.floor(absY / scrollSpeed);
         if (cellX !== dataOffset.x || cellY !== dataOffset.y) {
             setDataOffset({ x: cellX, y: cellY });
+            if (props.onScrollChange) {
+                props.onScrollChange(cellX, cellY);
+            }
         }
 
         let newMaxScroll = { ...maxScroll };
