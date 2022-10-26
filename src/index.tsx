@@ -1370,7 +1370,9 @@ function Sheet(props: SheetProps) {
                     cptext += '\t';
                 }
             }
-            cptext += '\n';
+            if (y !== dy2) {
+                cptext += '\n';
+            }
         }
         if (copyPasteTextAreaRef.current) {
             copyPasteTextAreaRef.current.value = cptext;
