@@ -490,7 +490,6 @@ function findApproxMaxEditDataIndex(editData: CellPropertyFunction<string>) {
 function findInDisplayData(
     displayData: CellPropertyFunction<CellContentType>,
     start: { x: number; y: number },
-    searchValue: 'filled' | 'not-filled',
     direction: 'up' | 'down' | 'left' | 'right'
 ) {
     let i = { ...start };
@@ -512,14 +511,29 @@ function findInDisplayData(
         i.y = max.y;
     }
 
+    const first = displayData(i.x + increment.x, i.y + increment.y);
+    const firstFilled = first !== '' && first !== null && first !== undefined;
+
+    if (!firstFilled) {
+        i.x += increment.x;
+        i.y += increment.y;
+    }
+
     while (i.x <= max.x && i.y <= max.y && i.x >= 0 && i.y >= 0) {
         const data = displayData(i.x, i.y);
-        if (searchValue === 'filled' && data !== '' && data !== null && data !== undefined) {
-            return i;
+
+        // if first cell is filled, find the latest filled cell, so first look for first unfilled
+        if (firstFilled && (data === '' || data === null || data === undefined)) {
+            return {
+                x: i.x - increment.x,
+                y: i.y - increment.y,
+            };
         }
-        if (searchValue === 'not-filled' && (data === '' || data === null || data === undefined)) {
-            return i;
+        // if first cell is not filled, just find the first filled
+        if (!firstFilled && data !== '' && data !== null && data !== undefined) {
+            return { ...i };
         }
+
         i.x += increment.x;
         i.y += increment.y;
     }
@@ -1988,9 +2002,7 @@ function Sheet(props: SheetProps) {
             }
 
             if (e.metaKey || e.ctrlKey) {
-                const src = displayData(sel2.x, sel2.y);
-                const search = src === null || src === '' || src === undefined ? 'filled' : 'not-filled';
-                const val = findInDisplayData(displayData, sel2, search, direction);
+                const val = findInDisplayData(displayData, sel2, direction);
                 incr.x = val.x - sel2.x;
                 incr.y = val.y - sel2.y;
             }
