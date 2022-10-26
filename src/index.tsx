@@ -30,6 +30,8 @@ const scrollSpeed = 30;
 const resizeColumnRowMouseThreshold = 4;
 const minimumColumnWidth = 50;
 const minimumRowHeight = 22;
+const rowColHeaderSelectionColor = '#AAAAAA';
+const maxSearchableRowOrCol = 65536;
 
 const defaultCellStyle: Required<Style> = {
     textAlign: 'left',
@@ -141,8 +143,8 @@ export interface SheetProps {
     onSelectionChanged?: (x1: number, y1: number, x2: number, y2: number) => void;
     onRightClick?: (e: SheetMouseEvent) => void;
     onChange?: (changes: Array<Change>) => void;
-    onCellWidthChange?: (index: number, value: number) => void;
-    onCellHeightChange?: (index: number, value: number) => void;
+    onCellWidthChange?: (indices: number[], value: number) => void;
+    onCellHeightChange?: (indices: number[], value: number) => void;
     onScrollChange?: (scrollX: number, scrolLY: number) => void;
 }
 
@@ -438,6 +440,92 @@ function cellToAbsCoordinate(
     return { x: absX, y: absY };
 }
 
+function findApproxMaxEditDataIndex(editData: CellPropertyFunction<string>) {
+    let x = 0;
+    let y = 0;
+    let howManyEmpty = 0;
+    let growthIncrement = 10;
+    let growthIncrementFactor = 1.5;
+
+    // x
+    while (howManyEmpty < 4) {
+        let allEmpty = true;
+        for (let yy = 0; yy < 10; yy++) {
+            const data = editData(x, yy);
+            if (data !== null && data !== undefined && data !== '') {
+                allEmpty = false;
+                break;
+            }
+        }
+        if (allEmpty) {
+            howManyEmpty += 1;
+        }
+        x += growthIncrement;
+        growthIncrement = Math.floor(growthIncrement * growthIncrementFactor);
+    }
+
+    howManyEmpty = 0;
+    growthIncrement = 10;
+    growthIncrementFactor = 1.5;
+
+    // y
+    while (howManyEmpty < 4) {
+        let allEmpty = true;
+        for (let xx = 0; xx < 10; xx++) {
+            const data = editData(xx, y);
+            if (data !== null && data !== undefined && data !== '') {
+                allEmpty = false;
+                break;
+            }
+        }
+        if (allEmpty) {
+            howManyEmpty += 1;
+        }
+        y += growthIncrement;
+        growthIncrement = Math.floor(growthIncrement * growthIncrementFactor);
+    }
+    return { x, y };
+}
+
+function findInDisplayData(
+    displayData: CellPropertyFunction<CellContentType>,
+    start: { x: number; y: number },
+    searchValue: 'filled' | 'not-filled',
+    direction: 'up' | 'down' | 'left' | 'right'
+) {
+    let i = { ...start };
+    let increment = { x: 0, y: 0 };
+    if (direction === 'up') {
+        increment.y = -1;
+    } else if (direction === 'down') {
+        increment.y = 1;
+    } else if (direction === 'left') {
+        increment.x = -1;
+    } else if (direction === 'right') {
+        increment.x = 1;
+    }
+    const max = { x: maxSearchableRowOrCol, y: maxSearchableRowOrCol };
+    if (i.x > max.x) {
+        i.x = max.x;
+    }
+    if (i.y > max.y) {
+        i.y = max.y;
+    }
+
+    while (i.x <= max.x && i.y <= max.y && i.x >= 0 && i.y >= 0) {
+        const data = displayData(i.x, i.y);
+        if (searchValue === 'filled' && data !== '' && data !== null && data !== undefined) {
+            return i;
+        }
+        if (searchValue === 'not-filled' && (data === '' || data === null || data === undefined)) {
+            return i;
+        }
+        i.x += increment.x;
+        i.y += increment.y;
+    }
+    return i;
+}
+
 function renderOnCanvas(
     context: CanvasRenderingContext2D,
     rowSizes: RowOrColumnSize,
@@ -451,7 +539,8 @@ function renderOnCanvas(
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     knobArea: Selection,
     displayData: CellPropertyFunction<CellContentType>,
-    dataOffset: CellCoordinate
+    dataOffset: CellCoordinate,
+    knobCoordinates: { x: number; y: number }
 ) {
     resizeCanvas(context.canvas);
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
@@ -491,7 +580,10 @@ function renderOnCanvas(
         sely2 = selection.y1;
     }
 
-    const selectionActive = selx1 !== -1 && selx2 !== -1 && sely1 !== -1 && sely2 !== -1;
+    const selectionActive = (selx1 !== -1 && selx2 !== -1) || (sely1 !== -1 && sely2 !== -1);
+
+    const rowSelectionActive = selx1 === -1 && selx2 === -1 && sely1 !== -1 && sely2 !== -1;
+    const colSelectionActive = selx1 !== -1 && selx2 !== -1 && sely1 === -1 && sely2 === -1;
 
     const p1 = cellToAbsCoordinate(selx1, sely1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
     const p2 = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
@@ -523,7 +615,13 @@ function renderOnCanvas(
     // selection fill
     if (selectionActive) {
         context.fillStyle = selBackColor;
-        context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        if (rowSelectionActive) {
+            context.fillRect(p1.x, p1.y, 100000, p2.y - p1.y);
+        } else if (colSelectionActive) {
+            context.fillRect(p1.x, p1.y, p2.x - p1.x, 100000);
+        } else {
+            context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        }
     }
 
     // row header background
@@ -575,10 +673,21 @@ function renderOnCanvas(
     context.font = defaultCellStyle.fontSize + 'px ' + defaultCellStyle.fontFamily;
     context.fillStyle = rowHeaderTextColor;
     for (const row of rowSizes.index) {
-        const xx = rowHeaderWidth * 0.5;
-        const yy = startY + cellHeight(row) * 0.5;
         const cellContent = row + 1;
-        context.fillText('' + cellContent, xx, yy);
+        let chStyle = {};
+        if (rowSelectionActive && sely1 <= row && sely2 >= row) {
+            chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+        }
+        drawCell(
+            context,
+            '' + cellContent,
+            chStyle,
+            defaultColumnHeaderStyle,
+            0,
+            startY,
+            rowHeaderWidth,
+            cellHeight(row)
+        );
         startY += cellHeight(row);
     }
 
@@ -590,7 +699,10 @@ function renderOnCanvas(
         const cw = cellWidth(col);
         const ch = columnHeaders(col);
         const chcontent = ch !== null ? ch : excelHeaderString(col + 1);
-        const chStyle = columnHeaderStyle(col);
+        let chStyle = columnHeaderStyle(col);
+        if (colSelectionActive && selx1 <= col && selx2 >= col) {
+            chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+        }
         drawCell(context, chcontent, chStyle, defaultColumnHeaderStyle, startX, 0, cw, columnHeaderHeight);
         startX += cw;
     }
@@ -600,7 +712,13 @@ function renderOnCanvas(
         context.strokeStyle = selBorderColor;
         context.lineWidth = 1;
         context.beginPath();
-        context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        if (rowSelectionActive) {
+            context.rect(p1.x, p1.y, 100000, p2.y - p1.y);
+        } else if (colSelectionActive) {
+            context.rect(p1.x, p1.y, p2.x - p1.x, 100000);
+        } else {
+            context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        }
         context.stroke();
     }
 
@@ -633,7 +751,13 @@ function renderOnCanvas(
         context.setLineDash([3, 3]);
         context.lineWidth = 1;
         context.beginPath();
-        context.rect(knobPoint1.x, knobPoint1.y - 1, knobPoint2.x - knobPoint1.x, knobPoint2.y - knobPoint1.y);
+        if (rowSelectionActive) {
+            context.rect(knobPoint1.x, knobPoint1.y - 1, 100000, knobPoint2.y - knobPoint1.y);
+        } else if (colSelectionActive) {
+            context.rect(knobPoint1.x, knobPoint1.y - 1, knobPoint2.x - knobPoint1.x, 100000);
+        } else {
+            context.rect(knobPoint1.x, knobPoint1.y - 1, knobPoint2.x - knobPoint1.x, knobPoint2.y - knobPoint1.y);
+        }
         context.stroke();
         context.setLineDash([]);
     }
@@ -641,7 +765,7 @@ function renderOnCanvas(
     // selection knob
     if (selectionActive && !hideKnob) {
         context.fillStyle = selBorderColor;
-        context.fillRect(p2.x - knobSize * 0.5, p2.y - knobSize * 0.5, knobSize, knobSize);
+        context.fillRect(knobCoordinates.x - knobSize * 0.5, knobCoordinates.y - knobSize * 0.5, knobSize, knobSize);
     }
 
     // content
@@ -680,8 +804,12 @@ function Sheet(props: SheetProps) {
     const [shiftKeyDown, setShiftKeyDown] = useState(false);
     const [knobDragInProgress, setKnobDragInProgress] = useState(false);
     const [selectionInProgress, setSelectionInProgress] = useState(false);
-    const [columnResize, setColumnResize] = useState<any>(null);
-    const [rowResize, setRowResize] = useState<any>(null);
+    const [columnResize, setColumnResize] = useState<{ startX: number; colIndices: number[]; oldWidth: number } | null>(
+        null
+    );
+    const [rowResize, setRowResize] = useState<{ startY: number; rowIndices: number[]; oldHeight: number } | null>(
+        null
+    );
     const [rowSelectionInProgress, setRowSelectionInProgress] = useState(false);
     const [columnSelectionInProgress, setColumnSelectionInProgress] = useState(false);
     const [buttonClickMouseDownCoordinates, setButtonClickMouseDownCoordinates] = useState<any>({
@@ -730,22 +858,41 @@ function Sheet(props: SheetProps) {
     );
 
     const changeSelection = (x1: number, y1: number, x2: number, y2: number, scrollToP2 = true) => {
-        setSelection({ x1, y1, x2, y2 });
+        if (selection.x1 !== x1 || selection.x2 !== x2 || selection.y1 !== y1 || selection.y2 !== y2) {
+            setSelection({ x1, y1, x2, y2 });
+        }
 
         if (scrollToP2) {
             const newDataOffset = { x: dataOffset.x, y: dataOffset.y };
             let newScrollLeft = -1;
             let newScrollTop = -1;
 
-            if (!columnSizes.index.includes(x2) || columnSizes.index[columnSizes.index.length - 1] === x2) {
-                const increment = columnSizes.index[columnSizes.index.length - 1] <= x2 ? 1 : -1;
+            if (
+                x2 !== -1 &&
+                (!columnSizes.index.includes(x2) || columnSizes.index[columnSizes.index.length - 1] === x2)
+            ) {
+                const lastVisibleColumnIndex = columnSizes.index[columnSizes.index.length - 1];
+                const firstVisibleColumnIndex = columnSizes.index[freezeColumns];
+                let increment = 0;
+                if (x2 >= lastVisibleColumnIndex) {
+                    increment = 1 + x2 - lastVisibleColumnIndex;
+                } else if (x2 < firstVisibleColumnIndex) {
+                    increment = x2 - firstVisibleColumnIndex;
+                }
                 const newX = Math.max(dataOffset.x, freezeColumns) + increment;
                 newDataOffset.x = newX;
                 newScrollLeft = newX * scrollSpeed;
             }
 
-            if (!rowSizes.index.includes(y2) || rowSizes.index[rowSizes.index.length - 1] === y2) {
-                const increment = rowSizes.index[rowSizes.index.length - 1] <= y2 ? 1 : -1;
+            if (y2 !== -1 && (!rowSizes.index.includes(y2) || rowSizes.index[rowSizes.index.length - 1] === y2)) {
+                const firstVisibleRowIndex = rowSizes.index[freezeRows];
+                const lastVisibleRowIndex = rowSizes.index[rowSizes.index.length - 1];
+                let increment = 0;
+                if (y2 >= lastVisibleRowIndex) {
+                    increment = 1 + y2 - lastVisibleRowIndex;
+                } else if (y2 < firstVisibleRowIndex) {
+                    increment = y2 - firstVisibleRowIndex;
+                }
                 const newY = Math.max(dataOffset.y, freezeRows) + increment;
                 newDataOffset.y = newY;
                 newScrollTop = newY * scrollSpeed;
@@ -753,6 +900,10 @@ function Sheet(props: SheetProps) {
 
             if (newDataOffset.x !== dataOffset.x || dataOffset.y !== newDataOffset.y) {
                 setDataOffset({ x: newDataOffset.x, y: newDataOffset.y });
+                const newMaxScroll = { ...maxScroll };
+                newMaxScroll.x = Math.max(newMaxScroll.x, newScrollLeft);
+                newMaxScroll.y = Math.max(newMaxScroll.y, newScrollTop);
+                setMaxScroll(newMaxScroll);
                 setTimeout(() => {
                     if (overlayRef.current) {
                         if (newScrollLeft !== -1) {
@@ -784,6 +935,23 @@ function Sheet(props: SheetProps) {
     };
 
     const knobCoordinates = useMemo(() => {
+        if (selection.x1 === -1 && selection.x2 === -1 && selection.y1 !== -1 && selection.y2 !== -1) {
+            let sely2 = selection.y2;
+            if (selection.y1 > selection.y2) {
+                sely2 = selection.y1;
+            }
+            const c = cellToAbsCoordinate(0, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+            return { x: c.x + knobSize * 0.5, y: c.y + cellHeight(sely2) };
+        }
+        if (selection.x1 !== -1 && selection.x2 !== -1 && selection.y1 === -1 && selection.y2 === -1) {
+            let selx2 = selection.x2;
+            if (selection.x1 > selection.x2) {
+                selx2 = selection.x1;
+            }
+
+            const c = cellToAbsCoordinate(selx2, 0, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+            return { x: c.x + cellWidth(selx2), y: c.y + knobSize * 0.5 };
+        }
         if (selection.x2 !== -1 && selection.y2 !== -1) {
             let selx2 = selection.x2;
             if (selection.x1 > selection.x2) {
@@ -945,7 +1113,8 @@ function Sheet(props: SheetProps) {
                 columnHeaderStyle,
                 knobArea,
                 displayData,
-                dataOffset
+                dataOffset,
+                knobCoordinates
             );
         });
 
@@ -966,6 +1135,7 @@ function Sheet(props: SheetProps) {
         knobArea,
         displayData,
         dataOffset,
+        knobCoordinates,
     ]);
 
     const setFocusToTextArea = () => {
@@ -978,6 +1148,11 @@ function Sheet(props: SheetProps) {
     useEffect(() => {
         if (!editMode) {
             setCopyPasteText();
+        }
+    }, [selection, editData]);
+
+    useEffect(() => {
+        if (!editMode) {
             if (document.activeElement === copyPasteTextAreaRef.current) {
                 setFocusToTextArea();
             } else {
@@ -1112,15 +1287,23 @@ function Sheet(props: SheetProps) {
         if (selection.x1 !== -1 && selection.x2 === -1) {
             pasteLocX = selection.x1;
         }
-        if (selection.y1 !== -1 && selection.y2 === -1) {
-            pasteLocY = selection.y1;
-        }
         if (selection.x1 !== -1 && selection.x2 !== -1) {
             pasteLocX = Math.min(selection.x1, selection.x2);
+        }
+        if (selection.x1 === -1 && selection.x2 === -1 && selection.y1 !== -1 && selection.y2 !== -1) {
+            pasteLocX = 0;
+        }
+
+        if (selection.y1 !== -1 && selection.y2 === -1) {
+            pasteLocY = selection.y1;
         }
         if (selection.y1 !== -1 && selection.y2 !== -1) {
             pasteLocY = Math.min(selection.y1, selection.y2);
         }
+        if (selection.y1 === -1 && selection.y2 === -1 && selection.x2 !== -1 && selection.x2 !== -1) {
+            pasteLocY = 0;
+        }
+
         if (pasteLocX === -1 || pasteLocY === -1) {
             return;
         }
@@ -1147,7 +1330,7 @@ function Sheet(props: SheetProps) {
     };
 
     const setCopyPasteText = () => {
-        if (selection.x1 === -1 || selection.y1 === -1 || selection.x2 === -1 || selection.y2 === -1) {
+        if (selection.x1 === -1 && selection.y1 === -1 && selection.x2 === -1 && selection.y2 === -1) {
             return;
         }
 
@@ -1165,20 +1348,30 @@ function Sheet(props: SheetProps) {
             dx2 = selection.x1;
         }
 
-        const rows = [];
+        const max = findApproxMaxEditDataIndex(editData);
+
+        if (dx1 === -1 && dx2 === -1) {
+            dx1 = 0;
+            dx2 = max.x;
+        }
+        if (dy1 === -1 && dy2 === -1) {
+            dy1 = 0;
+            dy2 = max.y;
+        }
+
+        let cptext = '';
         for (let y = dy1; y <= dy2; y++) {
-            const row = [];
             for (let x = dx1; x <= dx2; x++) {
                 const value = editData(x, y);
                 if (value !== null && value !== undefined) {
-                    row.push(value);
-                } else {
-                    row.push('');
+                    cptext += value;
+                }
+                if (x !== dx2) {
+                    cptext += '\t';
                 }
             }
-            rows.push(row.join('\t'));
+            cptext += '\n';
         }
-        const cptext = rows.join('\n');
         if (copyPasteTextAreaRef.current) {
             copyPasteTextAreaRef.current.value = cptext;
         }
@@ -1186,7 +1379,7 @@ function Sheet(props: SheetProps) {
 
     const commitEditingCell = (value?: string) => {
         if (props.onChange) {
-            props.onChange([{ x: editCell.x, y: editCell.y, value: value ?? editValue }]);
+            props.onChange([{ x: editCell.x, y: editCell.y, value: value !== undefined ? value : editValue }]);
         }
 
         setEditCell({ x: -1, y: -1 });
@@ -1287,10 +1480,21 @@ function Sheet(props: SheetProps) {
                     Math.abs(end - x) < resizeColumnRowMouseThreshold
                 ) {
                     window.document.body.style.cursor = 'col-resize';
+                    const indices: number[] = [];
+                    if (selection.x1 !== -1 && selection.x2 !== -1 && selection.y1 === -1 && selection.y2 === -1) {
+                        const min = Math.min(selection.x1, selection.x2);
+                        const max = Math.max(selection.x1, selection.x2);
+                        for (let i = min; i <= max; i++) {
+                            indices.push(i);
+                        }
+                    }
+                    if (indices.length === 0) {
+                        indices.push(index);
+                    }
                     setColumnResize({
                         startX: end,
                         oldWidth: cellWidth(index),
-                        colIdx: index,
+                        colIndices: indices,
                     });
                     return;
                 }
@@ -1306,10 +1510,21 @@ function Sheet(props: SheetProps) {
                     Math.abs(end - y) < resizeColumnRowMouseThreshold
                 ) {
                     window.document.body.style.cursor = 'row-resize';
+                    const indices: number[] = [];
+                    if (selection.x1 === -1 && selection.x2 === -1 && selection.y1 !== -1 && selection.y2 !== -1) {
+                        const min = Math.min(selection.y1, selection.y2);
+                        const max = Math.max(selection.y1, selection.y2);
+                        for (let i = min; i <= max; i++) {
+                            indices.push(i);
+                        }
+                    }
+                    if (indices.length === 0) {
+                        indices.push(index);
+                    }
                     setRowResize({
                         startY: end,
                         oldHeight: cellHeight(index),
-                        rowIdx: index,
+                        rowIndices: indices,
                     });
                     return;
                 }
@@ -1333,17 +1548,21 @@ function Sheet(props: SheetProps) {
         let scrollToP2 = true;
 
         if (x < rowHeaderWidth) {
-            sel2.x = dataOffset.x + 100;
+            //            sel2.x = dataOffset.x + 100;
             scrollToP2 = false;
             setRowSelectionInProgress(true);
+            sel1.x = -1;
+            sel2.x = -1;
         } else {
             setRowSelectionInProgress(false);
         }
 
         if (y < columnHeaderHeight) {
-            sel2.y = dataOffset.y + 100;
+            //            sel2.y = dataOffset.y + 100;
             scrollToP2 = false;
             setColumnSelectionInProgress(true);
+            sel1.y = -1;
+            sel2.y = -1;
         } else {
             setColumnSelectionInProgress(false);
         }
@@ -1395,7 +1614,10 @@ function Sheet(props: SheetProps) {
                 } else {
                     fy2 = sy1 - 1;
                 }
-
+                if (fx1 === -1 && fx2 === -1) {
+                    fx1 = 0;
+                    fx2 = maxSearchableRowOrCol;
+                }
                 let srcY = sy1;
                 for (let y = fy1; y <= fy2; y++) {
                     for (let x = fx1; x <= fx2; x++) {
@@ -1413,6 +1635,10 @@ function Sheet(props: SheetProps) {
                     fx1 = sx2 + 1;
                 } else {
                     fx2 = sx1 - 1;
+                }
+                if (fy1 === -1 && fy2 === -1) {
+                    fy1 = 0;
+                    fy2 = maxSearchableRowOrCol;
                 }
                 let srcX = sx1;
                 for (let x = fx1; x <= fx2; x++) {
@@ -1526,7 +1752,7 @@ function Sheet(props: SheetProps) {
         if (columnResize) {
             if (props.onCellWidthChange) {
                 const newWidth = Math.max(columnResize.oldWidth + x - columnResize.startX, minimumColumnWidth);
-                props.onCellWidthChange(columnResize.colIdx, newWidth);
+                props.onCellWidthChange(columnResize.colIndices, newWidth);
             }
             return;
         }
@@ -1534,7 +1760,7 @@ function Sheet(props: SheetProps) {
         if (rowResize) {
             if (props.onCellHeightChange) {
                 const newHeight = Math.max(rowResize.oldHeight + y - rowResize.startY, minimumRowHeight);
-                props.onCellHeightChange(rowResize.rowIdx, newHeight);
+                props.onCellHeightChange(rowResize.rowIndices, newHeight);
             }
             return;
         }
@@ -1542,9 +1768,9 @@ function Sheet(props: SheetProps) {
         if (selectionInProgress) {
             const sel2 = absCoordianteToCell(x, y, rowSizes, columnSizes);
             if (rowSelectionInProgress) {
-                changeSelection(selection.x1, selection.y1, selection.x2, sel2.y, false);
+                changeSelection(-1, selection.y1, -1, sel2.y, false);
             } else if (columnSelectionInProgress) {
-                changeSelection(selection.x1, selection.y1, sel2.x, selection.y2, false);
+                changeSelection(selection.x1, -1, sel2.x, -1, false);
             } else {
                 changeSelection(selection.x1, selection.y1, sel2.x, sel2.y);
             }
@@ -1575,7 +1801,7 @@ function Sheet(props: SheetProps) {
             if (cell.y < y1) yCellDiff = cell.y - y1;
             if (cell.y > y2) yCellDiff = y2 - cell.y;
 
-            if (xCellDiff > yCellDiff) {
+            if ((x1 === -1 && x2 === -1) || xCellDiff > yCellDiff) {
                 if (cell.y < y1) {
                     y1 = cell.y;
                 } else {
@@ -1695,6 +1921,14 @@ function Sheet(props: SheetProps) {
                 y1 = selection.y2;
                 y2 = selection.y1;
             }
+            if (x1 === -1 && x2 === -1 && y1 !== -1 && y2 !== -1) {
+                x1 = 0;
+                x2 = maxSearchableRowOrCol;
+            }
+            if (x1 !== -1 && x2 !== -1 && y1 === -1 && y2 === -1) {
+                y1 = 0;
+                y2 = maxSearchableRowOrCol;
+            }
             const changes: Change[] = [];
             for (let y = y1; y <= y2; y++) {
                 for (let x = x1; x <= x2; x++) {
@@ -1735,15 +1969,33 @@ function Sheet(props: SheetProps) {
             let sel1 = { x: selection.x1, y: selection.y1 };
             let sel2 = { x: selection.x2, y: selection.y2 };
 
+            let incr = { x: 0, y: 0 };
+            let direction: 'up' | 'down' | 'left' | 'right' = 'right';
             if (e.key === 'ArrowRight' || e.key === 'Tab') {
-                sel2.x += 1;
+                incr.x = 1;
+                direction = 'right';
             } else if (e.key === 'ArrowLeft') {
-                sel2.x -= 1;
+                incr.x = -1;
+                direction = 'left';
             } else if (e.key === 'ArrowUp') {
-                sel2.y -= 1;
+                incr.y = -1;
+                direction = 'up';
             } else if (e.key === 'ArrowDown') {
-                sel2.y += 1;
+                incr.y = 1;
+                direction = 'down';
             }
+
+            if (e.metaKey || e.ctrlKey) {
+                const src = displayData(sel2.x, sel2.y);
+                const search = src === null || src === '' || src === undefined ? 'filled' : 'not-filled';
+                const val = findInDisplayData(displayData, sel2, search, direction);
+                incr.x = val.x - sel2.x;
+                incr.y = val.y - sel2.y;
+            }
+
+            sel2.x += incr.x;
+            sel2.y += incr.y;
+
             if (sel2.x < 0) {
                 sel2.x = 0;
             }
@@ -1904,7 +2156,9 @@ function Sheet(props: SheetProps) {
                 onKeyUp={onGridKeyUp}
             ></textarea>
             {editMode &&
-                (input ?? (
+                (input !== undefined ? (
+                    input
+                ) : (
                     <input
                         {...inputProps}
                         type="text"

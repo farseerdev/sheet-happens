@@ -38,11 +38,45 @@ triangleDown.src =
 triangleDown.width = 10;
 triangleDown.height = 10;
 
+export const DEFAULT_CELL_WIDTH = 100;
+export const DEFAULT_CELL_HEIGHT = 22;
+
+export default function useWidthHeigthControl(initialWidths = [], initialHeights = []) {
+    const [cellWidth, setCellWidth] = useState(initialWidths);
+    const [cellHeight, setCellHeight] = useState(initialHeights);
+
+    const onCellWidthChange = (indices, newWidth) => {
+        const cw = [...cellWidth];
+        for (const idx of indices) {
+            if (idx > cw.length) {
+                for (let i = cw.length; i <= idx; i++) {
+                    cw.push(DEFAULT_CELL_WIDTH);
+                }
+            }
+            cw[idx] = newWidth;
+        }
+        setCellWidth(cw);
+    };
+
+    const onCellHeightChange = (indices, newHeight) => {
+        const ch = [...cellHeight];
+        for (const idx of indices) {
+            if (idx > ch.length) {
+                for (let i = ch.length; i <= idx; i++) {
+                    ch.push(DEFAULT_CELL_HEIGHT);
+                }
+            }
+            ch[idx] = newHeight;
+        }
+        setCellHeight(ch);
+    };
+
+    return { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight };
+}
+
 export function SheetBoxHeader() {
     const [data, setData] = useState(initialDataBig);
-    const [cellWidth, setCellWidth] = useState(Array(100).fill(150));
-    const [cellHeight, setCellHeight] = useState([]);
-
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
     const columnHeaders = ['A', 'B', 'C'];
@@ -72,27 +106,6 @@ export function SheetBoxHeader() {
 
     const isReadOnly = (x, y) => {
         return false;
-    };
-
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(150);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
     };
 
     return (
@@ -120,8 +133,7 @@ export function SheetBoxHeader() {
 
 export function SheetBoxBasic() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
-    const [cellWidth, setCellWidth] = useState([]);
-    const [cellHeight, setCellHeight] = useState([]);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -152,27 +164,6 @@ export function SheetBoxBasic() {
 
     const isReadOnly = (x, y) => {
         return false;
-    };
-
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(100);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
     };
 
     return (
@@ -206,8 +197,7 @@ faCheck.height = 16;
 
 export function SheetBoxStyle() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
-    const [cellWidth, setCellWidth] = useState([]);
-    const [cellHeight, setCellHeight] = useState([]);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -310,27 +300,6 @@ export function SheetBoxStyle() {
         return false;
     };
 
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(100);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
-    };
-
     return (
         <div className="sheet-box">
             <Sheet
@@ -356,8 +325,7 @@ export function SheetBoxStyle() {
 
 export function SheetBoxFormatting() {
     const [data, setData] = useState(initialDataFormatting);
-    const [cellWidth, setCellWidth] = useState([]);
-    const [cellHeight, setCellHeight] = useState([]);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
 
     const cellStyle = (x, y) => {
         return {};
@@ -387,27 +355,6 @@ export function SheetBoxFormatting() {
         return false;
     };
 
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(100);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
-    };
-
     return (
         <div className="sheet-box">
             <Sheet
@@ -431,8 +378,7 @@ export function SheetBoxFormatting() {
 export function SheetBoxVeryBigData() {
     const [loadingStatus, setLoadingStatus] = useState('initial');
     const [data, setData] = useState([]);
-    const [cellWidth, setCellWidth] = useState([]);
-    const [cellHeight, setCellHeight] = useState([]);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
 
     const loadClick = (e) => {
         e.preventDefault();
@@ -502,27 +448,6 @@ export function SheetBoxVeryBigData() {
         return false;
     };
 
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(100);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
-    };
-
     const headerStyle = (index) => {
         const r = ((index * 2421) % 255).toString(16).padStart(2, '0');
         const g = ((index * 3215) % 255).toString(16).padStart(2, '0');
@@ -582,8 +507,7 @@ const customInputData = [
 
 export function SheetBoxCustomInput() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(customInputData)));
-    const [cellWidth, setCellWidth] = useState([]);
-    const [cellHeight, setCellHeight] = useState([]);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -614,27 +538,6 @@ export function SheetBoxCustomInput() {
 
     const isReadOnly = (x, y) => {
         return false;
-    };
-
-    const onCellWidthChange = (columnIdx, newWidth) => {
-        const cw = [...cellWidth];
-        if (columnIdx > cw.length) {
-            for (let i = cw.length; i <= columnIdx; i++) {
-                cw.push(100);
-            }
-        }
-        cw[columnIdx] = newWidth;
-        setCellWidth(cw);
-    };
-    const onCellHeightChange = (rowIdx, newHeight) => {
-        const ch = [...cellHeight];
-        if (rowIdx > ch.length) {
-            for (let i = ch.length; i <= rowIdx; i++) {
-                ch.push(22);
-            }
-        }
-        ch[rowIdx] = newHeight;
-        setCellHeight(ch);
     };
 
     return (
