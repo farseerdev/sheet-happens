@@ -629,12 +629,14 @@ function renderOnCanvas(
     // selection fill
     if (selectionActive) {
         context.fillStyle = selBackColor;
+        const p1x = Math.max(-100, p1.x);
+        const p1y = Math.max(-100, p1.y);
         if (rowSelectionActive) {
-            context.fillRect(p1.x, p1.y, 100000, p2.y - p1.y);
+            context.fillRect(p1x, p1y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
-            context.fillRect(p1.x, p1.y, p2.x - p1.x, 100000);
+            context.fillRect(p1x, p1y, p2.x - p1.x, 100000);
         } else {
-            context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+            context.fillRect(p1x, p1y, p2.x - p1.x, p2.y - p1.y);
         }
     }
 
@@ -725,13 +727,15 @@ function renderOnCanvas(
     if (selectionActive) {
         context.strokeStyle = selBorderColor;
         context.lineWidth = 1;
+        const p1x = Math.max(-100, p1.x);
+        const p1y = Math.max(-100, p1.y);
         context.beginPath();
         if (rowSelectionActive) {
-            context.rect(p1.x, p1.y, 100000, p2.y - p1.y);
+            context.rect(p1x, p1y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
-            context.rect(p1.x, p1.y, p2.x - p1.x, 100000);
+            context.rect(p1x, p1y, p2.x - p1.x, 100000);
         } else {
-            context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+            context.rect(p1x, p1y, p2.x - p1.x, p2.y - p1.y);
         }
         context.stroke();
     }
@@ -1374,18 +1378,25 @@ function Sheet(props: SheetProps) {
         }
 
         let cptext = '';
+        let cptextTemp = '';
         for (let y = dy1; y <= dy2; y++) {
+            let nonEmpty = false;
             for (let x = dx1; x <= dx2; x++) {
                 const value = editData(x, y);
                 if (value !== null && value !== undefined) {
-                    cptext += value;
+                    cptextTemp += value;
+                    nonEmpty = true;
                 }
                 if (x !== dx2) {
-                    cptext += '\t';
+                    cptextTemp += '\t';
                 }
             }
             if (y !== dy2) {
-                cptext += '\n';
+                cptextTemp += '\n';
+            }
+            if (nonEmpty) {
+                cptext += cptextTemp;
+                cptextTemp = '';
             }
         }
         if (copyPasteTextAreaRef.current) {
@@ -2164,6 +2175,10 @@ function Sheet(props: SheetProps) {
             <textarea
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
                 ref={copyPasteTextAreaRef}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
                 onFocus={(e) => e.target.select()}
                 tabIndex={0}
                 onKeyDown={onGridKeyDown}
