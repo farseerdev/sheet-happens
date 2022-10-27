@@ -461,6 +461,9 @@ function findApproxMaxEditDataIndex(editData: CellPropertyFunction<string>) {
             howManyEmpty += 1;
         }
         x += growthIncrement;
+        if (x > maxSearchableRowOrCol) {
+            break;
+        }
         growthIncrement = Math.floor(growthIncrement * growthIncrementFactor);
     }
 
@@ -482,6 +485,9 @@ function findApproxMaxEditDataIndex(editData: CellPropertyFunction<string>) {
             howManyEmpty += 1;
         }
         y += growthIncrement;
+        if (y > maxSearchableRowOrCol) {
+            break;
+        }
         growthIncrement = Math.floor(growthIncrement * growthIncrementFactor);
     }
     return { x, y };
@@ -1366,13 +1372,13 @@ function Sheet(props: SheetProps) {
             dx2 = selection.x1;
         }
 
-        const max = findApproxMaxEditDataIndex(editData);
-
         if (dx1 === -1 && dx2 === -1) {
+            const max = findApproxMaxEditDataIndex(editData);
             dx1 = 0;
             dx2 = max.x;
         }
         if (dy1 === -1 && dy2 === -1) {
+            const max = findApproxMaxEditDataIndex(editData);
             dy1 = 0;
             dy2 = max.y;
         }
