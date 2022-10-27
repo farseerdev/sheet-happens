@@ -1427,6 +1427,7 @@ function Sheet(props: SheetProps) {
         setEditCell(editCell);
         setEditKey(editDataKey);
         setEditValue(val);
+        setShiftKeyDown(false);
     };
 
     const onScroll = (e: UIEvent) => {
