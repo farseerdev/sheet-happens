@@ -635,14 +635,16 @@ function renderOnCanvas(
     // selection fill
     if (selectionActive) {
         context.fillStyle = selBackColor;
-        const p1x = Math.max(-100, p1.x);
-        const p1y = Math.max(-100, p1.y);
         if (rowSelectionActive) {
+            const p1x = Math.max(-100, p1.x);
+            const p1y = Math.max(-100, p1.y);
             context.fillRect(p1x, p1y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
+            const p1x = Math.max(-100, p1.x);
+            const p1y = Math.max(-100, p1.y);
             context.fillRect(p1x, p1y, p2.x - p1.x, 100000);
         } else {
-            context.fillRect(p1x, p1y, p2.x - p1.x, p2.y - p1.y);
+            context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
         }
     }
 
@@ -733,15 +735,17 @@ function renderOnCanvas(
     if (selectionActive) {
         context.strokeStyle = selBorderColor;
         context.lineWidth = 1;
-        const p1x = Math.max(-100, p1.x);
-        const p1y = Math.max(-100, p1.y);
         context.beginPath();
         if (rowSelectionActive) {
+            const p1x = Math.max(-100, p1.x);
+            const p1y = Math.max(-100, p1.y);
             context.rect(p1x, p1y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
+            const p1x = Math.max(-100, p1.x);
+            const p1y = Math.max(-100, p1.y);
             context.rect(p1x, p1y, p2.x - p1.x, 100000);
         } else {
-            context.rect(p1x, p1y, p2.x - p1.x, p2.y - p1.y);
+            context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
         }
         context.stroke();
     }
@@ -1649,8 +1653,9 @@ function Sheet(props: SheetProps) {
                     fy2 = sy1 - 1;
                 }
                 if (fx1 === -1 && fx2 === -1) {
+                    const max = findApproxMaxEditDataIndex(editData);
                     fx1 = 0;
-                    fx2 = maxSearchableRowOrCol;
+                    fx2 = max.x;
                 }
                 let srcY = sy1;
                 for (let y = fy1; y <= fy2; y++) {
@@ -1671,8 +1676,9 @@ function Sheet(props: SheetProps) {
                     fx2 = sx1 - 1;
                 }
                 if (fy1 === -1 && fy2 === -1) {
+                    const max = findApproxMaxEditDataIndex(editData);
                     fy1 = 0;
-                    fy2 = maxSearchableRowOrCol;
+                    fy2 = max.y;
                 }
                 let srcX = sx1;
                 for (let x = fx1; x <= fx2; x++) {
