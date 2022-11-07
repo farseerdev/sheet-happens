@@ -30,7 +30,7 @@ const scrollSpeed = 30;
 const resizeColumnRowMouseThreshold = 4;
 const minimumColumnWidth = 50;
 const minimumRowHeight = 22;
-const rowColHeaderSelectionColor = '#AAAAAA';
+const rowColHeaderSelectionColor = '#cccccc';
 const maxSearchableRowOrCol = 65536;
 
 const defaultCellStyle: Required<Style> = {
@@ -134,6 +134,7 @@ export interface SheetProps {
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
+    hideGridlines?: boolean;
     inputComponent?: (
         x: number,
         y: number,
@@ -168,10 +169,7 @@ interface RowOrColumnSize {
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
     const { width, height } = canvas.getBoundingClientRect();
-    let { devicePixelRatio: ratio = 1 } = window;
-    if (ratio < 1) {
-        ratio = 1;
-    }
+    const ratio = 2;
     const newCanvasWidth = Math.round(width * ratio);
     const newCanvasHeight = Math.round(height * ratio);
 
@@ -560,7 +558,8 @@ function renderOnCanvas(
     knobArea: Selection,
     displayData: CellPropertyFunction<CellContentType>,
     dataOffset: CellCoordinate,
-    knobCoordinates: { x: number; y: number }
+    knobCoordinates: { x: number; y: number },
+    hideGridlines: boolean
 ) {
     resizeCanvas(context.canvas);
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
@@ -672,20 +671,35 @@ function renderOnCanvas(
     context.strokeStyle = gridColor;
     context.lineWidth = 1;
     let startX = rowHeaderWidth;
+    let startY = columnHeaderHeight;
 
+    const xGridlineEnd = hideGridlines ? rowHeaderWidth : context.canvas.width;
+    const yGridlineEnd = hideGridlines ? columnHeaderHeight : context.canvas.height;
+
+    let first = true;
     for (const col of columnSizes.index) {
         context.beginPath();
         context.moveTo(startX, 0);
-        context.lineTo(startX, context.canvas.height);
+        if (first) {
+            context.lineTo(startX, context.canvas.height);
+            first = false;
+        } else {
+            context.lineTo(startX, yGridlineEnd);
+        }
         context.stroke();
         startX += cellWidth(col);
     }
 
-    let startY = columnHeaderHeight;
+    first = true;
     for (const row of rowSizes.index) {
         context.beginPath();
         context.moveTo(0, startY);
-        context.lineTo(context.canvas.width, startY);
+        if (first) {
+            context.lineTo(context.canvas.width, startY);
+            first = false;
+        } else {
+            context.lineTo(xGridlineEnd, startY);
+        }
         context.stroke();
         startY += cellHeight(row);
     }
@@ -1142,7 +1156,8 @@ function Sheet(props: SheetProps) {
                 knobArea,
                 displayData,
                 dataOffset,
-                knobCoordinates
+                knobCoordinates,
+                props.hideGridlines || false
             );
         });
 
@@ -1164,6 +1179,7 @@ function Sheet(props: SheetProps) {
         displayData,
         dataOffset,
         knobCoordinates,
+        props.hideGridlines,
     ]);
 
     const setFocusToTextArea = () => {
