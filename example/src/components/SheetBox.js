@@ -124,8 +124,6 @@ export function SheetBoxHeader() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                freezeColumns={0}
-                freezeRows={0}
             />
         </div>
     );
@@ -182,8 +180,6 @@ export function SheetBoxBasic() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                freezeColumns={0}
-                freezeRows={0}
             />
         </div>
     );
@@ -316,8 +312,10 @@ export function SheetBoxStyle() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                freezeColumns={1}
-                freezeRows={1}
+                sheetStyle={{
+                    freezeColumns: 1,
+                    freezeRows: 1,
+                }}
             />
         </div>
     );
@@ -368,8 +366,6 @@ export function SheetBoxFormatting() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                freezeColumns={0}
-                freezeRows={0}
             />
         </div>
     );
@@ -485,8 +481,10 @@ export function SheetBoxVeryBigData() {
                     onCellHeightChange={onCellHeightChange}
                     columnHeaderStyle={headerStyle}
                     columnHeaders={columnHeaders}
-                    freezeColumns={0}
-                    freezeRows={1}
+                    sheetStyle={{
+                        freezeColumns: 0,
+                        freezeRows: 1,
+                    }}
                 />
             </div>
         </>
@@ -556,8 +554,6 @@ export function SheetBoxCustomInput() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                freezeColumns={0}
-                freezeRows={0}
                 inputComponent={CustomInput}
             />
         </div>

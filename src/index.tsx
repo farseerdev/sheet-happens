@@ -17,11 +17,11 @@ const selBackColor = '#e9f0fd';
 const knobSize = 6;
 const gridColor = '#e2e3e3';
 const knobAreaBorderColor = '#707070';
-const rowHeaderWidth = 50;
+const kRowHeaderWidth = 50;
 const rowHeaderBackgroundColor = '#f8f9fa';
 const rowHeaderTextColor = '#666666';
 const rowHeaderSelectedBackgroundColor = '#e8eaed';
-const columnHeaderHeight = 22;
+const kColumnHeaderHeight = 22;
 const columnHeaderBackgroundColor = rowHeaderBackgroundColor;
 const columnHeaderSelectedBackgroundColor = rowHeaderSelectedBackgroundColor;
 const xBinSize = 10;
@@ -121,9 +121,27 @@ export interface SheetMouseEvent extends MouseEvent {
     cellY: number;
 }
 
-export interface SheetProps {
+interface InternalSheetStyle {
+    hideGridlines: boolean;
+    hideColumnHeaders: boolean;
+    hideRowHeaders: boolean;
+    freezeColumns: number;
+    freezeRows: number;
+    columnHeaderHeight: number;
+    rowHeaderWidth: number;
+    hideScrollBars: boolean;
+}
+
+export interface SheetStyle {
+    hideGridlines?: boolean;
+    hideColumnHeaders?: boolean;
+    hideRowHeaders?: boolean;
     freezeColumns?: number;
     freezeRows?: number;
+    hideScrollBars?: boolean;
+}
+
+export interface SheetProps {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
     columnHeaders?: RowOrColumnProperty<CellContentType>;
@@ -134,7 +152,7 @@ export interface SheetProps {
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
-    hideGridlines?: boolean;
+    sheetStyle?: SheetStyle;
     inputComponent?: (
         x: number,
         y: number,
@@ -169,7 +187,10 @@ interface RowOrColumnSize {
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
     const { width, height } = canvas.getBoundingClientRect();
-    const ratio = 2;
+    let { devicePixelRatio: ratio = 1 } = window;
+    if (ratio < 1) {
+        ratio = 1;
+    }
     const newCanvasWidth = Math.round(width * ratio);
     const newCanvasHeight = Math.round(height * ratio);
 
@@ -408,9 +429,10 @@ function cellToAbsCoordinate(
     columnSizes: RowOrColumnSize,
     dataOffset: CellCoordinate,
     cellWidth: RowOrColumnPropertyFunction<number>,
-    cellHeight: RowOrColumnPropertyFunction<number>
+    cellHeight: RowOrColumnPropertyFunction<number>,
+    sheetStyle: InternalSheetStyle
 ): CellCoordinate {
-    let absX = rowHeaderWidth;
+    let absX = sheetStyle.rowHeaderWidth;
     const indX = columnSizes.index.findIndex((i) => i === cellX);
     if (indX !== -1) {
         absX = columnSizes.start[indX];
@@ -423,7 +445,7 @@ function cellToAbsCoordinate(
         }
     }
 
-    let absY = columnHeaderHeight;
+    let absY = sheetStyle.columnHeaderHeight;
     const indY = rowSizes.index.findIndex((i) => i === cellY);
     if (indY !== -1) {
         absY = rowSizes.start[indY];
@@ -559,7 +581,7 @@ function renderOnCanvas(
     displayData: CellPropertyFunction<CellContentType>,
     dataOffset: CellCoordinate,
     knobCoordinates: { x: number; y: number },
-    hideGridlines: boolean
+    sheetStyle: InternalSheetStyle
 ) {
     resizeCanvas(context.canvas);
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
@@ -567,9 +589,9 @@ function renderOnCanvas(
     context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 
     // apply cell fill color
-    let yCoord1 = columnHeaderHeight;
+    let yCoord1 = sheetStyle.columnHeaderHeight;
     for (const y of rowSizes.index) {
-        let xCoord1 = rowHeaderWidth;
+        let xCoord1 = sheetStyle.rowHeaderWidth;
         for (const x of columnSizes.index) {
             const style = cellStyle(x, y);
             if (style.fillColor) {
@@ -604,8 +626,8 @@ function renderOnCanvas(
     const rowSelectionActive = selx1 === -1 && selx2 === -1 && sely1 !== -1 && sely2 !== -1;
     const colSelectionActive = selx1 !== -1 && selx2 !== -1 && sely1 === -1 && sely2 === -1;
 
-    const p1 = cellToAbsCoordinate(selx1, sely1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
-    const p2 = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+    const p1 = cellToAbsCoordinate(selx1, sely1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight, sheetStyle);
+    const p2 = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight, sheetStyle);
     p2.x += cellWidth(selx2);
     p2.y += cellHeight(sely2);
 
@@ -647,41 +669,45 @@ function renderOnCanvas(
         }
     }
 
-    // row header background
-    context.fillStyle = rowHeaderBackgroundColor;
-    context.fillRect(0, 0, rowHeaderWidth, context.canvas.height);
+    if (!sheetStyle.hideRowHeaders) {
+        // row header background
+        context.fillStyle = rowHeaderBackgroundColor;
+        context.fillRect(0, 0, sheetStyle.rowHeaderWidth, context.canvas.height);
 
-    // row header selection
-    if (selectionActive) {
-        context.fillStyle = rowHeaderSelectedBackgroundColor;
-        context.fillRect(0, p1.y, rowHeaderWidth, p2.y - p1.y);
+        // row header selection
+        if (selectionActive) {
+            context.fillStyle = rowHeaderSelectedBackgroundColor;
+            context.fillRect(0, p1.y, sheetStyle.rowHeaderWidth, p2.y - p1.y);
+        }
     }
 
-    // column header background
-    context.fillStyle = columnHeaderBackgroundColor;
-    context.fillRect(0, 0, context.canvas.width, columnHeaderHeight);
+    if (!sheetStyle.hideColumnHeaders) {
+        // column header background
+        context.fillStyle = columnHeaderBackgroundColor;
+        context.fillRect(0, 0, context.canvas.width, sheetStyle.columnHeaderHeight);
 
-    // column header selection
-    if (selectionActive) {
-        context.fillStyle = columnHeaderSelectedBackgroundColor;
-        context.fillRect(p1.x, 0, p2.x - p1.x, columnHeaderHeight);
+        // column header selection
+        if (selectionActive) {
+            context.fillStyle = columnHeaderSelectedBackgroundColor;
+            context.fillRect(p1.x, 0, p2.x - p1.x, sheetStyle.columnHeaderHeight);
+        }
     }
 
     // grid
     context.strokeStyle = gridColor;
     context.lineWidth = 1;
-    let startX = rowHeaderWidth;
-    let startY = columnHeaderHeight;
-
-    const xGridlineEnd = hideGridlines ? rowHeaderWidth : context.canvas.width;
-    const yGridlineEnd = hideGridlines ? columnHeaderHeight : context.canvas.height;
+    let startX = sheetStyle.rowHeaderWidth;
+    let startY = sheetStyle.columnHeaderHeight;
 
     let first = true;
+    const yGridlineEnd = sheetStyle.hideGridlines ? sheetStyle.columnHeaderHeight : context.canvas.height;
     for (const col of columnSizes.index) {
         context.beginPath();
         context.moveTo(startX, 0);
         if (first) {
-            context.lineTo(startX, context.canvas.height);
+            if (!sheetStyle.hideRowHeaders) {
+                context.lineTo(startX, context.canvas.height);
+            }
             first = false;
         } else {
             context.lineTo(startX, yGridlineEnd);
@@ -690,12 +716,15 @@ function renderOnCanvas(
         startX += cellWidth(col);
     }
 
+    const xGridlineEnd = sheetStyle.hideGridlines ? sheetStyle.rowHeaderWidth : context.canvas.width;
     first = true;
     for (const row of rowSizes.index) {
         context.beginPath();
         context.moveTo(0, startY);
         if (first) {
-            context.lineTo(context.canvas.width, startY);
+            if (!sheetStyle.hideColumnHeaders) {
+                context.lineTo(context.canvas.width, startY);
+            }
             first = false;
         } else {
             context.lineTo(xGridlineEnd, startY);
@@ -704,45 +733,58 @@ function renderOnCanvas(
         startY += cellHeight(row);
     }
 
-    // row header text
-    startY = columnHeaderHeight;
-    context.textBaseline = 'middle';
-    context.textAlign = 'center';
-    context.font = defaultCellStyle.fontSize + 'px ' + defaultCellStyle.fontFamily;
-    context.fillStyle = rowHeaderTextColor;
-    for (const row of rowSizes.index) {
-        const cellContent = row + 1;
-        let chStyle = {};
-        if (rowSelectionActive && sely1 <= row && sely2 >= row) {
-            chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+    if (!sheetStyle.hideRowHeaders) {
+        // row header text
+        startY = sheetStyle.columnHeaderHeight;
+        context.textBaseline = 'middle';
+        context.textAlign = 'center';
+        context.font = defaultCellStyle.fontSize + 'px ' + defaultCellStyle.fontFamily;
+        context.fillStyle = rowHeaderTextColor;
+        for (const row of rowSizes.index) {
+            const cellContent = row + 1;
+            let chStyle = {};
+            if (rowSelectionActive && sely1 <= row && sely2 >= row) {
+                chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+            }
+            drawCell(
+                context,
+                '' + cellContent,
+                chStyle,
+                defaultColumnHeaderStyle,
+                0,
+                startY,
+                sheetStyle.rowHeaderWidth,
+                cellHeight(row)
+            );
+            startY += cellHeight(row);
         }
-        drawCell(
-            context,
-            '' + cellContent,
-            chStyle,
-            defaultColumnHeaderStyle,
-            0,
-            startY,
-            rowHeaderWidth,
-            cellHeight(row)
-        );
-        startY += cellHeight(row);
     }
 
-    // column header text
-    startX = rowHeaderWidth;
-    context.textBaseline = 'middle';
-    context.textAlign = 'center';
-    for (const col of columnSizes.index) {
-        const cw = cellWidth(col);
-        const ch = columnHeaders(col);
-        const chcontent = ch !== null ? ch : excelHeaderString(col + 1);
-        let chStyle = columnHeaderStyle(col);
-        if (colSelectionActive && selx1 <= col && selx2 >= col) {
-            chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+    if (!sheetStyle.hideColumnHeaders) {
+        // column header text
+        startX = sheetStyle.rowHeaderWidth;
+        context.textBaseline = 'middle';
+        context.textAlign = 'center';
+        for (const col of columnSizes.index) {
+            const cw = cellWidth(col);
+            const ch = columnHeaders(col);
+            const chcontent = ch !== null ? ch : excelHeaderString(col + 1);
+            let chStyle = columnHeaderStyle(col);
+            if (colSelectionActive && selx1 <= col && selx2 >= col) {
+                chStyle = { ...chStyle, backgroundColor: rowColHeaderSelectionColor };
+            }
+            drawCell(
+                context,
+                chcontent,
+                chStyle,
+                defaultColumnHeaderStyle,
+                startX,
+                0,
+                cw,
+                sheetStyle.columnHeaderHeight
+            );
+            startX += cw;
         }
-        drawCell(context, chcontent, chStyle, defaultColumnHeaderStyle, startX, 0, cw, columnHeaderHeight);
-        startX += cw;
     }
 
     // selection outline
@@ -779,7 +821,16 @@ function renderOnCanvas(
             ky1 = knobArea.y2;
             ky2 = knobArea.y1;
         }
-        const knobPoint1 = cellToAbsCoordinate(kx1, ky1, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+        const knobPoint1 = cellToAbsCoordinate(
+            kx1,
+            ky1,
+            rowSizes,
+            columnSizes,
+            dataOffset,
+            cellWidth,
+            cellHeight,
+            sheetStyle
+        );
         const knobPoint2 = cellToAbsCoordinate(
             kx2 + 1,
             ky2 + 1,
@@ -787,7 +838,8 @@ function renderOnCanvas(
             columnSizes,
             dataOffset,
             cellWidth,
-            cellHeight
+            cellHeight,
+            sheetStyle
         );
         context.strokeStyle = knobAreaBorderColor;
         context.setLineDash([3, 3]);
@@ -814,9 +866,9 @@ function renderOnCanvas(
     context.textBaseline = 'middle';
 
     // draw content
-    let yCoord = columnHeaderHeight;
+    let yCoord = sheetStyle.columnHeaderHeight;
     for (const y of rowSizes.index) {
-        let xCoord = rowHeaderWidth;
+        let xCoord = sheetStyle.rowHeaderWidth;
         const ch = cellHeight(y);
         for (const x of columnSizes.index) {
             const cellContent = displayData(x, y);
@@ -861,8 +913,8 @@ function Sheet(props: SheetProps) {
     });
     const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: canvasRef });
 
-    const freezeColumns = props.freezeColumns || 0;
-    const freezeRows = props.freezeRows || 0;
+    //    const freezeColumns = props.freezeColumns || 0;
+    //    const freezeRows = props.freezeRows || 0;
 
     const cellWidth = useMemo(() => createRowOrColumnPropFunction(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnPropFunction(props.cellHeight, 22), [props.cellHeight]);
@@ -881,6 +933,26 @@ function Sheet(props: SheetProps) {
     const editKeys = useMemo(() => createCellPropFunction(props.editKeys, ''), [props.editKeys]);
     const cellStyle = useMemo(() => createCellPropFunction(props.cellStyle, defaultCellStyle), [props.cellStyle]);
 
+    const sheetStyle: InternalSheetStyle = useMemo(() => {
+        return {
+            freezeColumns: props.sheetStyle?.freezeColumns || 0,
+            freezeRows: props.sheetStyle?.freezeRows || 0,
+            hideColumnHeaders: props.sheetStyle?.hideColumnHeaders || false,
+            hideRowHeaders: props.sheetStyle?.hideRowHeaders || false,
+            hideGridlines: props.sheetStyle?.hideGridlines || false,
+            columnHeaderHeight: props.sheetStyle?.hideColumnHeaders ? 1 : kColumnHeaderHeight,
+            rowHeaderWidth: props.sheetStyle?.hideRowHeaders ? 1 : kRowHeaderWidth,
+            hideScrollBars: props.sheetStyle?.hideScrollBars || false,
+        };
+    }, [
+        props.sheetStyle?.freezeColumns,
+        props.sheetStyle?.freezeRows,
+        props.sheetStyle?.hideColumnHeaders,
+        props.sheetStyle?.hideGridlines,
+        props.sheetStyle?.hideRowHeaders,
+        props.sheetStyle?.hideScrollBars,
+    ]);
+
     useEffect(() => {
         const currEditKey = editKeys ? editKeys(editCell.x, editCell.y) : '';
         if (currEditKey !== editKey) {
@@ -890,13 +962,27 @@ function Sheet(props: SheetProps) {
     }, [editKeys]);
 
     const columnSizes = useMemo(
-        () => calculateRowsOrColsSizes(freezeColumns, cellWidth, rowHeaderWidth, dataOffset.x, canvasWidth),
-        [props.freezeColumns, cellWidth, dataOffset.x, canvasWidth]
+        () =>
+            calculateRowsOrColsSizes(
+                sheetStyle.freezeColumns,
+                cellWidth,
+                sheetStyle.rowHeaderWidth,
+                dataOffset.x,
+                canvasWidth
+            ),
+        [sheetStyle, cellWidth, dataOffset.x, canvasWidth]
     );
 
     const rowSizes = useMemo(
-        () => calculateRowsOrColsSizes(freezeRows, cellHeight, columnHeaderHeight, dataOffset.y, canvasHeight),
-        [props.freezeRows, cellHeight, dataOffset.y, canvasHeight]
+        () =>
+            calculateRowsOrColsSizes(
+                sheetStyle.freezeRows,
+                cellHeight,
+                sheetStyle.columnHeaderHeight,
+                dataOffset.y,
+                canvasHeight
+            ),
+        [sheetStyle, cellHeight, dataOffset.y, canvasHeight]
     );
 
     const changeSelection = (x1: number, y1: number, x2: number, y2: number, scrollToP2 = true) => {
@@ -914,20 +1000,20 @@ function Sheet(props: SheetProps) {
                 (!columnSizes.index.includes(x2) || columnSizes.index[columnSizes.index.length - 1] === x2)
             ) {
                 const lastVisibleColumnIndex = columnSizes.index[columnSizes.index.length - 1];
-                const firstVisibleColumnIndex = columnSizes.index[freezeColumns];
+                const firstVisibleColumnIndex = columnSizes.index[sheetStyle.freezeColumns];
                 let increment = 0;
                 if (x2 >= lastVisibleColumnIndex) {
                     increment = 1 + x2 - lastVisibleColumnIndex;
                 } else if (x2 < firstVisibleColumnIndex) {
                     increment = x2 - firstVisibleColumnIndex;
                 }
-                const newX = Math.max(dataOffset.x, freezeColumns) + increment;
+                const newX = Math.max(dataOffset.x, sheetStyle.freezeColumns) + increment;
                 newDataOffset.x = newX;
                 newScrollLeft = newX * scrollSpeed;
             }
 
             if (y2 !== -1 && (!rowSizes.index.includes(y2) || rowSizes.index[rowSizes.index.length - 1] === y2)) {
-                const firstVisibleRowIndex = rowSizes.index[freezeRows];
+                const firstVisibleRowIndex = rowSizes.index[sheetStyle.freezeRows];
                 const lastVisibleRowIndex = rowSizes.index[rowSizes.index.length - 1];
                 let increment = 0;
                 if (y2 >= lastVisibleRowIndex) {
@@ -935,7 +1021,7 @@ function Sheet(props: SheetProps) {
                 } else if (y2 < firstVisibleRowIndex) {
                     increment = y2 - firstVisibleRowIndex;
                 }
-                const newY = Math.max(dataOffset.y, freezeRows) + increment;
+                const newY = Math.max(dataOffset.y, sheetStyle.freezeRows) + increment;
                 newDataOffset.y = newY;
                 newScrollTop = newY * scrollSpeed;
             }
@@ -982,7 +1068,16 @@ function Sheet(props: SheetProps) {
             if (selection.y1 > selection.y2) {
                 sely2 = selection.y1;
             }
-            const c = cellToAbsCoordinate(0, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+            const c = cellToAbsCoordinate(
+                0,
+                sely2,
+                rowSizes,
+                columnSizes,
+                dataOffset,
+                cellWidth,
+                cellHeight,
+                sheetStyle
+            );
             return { x: c.x + knobSize * 0.5, y: c.y + cellHeight(sely2) };
         }
         if (selection.x1 !== -1 && selection.x2 !== -1 && selection.y1 === -1 && selection.y2 === -1) {
@@ -991,7 +1086,16 @@ function Sheet(props: SheetProps) {
                 selx2 = selection.x1;
             }
 
-            const c = cellToAbsCoordinate(selx2, 0, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+            const c = cellToAbsCoordinate(
+                selx2,
+                0,
+                rowSizes,
+                columnSizes,
+                dataOffset,
+                cellWidth,
+                cellHeight,
+                sheetStyle
+            );
             return { x: c.x + cellWidth(selx2), y: c.y + knobSize * 0.5 };
         }
         if (selection.x2 !== -1 && selection.y2 !== -1) {
@@ -1004,11 +1108,20 @@ function Sheet(props: SheetProps) {
             if (selection.y1 > selection.y2) {
                 sely2 = selection.y1;
             }
-            const c = cellToAbsCoordinate(selx2, sely2, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight);
+            const c = cellToAbsCoordinate(
+                selx2,
+                sely2,
+                rowSizes,
+                columnSizes,
+                dataOffset,
+                cellWidth,
+                cellHeight,
+                sheetStyle
+            );
             return { x: c.x + cellWidth(selx2), y: c.y + cellHeight(sely2) };
         }
         return { x: -1, y: -1 };
-    }, [selection, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight]);
+    }, [selection, rowSizes, columnSizes, dataOffset, cellWidth, cellHeight, sheetStyle]);
 
     const hitMap = useMemo(() => {
         const hitM = {};
@@ -1017,8 +1130,8 @@ function Sheet(props: SheetProps) {
             return hitM;
         }
         resizeCanvas(canvas);
-        let yCoord = columnHeaderHeight;
-        let xCoord = rowHeaderWidth;
+        let yCoord = sheetStyle.columnHeaderHeight;
+        let xCoord = sheetStyle.rowHeaderWidth;
 
         for (const x of columnSizes.index) {
             const ch = columnHeaders(x);
@@ -1032,7 +1145,7 @@ function Sheet(props: SheetProps) {
                         }
                         const w = obj.content instanceof HTMLImageElement ? obj.width || cellW : 0;
                         const absX1 = applyAlignment(xCoord, cellW, finalStyle, w, obj.horiozntalAlign) + obj.x;
-                        const absY1 = columnHeaderHeight * 0.5 + obj.y;
+                        const absY1 = sheetStyle.columnHeaderHeight * 0.5 + obj.y;
                         const absX2 = absX1 + (obj.width || 0);
                         const absY2 = absY1 + (obj.height || 0);
 
@@ -1070,7 +1183,7 @@ function Sheet(props: SheetProps) {
         }
 
         for (const y of rowSizes.index) {
-            xCoord = rowHeaderWidth;
+            xCoord = sheetStyle.rowHeaderWidth;
             for (const x of columnSizes.index) {
                 const cellContent = displayData(x, y);
                 const cellW = cellWidth(x);
@@ -1130,7 +1243,17 @@ function Sheet(props: SheetProps) {
             yCoord += cellHeight(y);
         }
         return hitM;
-    }, [displayData, props.cellWidth, props.cellHeight, canvasRef, columnSizes, rowSizes, dataOffset.x, dataOffset.y]);
+    }, [
+        displayData,
+        props.cellWidth,
+        props.cellHeight,
+        canvasRef,
+        columnSizes,
+        rowSizes,
+        dataOffset.x,
+        dataOffset.y,
+        sheetStyle,
+    ]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -1157,7 +1280,7 @@ function Sheet(props: SheetProps) {
                 displayData,
                 dataOffset,
                 knobCoordinates,
-                props.hideGridlines || false
+                sheetStyle
             );
         });
 
@@ -1179,7 +1302,7 @@ function Sheet(props: SheetProps) {
         displayData,
         dataOffset,
         knobCoordinates,
-        props.hideGridlines,
+        sheetStyle,
     ]);
 
     const setFocusToTextArea = () => {
@@ -1524,7 +1647,7 @@ function Sheet(props: SheetProps) {
             }
         }
 
-        if (y < columnHeaderHeight) {
+        if (!sheetStyle.hideColumnHeaders && y < sheetStyle.columnHeaderHeight) {
             for (let colIdx = 0; colIdx < columnSizes.index.length; colIdx++) {
                 const start = columnSizes.start[colIdx];
                 const end = columnSizes.end[colIdx];
@@ -1554,7 +1677,7 @@ function Sheet(props: SheetProps) {
                 }
             }
         }
-        if (x < rowHeaderWidth) {
+        if (!sheetStyle.hideRowHeaders && x < sheetStyle.rowHeaderWidth) {
             for (let rowIdx = 0; rowIdx < rowSizes.index.length; rowIdx++) {
                 const start = rowSizes.start[rowIdx];
                 const end = rowSizes.end[rowIdx];
@@ -1601,8 +1724,7 @@ function Sheet(props: SheetProps) {
 
         let scrollToP2 = true;
 
-        if (x < rowHeaderWidth) {
-            //            sel2.x = dataOffset.x + 100;
+        if (!sheetStyle.hideRowHeaders && x < sheetStyle.rowHeaderWidth) {
             scrollToP2 = false;
             setRowSelectionInProgress(true);
             sel1.x = -1;
@@ -1611,8 +1733,7 @@ function Sheet(props: SheetProps) {
             setRowSelectionInProgress(false);
         }
 
-        if (y < columnHeaderHeight) {
-            //            sel2.y = dataOffset.y + 100;
+        if (!sheetStyle.hideColumnHeaders && y < sheetStyle.columnHeaderHeight) {
             scrollToP2 = false;
             setColumnSelectionInProgress(true);
             sel1.y = -1;
@@ -1779,8 +1900,8 @@ function Sheet(props: SheetProps) {
             }
         }
 
-        if (props.onCellWidthChange && y < columnHeaderHeight) {
-            let xx = rowHeaderWidth;
+        if (!sheetStyle.hideColumnHeaders && props.onCellWidthChange && y < sheetStyle.columnHeaderHeight) {
+            let xx = sheetStyle.rowHeaderWidth;
             for (const col of columnSizes.index) {
                 if (Math.abs(xx - x) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'col-resize';
@@ -1790,8 +1911,8 @@ function Sheet(props: SheetProps) {
             }
         }
 
-        if (props.onCellHeightChange && x < rowHeaderWidth) {
-            let yy = columnHeaderHeight;
+        if (!sheetStyle.hideRowHeaders && props.onCellHeightChange && x < sheetStyle.rowHeaderWidth) {
+            let yy = sheetStyle.columnHeaderHeight;
             for (const row of rowSizes.index) {
                 if (Math.abs(yy - y) < resizeColumnRowMouseThreshold) {
                     window.document.body.style.cursor = 'row-resize';
@@ -2084,7 +2205,7 @@ function Sheet(props: SheetProps) {
         if (x1 > x2) [x1, x2] = [x2, x1];
         if (y1 > y2) [y1, y2] = [y2, y1];
 
-        if (!(y > columnHeaderHeight && x > rowHeaderWidth)) {
+        if (!(y > sheetStyle.columnHeaderHeight && x > sheetStyle.rowHeaderWidth)) {
             return;
         }
         //if click is not inside of selection, select the right clicked cell
@@ -2114,7 +2235,8 @@ function Sheet(props: SheetProps) {
             columnSizes,
             dataOffset,
             cellWidth,
-            cellHeight
+            cellHeight,
+            sheetStyle
         );
         const style = cellStyle(editCell.x, editCell.y);
         // add 1 so it doesnt cover the selection border
@@ -2151,14 +2273,33 @@ function Sheet(props: SheetProps) {
         commitEditingCell
     );
 
+    let overlayDivClassName = styles.sheetscroll;
+    const overlayDivStyles: React.CSSProperties = {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        top: 0,
+        left: 0,
+        overflow: 'scroll',
+        borderBottom: '1px solid #ddd',
+    };
+    const canvasStyles: React.CSSProperties = {
+        width: 'calc(100% - 14px)',
+        height: 'calc(100% - 15px)',
+        outline: '1px solid #ddd', // find another better solution ?
+    };
+
+    if (sheetStyle.hideScrollBars) {
+        delete canvasStyles['outline'];
+        delete overlayDivStyles['borderBottom'];
+        overlayDivClassName = '';
+        canvasStyles.width = 'calc(100%)';
+    }
+
     return (
         <div style={{ position: 'relative', height: '100%' }}>
             <canvas
-                style={{
-                    width: 'calc(100% - 14px)',
-                    height: 'calc(100% - 15px)',
-                    outline: '1px solid #ddd', // find another better solution ?
-                }}
+                style={canvasStyles}
                 ref={canvasRef}
             />
             <div
@@ -2169,16 +2310,8 @@ function Sheet(props: SheetProps) {
                 onMouseLeave={onMouseLeave}
                 onContextMenu={onContextMenu}
                 onScroll={onScroll}
-                className={styles.sheetscroll}
-                style={{
-                    position: 'absolute',
-                    width: '100%',
-                    height: '100%',
-                    top: 0,
-                    left: 0,
-                    overflow: 'scroll',
-                    borderBottom: '1px solid #ddd',
-                }}
+                className={overlayDivClassName}
+                style={overlayDivStyles}
             >
                 <div
                     style={{
