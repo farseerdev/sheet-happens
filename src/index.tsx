@@ -658,12 +658,10 @@ function renderOnCanvas(
         context.fillStyle = selBackColor;
         if (rowSelectionActive) {
             const p1x = Math.max(-100, p1.x);
-            const p1y = Math.max(-100, p1.y);
-            context.fillRect(p1x, p1y, 100000, p2.y - p1.y);
+            context.fillRect(p1x, p1.y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
-            const p1x = Math.max(-100, p1.x);
-            const p1y = Math.max(-100, p1.y);
-            context.fillRect(p1x, p1y, p2.x - p1.x, 100000);
+            const p1y = Math.max(0, p1.y);
+            context.fillRect(p1.x, p1y, p2.x - p1.x, 100000);
         } else {
             context.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
         }
@@ -794,12 +792,10 @@ function renderOnCanvas(
         context.beginPath();
         if (rowSelectionActive) {
             const p1x = Math.max(-100, p1.x);
-            const p1y = Math.max(-100, p1.y);
-            context.rect(p1x, p1y, 100000, p2.y - p1.y);
+            context.rect(p1x, p1.y, 100000, p2.y - p1.y);
         } else if (colSelectionActive) {
-            const p1x = Math.max(-100, p1.x);
             const p1y = Math.max(-100, p1.y);
-            context.rect(p1x, p1y, p2.x - p1.x, 100000);
+            context.rect(p1.x, p1y, p2.x - p1.x, 100000);
         } else {
             context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
         }
@@ -1349,15 +1345,13 @@ function Sheet(props: SheetProps) {
 
         const clipboardData = e.clipboardData || (window as any).clipboardData;
         const types = clipboardData.types;
-        if (
-            (types.includes('text/rtf') && types.includes('text/plain')) ||
-            (types.includes('text/plain') && !types.includes('text/html'))
-        ) {
-            const text = clipboardData.getData('text/plain');
-            parsePastedText(text);
-        } else if (types.includes('text/html')) {
+
+        if (types.includes('text/html')) {
             const pastedHtml = clipboardData.getData('text/html');
             parsePastedHtml(pastedHtml);
+        } else if (types.includes('text/plain')) {
+            const text = clipboardData.getData('text/plain');
+            parsePastedText(text);
         }
     };
 
@@ -1421,12 +1415,12 @@ function Sheet(props: SheetProps) {
                                 if (td.children.length !== 0 && td.children[0].nodeName === 'P') {
                                     const p = td.children[0];
                                     if (p.children.length !== 0 && p.children[0].nodeName === 'FONT') {
-                                        str = p.children[0].innerHTML;
+                                        str = p.children[0].textContent.trim();
                                     } else {
-                                        str = p.innerHTML;
+                                        str = p.textContent.trim();
                                     }
                                 } else {
-                                    str = td.innerHTML;
+                                    str = td.textContent.trim();
                                 }
                                 str = str.replaceAll('\n', '');
                                 str = str.replaceAll(/\s\s+/g, ' ');
@@ -2298,10 +2292,7 @@ function Sheet(props: SheetProps) {
 
     return (
         <div style={{ position: 'relative', height: '100%' }}>
-            <canvas
-                style={canvasStyles}
-                ref={canvasRef}
-            />
+            <canvas style={canvasStyles} ref={canvasRef} />
             <div
                 ref={overlayRef}
                 onDoubleClick={onDoubleClick}
