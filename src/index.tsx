@@ -100,6 +100,7 @@ export interface Change {
     x: number;
     y: number;
     value: string | number | null;
+    source?: { x: number; y: number };
 }
 
 export interface CellContentItem {
@@ -153,6 +154,7 @@ export interface SheetProps {
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
+    dontCommitEditOnSelectionChange?: boolean;
     inputComponent?: (
         x: number,
         y: number,
@@ -1713,7 +1715,9 @@ function Sheet(props: SheetProps) {
         const sel1 = shiftKeyDown ? { x: selection.x1, y: selection.y1 } : { ...sel2 };
 
         if (editMode) {
-            commitEditingCell();
+            if (!props.dontCommitEditOnSelectionChange) {
+                commitEditingCell();
+            }
         }
 
         let scrollToP2 = true;
@@ -1738,8 +1742,10 @@ function Sheet(props: SheetProps) {
 
         setSelectionInProgress(true);
         changeSelection(sel1.x, sel1.y, sel2.x, sel2.y, scrollToP2);
-        setEditCell({ x: -1, y: -1 });
-        setEditKey('');
+        if (!props.dontCommitEditOnSelectionChange) {
+            setEditCell({ x: -1, y: -1 });
+            setEditKey('');
+        }
     };
 
     const onMouseUp = (e: MouseEvent) => {
@@ -1792,7 +1798,7 @@ function Sheet(props: SheetProps) {
                 for (let y = fy1; y <= fy2; y++) {
                     for (let x = fx1; x <= fx2; x++) {
                         const value = sourceData(x, srcY);
-                        changes.push({ x: x, y: y, value: value });
+                        changes.push({ x: x, y: y, value: value, source: { x: x, y: srcY } });
                     }
                     srcY = srcY + 1;
                     if (srcY > sy2) {
@@ -1815,7 +1821,7 @@ function Sheet(props: SheetProps) {
                 for (let x = fx1; x <= fx2; x++) {
                     for (let y = fy1; y <= fy2; y++) {
                         const value = sourceData(srcX, y);
-                        changes.push({ x: x, y: y, value: value });
+                        changes.push({ x: x, y: y, value: value, source: { x: srcX, y: y } });
                     }
                     srcX = srcX + 1;
                     if (srcX > sx2) {
@@ -2017,6 +2023,9 @@ function Sheet(props: SheetProps) {
         }
         const editCell = absCoordianteToCell(x, y, rowSizes, columnSizes);
         setArrowKeyCommitMode(false);
+        if (editMode) {
+            commitEditingCell();
+        }
         startEditingCell(editCell);
     };
 
