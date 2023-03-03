@@ -89,11 +89,16 @@ interface CellCoordinate {
     y: number;
 }
 
-interface Selection {
+interface SelectionSpan {
     x1: number;
     y1: number;
     x2: number;
     y2: number;
+}
+
+interface Selection {
+    span: SelectionSpan;
+    color: string;
 }
 
 export interface Change {
@@ -155,6 +160,7 @@ export interface SheetProps {
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
     dontCommitEditOnSelectionChange?: boolean;
+    secondarySelections?: Selection[];
     inputComponent?: (
         x: number,
         y: number,
@@ -424,6 +430,25 @@ function absCoordianteToCell(
     return { x: cellX, y: cellY };
 }
 
+function normalizeSelection(selection: SelectionSpan) {
+    let selx1 = selection.x1;
+    let selx2 = selection.x2;
+
+    if (selection.x1 > selection.x2) {
+        selx1 = selection.x2;
+        selx2 = selection.x1;
+    }
+
+    let sely1 = selection.y1;
+    let sely2 = selection.y2;
+
+    if (selection.y1 > selection.y2) {
+        sely1 = selection.y2;
+        sely2 = selection.y1;
+    }
+    return [selx1, sely1, selx2, sely2];
+}
+
 function cellToAbsCoordinate(
     cellX: number,
     cellY: number,
@@ -575,11 +600,12 @@ function renderOnCanvas(
     cellStyle: CellPropertyFunction<Style>,
     cellWidth: RowOrColumnPropertyFunction<number>,
     cellHeight: RowOrColumnPropertyFunction<number>,
-    selection: Selection,
+    selection: SelectionSpan,
+    secondarySelections: Selection[],
     knobDragInProgress: boolean,
     columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
-    knobArea: Selection,
+    knobArea: SelectionSpan,
     displayData: CellPropertyFunction<CellContentType>,
     dataOffset: CellCoordinate,
     knobCoordinates: { x: number; y: number },
@@ -607,21 +633,7 @@ function renderOnCanvas(
 
     let hideKnob = false;
 
-    let selx1 = selection.x1;
-    let selx2 = selection.x2;
-
-    if (selection.x1 > selection.x2) {
-        selx1 = selection.x2;
-        selx2 = selection.x1;
-    }
-
-    let sely1 = selection.y1;
-    let sely2 = selection.y2;
-
-    if (selection.y1 > selection.y2) {
-        sely1 = selection.y2;
-        sely2 = selection.y1;
-    }
+    const [selx1, sely1, selx2, sely2] = normalizeSelection(selection);
 
     const selectionActive = (selx1 !== -1 && selx2 !== -1) || (sely1 !== -1 && sely2 !== -1);
 
@@ -804,6 +816,75 @@ function renderOnCanvas(
         context.stroke();
     }
 
+    for (const secondarySelection of secondarySelections) {
+        const [selx1, sely1, selx2, sely2] = normalizeSelection(secondarySelection.span);
+
+        const secondarySelectionActive = (selx1 !== -1 && selx2 !== -1) || (sely1 !== -1 && sely2 !== -1);
+        if (!secondarySelectionActive) {
+            continue;
+        }
+        const rowSecondarySelectionActive = selx1 === -1 && selx2 === -1 && sely1 !== -1 && sely2 !== -1;
+        const colSecondarySelectionActive = selx1 !== -1 && selx2 !== -1 && sely1 === -1 && sely2 === -1;
+
+        const p1 = cellToAbsCoordinate(
+            selx1,
+            sely1,
+            rowSizes,
+            columnSizes,
+            dataOffset,
+            cellWidth,
+            cellHeight,
+            sheetStyle
+        );
+        const p2 = cellToAbsCoordinate(
+            selx2,
+            sely2,
+            rowSizes,
+            columnSizes,
+            dataOffset,
+            cellWidth,
+            cellHeight,
+            sheetStyle
+        );
+        p2.x += cellWidth(selx2);
+        p2.y += cellHeight(sely2);
+
+        if (p1.x >= p2.x) {
+            // recalculate if the selection span covers both frozen and unfrozen columns
+            p2.x = p1.x;
+            let currentCol = selx1;
+            while (columnSizes.index.includes(currentCol)) {
+                p2.x += cellWidth(currentCol);
+                currentCol++;
+            }
+        }
+
+        if (p1.y >= p2.y) {
+            // recalculate if the selection span covers both frozen and unfrozen rows
+            p2.y = p1.y;
+            let currentRow = sely1;
+            while (rowSizes.index.includes(currentRow)) {
+                p2.y += cellHeight(currentRow);
+                currentRow++;
+            }
+        }
+
+        context.strokeStyle = secondarySelection.color;
+        context.lineWidth = 1;
+        context.beginPath();
+
+        if (rowSecondarySelectionActive) {
+            const p1x = Math.max(-100, p1.x);
+            context.rect(p1x, p1.y, 100000, p2.y - p1.y);
+        } else if (colSecondarySelectionActive) {
+            const p1y = Math.max(-100, p1.y);
+            context.rect(p1.x, p1y, p2.x - p1.x, 100000);
+        } else {
+            context.rect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        }
+        context.stroke();
+    }
+
     // knob drag outline
     if (knobDragInProgress) {
         let kx1 = knobArea.x1;
@@ -887,8 +968,8 @@ function Sheet(props: SheetProps) {
     const copyPasteTextAreaRef = useRef<HTMLTextAreaElement>(null);
     const [maxScroll, setMaxScroll] = useState({ x: 5000, y: 5000 });
     const [dataOffset, setDataOffset] = useState({ x: 0, y: 0 });
-    const [selection, setSelection] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
-    const [knobArea, setKnobArea] = useState({ x1: -1, y1: -1, x2: -1, y2: -1 });
+    const [selection, setSelection] = useState<SelectionSpan>({ x1: -1, y1: -1, x2: -1, y2: -1 });
+    const [knobArea, setKnobArea] = useState<SelectionSpan>({ x1: -1, y1: -1, x2: -1, y2: -1 });
     const [editCell, setEditCell] = useState({ x: -1, y: -1 });
     const [editValue, setEditValue] = useState<string | number>('');
     const [editKey, setEditKey] = useState<string>('');
@@ -1271,6 +1352,7 @@ function Sheet(props: SheetProps) {
                 cellWidth,
                 cellHeight,
                 selection,
+                props.secondarySelections || [],
                 knobDragInProgress,
                 columnHeaders,
                 columnHeaderStyle,
@@ -1293,6 +1375,7 @@ function Sheet(props: SheetProps) {
         cellWidth,
         cellHeight,
         selection,
+        props.secondarySelections,
         knobDragInProgress,
         columnHeaders,
         columnHeaderStyle,
