@@ -172,7 +172,7 @@ export interface SheetProps {
     onChange?: (changes: Array<Change>) => void;
     onCellWidthChange?: (indices: number[], value: number) => void;
     onCellHeightChange?: (indices: number[], value: number) => void;
-    onScrollChange?: (scrollX: number, scrolLY: number) => void;
+    onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
 }
 
 export interface Style {
@@ -1064,6 +1064,12 @@ function Sheet(props: SheetProps) {
         [sheetStyle, cellHeight, dataOffset.y, canvasHeight]
     );
 
+    useEffect(() => {
+        if (props.onScrollChange) {
+            props.onScrollChange([...rowSizes.index], [...columnSizes.index]);
+        }
+    }, [rowSizes, columnSizes, props.onScrollChange]);
+
     const changeSelection = (x1: number, y1: number, x2: number, y2: number, scrollToP2 = true) => {
         if (selection.x1 !== x1 || selection.x2 !== x2 || selection.y1 !== y1 || selection.y2 !== y2) {
             setSelection({ x1, y1, x2, y2 });
@@ -1669,9 +1675,6 @@ function Sheet(props: SheetProps) {
         const cellY = Math.floor(absY / scrollSpeed);
         if (cellX !== dataOffset.x || cellY !== dataOffset.y) {
             setDataOffset({ x: cellX, y: cellY });
-            if (props.onScrollChange) {
-                props.onScrollChange(cellX, cellY);
-            }
         }
 
         let newMaxScroll = { ...maxScroll };
