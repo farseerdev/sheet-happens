@@ -41,13 +41,19 @@ triangleDown.height = 10;
 export const DEFAULT_CELL_WIDTH = 100;
 export const DEFAULT_CELL_HEIGHT = 22;
 
-export default function useWidthHeigthControl(initialWidths = [], initialHeights = []) {
+export function useWidthHeightControl(
+    initialWidths = [],
+    initialHeights = [],
+    getColumnOrder = (i: number) => i,
+    getRowOrder = (i: number) => i,
+) {
     const [cellWidth, setCellWidth] = useState(initialWidths);
     const [cellHeight, setCellHeight] = useState(initialHeights);
 
     const onCellWidthChange = (indices, newWidth) => {
         const cw = [...cellWidth];
-        for (const idx of indices) {
+        for (const order of indices) {
+            const idx = getColumnOrder(order);
             if (idx > cw.length) {
                 for (let i = cw.length; i <= idx; i++) {
                     cw.push(DEFAULT_CELL_WIDTH);
@@ -60,7 +66,8 @@ export default function useWidthHeigthControl(initialWidths = [], initialHeights
 
     const onCellHeightChange = (indices, newHeight) => {
         const ch = [...cellHeight];
-        for (const idx of indices) {
+        for (const order of indices) {
+            const idx = getRowOrder(order);
             if (idx > ch.length) {
                 for (let i = ch.length; i <= idx; i++) {
                     ch.push(DEFAULT_CELL_HEIGHT);
@@ -71,35 +78,78 @@ export default function useWidthHeigthControl(initialWidths = [], initialHeights
         setCellHeight(ch);
     };
 
-    return { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight };
+    const cw = (x: number) => cellWidth[getColumnOrder(x)] ?? DEFAULT_CELL_WIDTH;
+    const ch = (y: number) => cellHeight[getRowOrder(y)] ?? DEFAULT_CELL_HEIGHT;
+
+    return { onCellWidthChange, onCellHeightChange, cellWidth: cw, cellHeight: ch };
+}
+
+export function useOrderControl(initialColumns = [], initialRows = []) {
+    const [columnOrder, setColumnOrder] = useState(initialColumns);
+    const [rowOrder, setRowOrder] = useState(initialRows);
+
+    const getColumnOrder = (x: number) => columnOrder[x] ?? x;
+    const getRowOrder = (y: number) => rowOrder[y] ?? y;
+
+    const onColumnOrderChange = (indices: number[], order: number) => {
+        const co = [...columnOrder];
+
+        const min = indices[0];
+        const n = Math.max(order + indices.length, indices.reduce((a, b) => Math.max(a, b)));
+        while (co.length < n) co.push(co.length);
+
+        co.splice(min, indices.length);
+        co.splice(order, 0, ...indices.map(i => getColumnOrder(i)));
+        setColumnOrder(co);
+    };
+
+    const onRowOrderChange = (indices: number[], order: number) => {
+        const ro = [...rowOrder];
+
+        const min = indices[0];
+        const n = Math.max(order + indices.length, indices.reduce((a, b) => Math.max(a, b)));
+        while (ro.length < n) ro.push(ro.length);
+
+        ro.splice(min, indices.length);
+        ro.splice(order, 0, ...indices.map(i => getRowOrder(i)));
+        setRowOrder(ro);
+    };
+
+    return { getColumnOrder, getRowOrder, onColumnOrderChange, onRowOrderChange };
 }
 
 export function SheetBoxHeader() {
     const [data, setData] = useState(initialDataBig);
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+
+    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl([], [], getColumnOrder, getRowOrder);
+
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
     const columnHeaders = ['A', 'B', 'C'];
     const cellStyle = (x, y) => {
         return {};
     };
+
     const editData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
     const displayData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
     const sourceData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
 
     const onChange = (changes) => {
         const newData = [...data];
         for (const change of changes) {
-            if (!newData[change.y]) {
-                newData[change.y] = [];
+            const cx = getColumnOrder(change.x);
+            const cy = getRowOrder(change.y);
+            if (!newData[cy]) {
+                newData[cy] = [];
             }
-            newData[change.y][change.x] = change.value;
+            newData[cy][cx] = change.value;
         }
         setData(newData);
     };
@@ -124,6 +174,9 @@ export function SheetBoxHeader() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onRowOrderChange={onRowOrderChange}
+                cacheLayout
             />
         </div>
     );
@@ -131,7 +184,8 @@ export function SheetBoxHeader() {
 
 export function SheetBoxBasic() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl([], [], getColumnOrder, getRowOrder);
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -139,23 +193,26 @@ export function SheetBoxBasic() {
     const cellStyle = (x, y) => {
         return {};
     };
+
     const editData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
     const displayData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
     const sourceData = (x, y) => {
-        return data?.[y]?.[x];
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
 
     const onChange = (changes) => {
         const newData = [...data];
         for (const change of changes) {
-            if (!newData[change.y]) {
-                newData[change.y] = [];
+            const cx = getColumnOrder(change.x);
+            const cy = getRowOrder(change.y);
+            if (!newData[cy]) {
+                newData[cy] = [];
             }
-            newData[change.y][change.x] = change.value;
+            newData[cy][cx] = change.value;
         }
         setData(newData);
     };
@@ -180,6 +237,9 @@ export function SheetBoxBasic() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onRowOrderChange={onRowOrderChange}
+                cacheLayout
             />
         </div>
     );
@@ -193,7 +253,7 @@ faCheck.height = 16;
 
 export function SheetBoxStyle() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -205,7 +265,7 @@ export function SheetBoxStyle() {
                         content: 'A',
                         x: 0,
                         y: 0,
-                        horiozntalAlign: 'center',
+                        horizontalAlign: 'center',
                     },
                     {
                         content: triangleDown,
@@ -213,7 +273,7 @@ export function SheetBoxStyle() {
                         y: -6,
                         width: 12,
                         height: 12,
-                        horiozntalAlign: 'right',
+                        horizontalAlign: 'right',
                         onClick: () => {
                             console.log('click');
                         },
@@ -262,7 +322,7 @@ export function SheetBoxStyle() {
                         y: -8,
                         width: 16,
                         height: 16,
-                        horiozntalAlign: 'right',
+                        horizontalAlign: 'right',
                         onClick: () => {
                             incrementCell(x, y);
                         },
@@ -271,7 +331,7 @@ export function SheetBoxStyle() {
                         content: data?.[y]?.[x],
                         x: 0,
                         y: 0,
-                        horiozntalAlign: 'left',
+                        horizontalAlign: 'left',
                     },
                 ],
             };
@@ -316,6 +376,7 @@ export function SheetBoxStyle() {
                     freezeColumns: 1,
                     freezeRows: 1,
                 }}
+                cacheLayout
             />
         </div>
     );
@@ -323,7 +384,7 @@ export function SheetBoxStyle() {
 
 export function SheetBoxFormatting() {
     const [data, setData] = useState(initialDataFormatting);
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
 
     const cellStyle = (x, y) => {
         return {};
@@ -366,6 +427,7 @@ export function SheetBoxFormatting() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
+                cacheLayout
             />
         </div>
     );
@@ -374,7 +436,7 @@ export function SheetBoxFormatting() {
 export function SheetBoxVeryBigData() {
     const [loadingStatus, setLoadingStatus] = useState('initial');
     const [data, setData] = useState([]);
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
 
     const loadClick = (e) => {
         e.preventDefault();
@@ -460,13 +522,16 @@ export function SheetBoxVeryBigData() {
 
     return (
         <>
-            {loadingStatus === 'initial' ? (
-                <a href="#" onClick={loadClick}>
-                    Load global database of power plants
-                </a>
-            ) : loadingStatus === 'loading' ? (
-                'Loading...'
-            ) : null}
+            {loadingStatus === 'initial' ?
+                (
+                    // eslint-disable-next-line jsx-a11y/anchor-is-valid
+                    <a href="#" onClick={loadClick}>
+                        Load global database of power plants
+                    </a>
+                ) : loadingStatus === 'loading' ? (
+                    'Loading...'
+                ) : null
+            }
             <div className="sheet-box">
                 <Sheet
                     cellStyle={cellStyle}
@@ -485,6 +550,7 @@ export function SheetBoxVeryBigData() {
                         freezeColumns: 0,
                         freezeRows: 1,
                     }}
+                    cacheLayout
                 />
             </div>
         </>
@@ -505,7 +571,7 @@ const customInputData = [
 
 export function SheetBoxCustomInput() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(customInputData)));
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeigthControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -555,6 +621,7 @@ export function SheetBoxCustomInput() {
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
                 inputComponent={CustomInput}
+                cacheLayout
             />
         </div>
     );
