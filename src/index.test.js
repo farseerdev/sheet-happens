@@ -1,7 +1,7 @@
-import Sheet from '.'
+import Sheet from '.';
 
 describe('Sheet', () => {
-  it('is truthy', () => {
-    expect(Sheet).toBeTruthy()
-  })
-})
+    it('is truthy', () => {
+        expect(Sheet).toBeTruthy();
+    });
+});
