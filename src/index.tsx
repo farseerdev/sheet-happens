@@ -466,8 +466,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         const style = cellStyle(...editCell);
         editTextPosition = cellToPixel(editCell);
         editTextPosition = addXY(editTextPosition, ONE_ONE);
-        editTextWidth = cellWidth(editCellX) - 2;
-        editTextHeight = cellHeight(editCellY) - 2;
+        editTextWidth = cellWidth(editCellX) - 3;
+        editTextHeight = cellHeight(editCellY) - 3;
         editTextTextAlign = style.textAlign || DEFAULT_CELL_STYLE.textAlign || 'left';
     }
 
