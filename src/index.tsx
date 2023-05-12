@@ -203,7 +203,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [visibleCells, props.onScrollChange]);
 
     // Set selection with scrolling
-    const changeSelection = (newSelection: Rectangle, scrollToHead = true) => {
+    const changeSelection = (newSelection: Rectangle, scrollToAnchor = true) => {
         if (!isSameSelection(selection, newSelection)) {
             setSelection(newSelection);
         }
@@ -211,11 +211,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         const {current: overlay} = overlayRef;
         if (!overlay) return;
 
-        if (scrollToHead) {
-            const [, head] = newSelection;
+        if (scrollToAnchor) {
+            const [anchor] = newSelection;
             scrollToCell(
                 overlay,
-                head,
+                anchor,
                 [canvasWidth, canvasHeight],
                 [freezeColumns, freezeRows],
                 dataOffset,
