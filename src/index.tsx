@@ -392,6 +392,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
         // copy
         if ((e.metaKey || e.ctrlKey) && String.fromCharCode(e.which).toLowerCase() === 'c') {
+            const {current: textArea} = textAreaRef;
+            textArea?.select();
             return;
         }
 
