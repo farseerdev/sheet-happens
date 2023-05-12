@@ -17,7 +17,6 @@ export const useClipboardCopy = (
         if (isEmptySelection(selection)) return;
 
         textArea.value = formatSelectionAsTSV(selection, editData);
-        textArea.select();
     }, [selection, editMode, editData, textAreaRef]);
 
     useLayoutEffect(() => {
