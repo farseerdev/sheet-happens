@@ -1,4 +1,4 @@
-import Sheet from '.';
+import Sheet from './sheet';
 
 describe('Sheet', () => {
     it('is truthy', () => {
