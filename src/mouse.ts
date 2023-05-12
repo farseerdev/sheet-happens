@@ -1,4 +1,4 @@
-import { CellLayout, CellPropertyFunction, Change, Clickable, Rectangle, SheetMouseEvent, SheetStyle, VisibleLayout, XY } from './types';
+import { CellLayout, CellPropertyFunction, Change, Clickable, Rectangle, RowOrColumnPropertyFunction, SheetMouseEvent, SheetStyle, VisibleLayout, XY } from './types';
 import { MouseEvent, PointerEvent, RefObject, useCallback, useMemo, useRef, useState } from 'react';
 import { normalizeSelection, isColumnSelection, isRowSelection, isCellSelection, isMaybeRowSelection, isPointInsideSelection, addXY, subXY, maxXY } from './coordinate';
 import { ONE_ONE, ORIGIN, SIZES } from './constants';
@@ -19,6 +19,12 @@ export const useMouse = (
     editMode: boolean,
     editData: CellPropertyFunction<string>,
     sourceData: CellPropertyFunction<string | number | null>,
+
+    canSizeColumn: RowOrColumnPropertyFunction<boolean | null>,
+    canSizeRow: RowOrColumnPropertyFunction<boolean | null>,
+    canOrderColumn: RowOrColumnPropertyFunction<boolean | null>,
+    canOrderRow: RowOrColumnPropertyFunction<boolean | null>,
+
     cellLayout: CellLayout,
     visibleCells: VisibleLayout,
     sheetStyle: SheetStyle,
@@ -183,7 +189,12 @@ export const useMouse = (
                         const start = columnToPixel(index, 0);
                         const end = columnToPixel(index, 1);
 
-                        if (isColumnSelection(selection) && isInRange(x, start, end) && isInRange(index, minX, maxX)) {
+                        if (
+                            isColumnSelection(selection) &&
+                            isInRange(x, start, end) &&
+                            isInRange(index, minX, maxX) &&
+                            canOrderColumn(index)
+                        ) {
                             window.document.body.style.cursor = 'grabbing';
 
                             const indices = selectedColumns;
@@ -208,7 +219,7 @@ export const useMouse = (
                 for (const index of columns) {
                     const edge = columnToPixel(index, 1);
 
-                    if (Math.abs(edge - x) < SIZES.resizeZone) {
+                    if ((Math.abs(edge - x) < SIZES.resizeZone) && canSizeColumn(index)) {
                         window.document.body.style.cursor = 'col-resize';
 
                         const asGroup = isColumnSelection(selection) && maxX === index;
@@ -245,7 +256,12 @@ export const useMouse = (
                         const start = rowToPixel(index, 0);
                         const end = rowToPixel(index, 1);
 
-                        if (isRowSelection(selection) && isInRange(y, start, end) && isInRange(index, minY, maxY)) {
+                        if (
+                            isRowSelection(selection) &&
+                            isInRange(y, start, end) &&
+                            isInRange(index, minY, maxY) &&
+                            canOrderRow(index)
+                        ) {
                             window.document.body.style.cursor = 'grabbing';
 
                             const indices = selectedRows;
@@ -270,7 +286,7 @@ export const useMouse = (
                 for (const index of rows) {
                     const edge = rowToPixel(index, 1);
 
-                    if (Math.abs(edge - y) < SIZES.resizeZone) {
+                    if ((Math.abs(edge - y) < SIZES.resizeZone) && canSizeRow(index)) {
                         window.document.body.style.cursor = 'row-resize';
 
                         const asGroup = isRowSelection(selection) && maxY === index;
@@ -344,6 +360,10 @@ export const useMouse = (
         onKnobAreaChange,
         onSelectionChange,
         onCommit,
+        canSizeColumn,
+        canSizeRow,
+        canOrderColumn,
+        canOrderRow,
     ]);
 
     const onPointerUp = useCallback((e: PointerEvent<HTMLDivElement>) => {
@@ -502,7 +522,8 @@ export const useMouse = (
                                 !draggingColumnSelection &&
                                 isColumnSelection(selection) &&
                                 isInRange(x, start, end) &&
-                                isInRange(index, minX, maxX)
+                                isInRange(index, minX, maxX) &&
+                                canOrderColumn(index)
                             ) {
                                 window.document.body.style.cursor = 'grab';
                                 return;
@@ -513,7 +534,7 @@ export const useMouse = (
                 if (onCellWidthChange) {
                     for (const index of columns) {
                         const edge = columnToPixel(index, 1);
-                        if (Math.abs(edge - x) < SIZES.resizeZone) {
+                        if ((Math.abs(edge - x) < SIZES.resizeZone) && canSizeColumn(index)) {
                             window.document.body.style.cursor = 'col-resize';
                             return;
                         }
@@ -536,7 +557,8 @@ export const useMouse = (
                                 !draggingRowSelection &&
                                 isRowSelection(selection) &&
                                 isInRange(y, start, end) &&
-                                isInRange(index, minY, maxY)
+                                isInRange(index, minY, maxY) &&
+                                canOrderRow(index)
                             ) {
                                 window.document.body.style.cursor = 'grab';
                                 return;
@@ -547,7 +569,7 @@ export const useMouse = (
                 if (onCellHeightChange) {
                     for (const index of rows) {
                         const edge = rowToPixel(index, 1);
-                        if (Math.abs(edge - y) < SIZES.resizeZone) {
+                        if ((Math.abs(edge - y) < SIZES.resizeZone) && canSizeRow(index)) {
                             window.document.body.style.cursor = 'row-resize';
                             return;
                         }

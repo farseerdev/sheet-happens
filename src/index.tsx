@@ -74,14 +74,19 @@ export type SheetProps = {
     columnHeaderStyle?: RowOrColumnProperty<Style>;
     cellStyle?: CellProperty<Style>;
     readOnly?: CellProperty<boolean>;
+    canSizeColumn?: RowOrColumnProperty<boolean>;
+    canSizeRow?: RowOrColumnProperty<boolean>;
+    canOrderColumn?: RowOrColumnProperty<boolean>;
+    canOrderRow?: RowOrColumnProperty<boolean>;
     sourceData?: CellProperty<string | number | null>;
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
+    secondarySelections?: Selection[];
+
     cacheLayout?: boolean,
     dontCommitEditOnSelectionChange?: boolean;
-    secondarySelections?: Selection[];
 
     inputComponent?: (
         x: number,
@@ -133,6 +138,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const columnHeaderStyle = useMemo(() => createRowOrColumnProp(props.columnHeaderStyle, {}), [
         props.columnHeaderStyle,
     ]);
+
+    const canSizeColumn = useMemo(() => createRowOrColumnProp(props.canSizeColumn, true), [props.canSizeColumn]);
+    const canSizeRow = useMemo(() => createRowOrColumnProp(props.canSizeRow, true), [props.canSizeRow]);
+    const canOrderColumn = useMemo(() => createRowOrColumnProp(props.canOrderColumn, true), [props.canOrderColumn]);
+    const canOrderRow = useMemo(() => createRowOrColumnProp(props.canOrderRow, true), [props.canOrderRow]);
 
     const cellReadOnly = useMemo(() => createCellProp(props.readOnly, false), [props.readOnly]);
 
@@ -265,6 +275,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editMode,
         editData,
         sourceData,
+        canSizeColumn,
+        canSizeRow,
+        canOrderColumn,
+        canOrderRow,
         cellLayout,
         visibleCells,
         sheetStyle,
