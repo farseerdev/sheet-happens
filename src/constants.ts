@@ -16,7 +16,7 @@ export const MAX_XY: XY = [ MAX_SEARCHABLE_INDEX, MAX_SEARCHABLE_INDEX ];
 
 export const COLORS = {
     selectionBorder: '#1a66ff',
-    selectionBackground: '#e9f0fd',
+    selectionBackground: '#e8f0ff',
 
     gridLine: '#0000001f',
 
@@ -24,9 +24,10 @@ export const COLORS = {
     dropTarget: '#1a66ff',
     knobAreaBorder: '#707070',
 
-    headerBackground: '#f8f9fa',
+    headerBackground: '#f6f9fc',
     headerText: '#666666',
-    headerActive: '#e8eaed',
+    headerActive: '#e8f0ff',
+    headerActiveText: '#1a66ff',
 
     headerSelected: '#1a66ff',
     headerSelectedText: '#ffffff',
@@ -45,7 +46,7 @@ export const SIZES = {
 
 export const DEFAULT_CELL_STYLE: Required<Style> = {
     textAlign: 'left',
-    fontSize: 13,
+    fontSize: 12,
     marginRight: 5,
     marginLeft: 5,
     color: '#000',
@@ -57,7 +58,7 @@ export const DEFAULT_CELL_STYLE: Required<Style> = {
 
 export const DEFAULT_COLUMN_HEADER_STYLE: Required<Style> = {
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 12,
     marginRight: 5,
     marginLeft: 5,
     color: '#000',
@@ -65,6 +66,10 @@ export const DEFAULT_COLUMN_HEADER_STYLE: Required<Style> = {
     weight: '',
     fillColor: '',
     backgroundColor: '',
+};
+
+export const HEADER_ACTIVE_STYLE = {
+    color: COLORS.headerActiveText,
 };
 
 export const HEADER_SELECTED_STYLE = {
