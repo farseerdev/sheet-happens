@@ -50,7 +50,7 @@ const App = () => {
                     <h3>Basic spreadsheet</h3>
                     <p>
                         It has all the features you'd expect from the spreadsheet: keyboard navigation, copy cells by
-                        dragging the small square, copy/paste from and to Excel and Google Sheets, resize columns and
+                        dragging the small square, copy/paste from and to Excel and Google Sheets, resize and reorder columns and
                         rows.
                     </p>
                 </div>
@@ -199,7 +199,7 @@ const App = () => {
                     <br />
                     <p>
                         You can also use <Emphased text="cellWidth" /> and <Emphased text="cellHeight" /> props to
-                        customize cell size. If you send single value {`cellWidth={200}`}, it will be applayed to all
+                        customize cell size. If you send single value {`cellWidth={200}`}, it will be applied to all
                         cells. If you send array of values {`cellWidth={[200, 80, 80]}`}, they will be applied in
                         respect to the index number.
                     </p>
@@ -222,7 +222,7 @@ const App = () => {
                     {/* onSelectionChanged */}
                     <h3>Selection</h3>
                     <p>
-                        You can send function to <Emphased text="onSelectionChanged" /> prop. It will be called on
+                        You can send a function to the <Emphased text="onSelectionChanged" /> prop. It will be called on
                         selection change with x1, y1, x2 and y2 arguments.
                     </p>
                 </div>
@@ -261,7 +261,7 @@ const App = () => {
                     {/* inputComponent */}
                     <h3>Custom input</h3>
                     <p>
-                        By default edit mode turns cell into text edit component. But you can send your custom input
+                        By default edit mode turns the cell into a text edit component. But you can send your custom input
                         component via <Emphased text="inputComponent" /> props. It will be called with{' '}
                         <Emphased text="x" />, <Emphased text="y" />, <Emphased text="inputProps" /> and{' '}
                         <Emphased text="commitEditingCell" /> arguments.
