@@ -1,6 +1,6 @@
 import { CellLayout, CellPropertyFunction, Change, Clickable, Rectangle, SheetMouseEvent, SheetStyle, VisibleLayout, XY } from './types';
 import { MouseEvent, PointerEvent, RefObject, useCallback, useMemo, useRef, useState } from 'react';
-import { normalizeSelection, isColumnSelection, isRowSelection, isCellSelection, isMaybeRowSelection, isPointInsideSelection, addXY, maxXY } from './coordinate';
+import { normalizeSelection, isColumnSelection, isRowSelection, isCellSelection, isMaybeRowSelection, isPointInsideSelection, addXY, subXY, maxXY } from './coordinate';
 import { ONE_ONE, ORIGIN, SIZES } from './constants';
 import { findApproxMaxEditDataIndex } from './props';
 import { isInRange } from './util';
@@ -61,13 +61,13 @@ export const useMouse = (
     const knobPosition = useMemo((): XY | null => {
         const [, [maxX, maxY]] = normalizeSelection(selection);
         if (isRowSelection(selection)) {
-            return addXY(cellToPixel([0, maxY], [0, 1]), [SIZES.knobArea * 0.5, 0]);
+            return subXY(addXY(cellToPixel([0, maxY], [0, 1]), [SIZES.knobArea * 0.5, 0]), ONE_ONE);
         }
         if (isColumnSelection(selection)) {
-            return addXY(cellToPixel([maxX, 0], [1, 0]), [0, SIZES.knobArea * 0.5]);
+            return subXY(addXY(cellToPixel([maxX, 0], [1, 0]), [0, SIZES.knobArea * 0.5]), ONE_ONE);
         }
         if (isCellSelection(selection)) {
-            return cellToPixel([maxX, maxY], ONE_ONE);
+            return subXY(cellToPixel([maxX, maxY], ONE_ONE), ONE_ONE);
         }
         return null;
     }, [selection, cellToPixel, version]);

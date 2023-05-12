@@ -2,7 +2,7 @@ import { CellLayout, CellPropertyFunction, RowOrColumnPropertyFunction, Internal
 import { applyAlignment, resolveCellStyle } from './style';
 import { normalizeSelection, isEmptySelection, isRowSelection, isColumnSelection } from './coordinate';
 import { isInRange, isInRangeLeft, isInRangeRight, isInRangeCenter } from './util';
-import { COLORS, SIZES, DEFAULT_CELL_STYLE, DEFAULT_COLUMN_HEADER_STYLE, HEADER_SELECTED_STYLE, NO_STYLE, ONE_ONE } from './constants';
+import { COLORS, SIZES, DEFAULT_CELL_STYLE, DEFAULT_COLUMN_HEADER_STYLE, HEADER_SELECTED_STYLE, HEADER_ACTIVE_STYLE, NO_STYLE, ONE_ONE } from './constants';
 
 export const renderSheet = (
     context: CanvasRenderingContext2D,
@@ -163,8 +163,9 @@ export const renderSheet = (
 
             // Row selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
-            const style = (rowSelectionActive && !columnSelectionActive) && isInRange(row, minY, maxY)
-                ?  HEADER_SELECTED_STYLE : NO_STYLE;
+            const isActive = isInRange(row, minY, maxY);
+            const isSelected = (rowSelectionActive && !columnSelectionActive) && isActive;
+            const style = isSelected ? HEADER_SELECTED_STYLE : isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
 
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
@@ -192,10 +193,13 @@ export const renderSheet = (
 
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
-            const selectedStyle = (columnSelectionActive && !rowSelectionActive) && isInRange(column, minX, maxX)
+            const isActive = isInRange(column, minX, maxX);
+            const selectedStyle = (columnSelectionActive && !rowSelectionActive) && isActive
                 ? HEADER_SELECTED_STYLE : NO_STYLE;
+            const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const style = {
                 ...columnHeaderStyle(column),
+                ...activeStyle,
                 ...selectedStyle,
             };
 
@@ -218,10 +222,15 @@ export const renderSheet = (
     // Selection outline
     if (selectionActive) {
         context.strokeStyle = COLORS.selectionBorder;
-        context.lineWidth = (rowSelectionActive || columnSelectionActive) ? 2 : 1;
+        context.lineWidth = 2;
 
         const [[left, top], [right, bottom]] = selected;
-        context.strokeRect(left - 1, top - 1, right - left + 1, bottom - top + 1);
+        context.strokeRect(
+            left,
+            top,
+            right - left - 1,
+            bottom - top - 1,
+        );
     }
 
     for (const secondarySelection of secondarySelections) {
@@ -288,7 +297,7 @@ export const renderSheet = (
         if (isRowSelection(dropTarget)) {
             bottom = top;
         }
-        context.strokeRect(left - 1, top - 1, right - left + 1, bottom - top + 1);
+        context.strokeRect(left - 1, top - 1, right - left, bottom - top);
     }
 
     // Cell contents
