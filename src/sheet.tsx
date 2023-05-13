@@ -256,6 +256,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setEditCell(editCell);
         setEditValue(val);
         setArrowKeyCommitMode(arrowKeyCommitMode);
+        setLastEditKey(editKeys(...editCell));
     };
 
     // Output from rendered layout is used to drive events on user content
@@ -465,12 +466,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         e.preventDefault();
     };
 
-    const editKey = editKeys ? editKeys(...editCell) : '';
-    const [lastEditKey, setLastEditKey] = useState(editKey);
-    if (editMode && lastEditKey !== editKey) {
-        setLastEditKey(editKey);
-        setEditCell(NO_CELL);
-    }
+    const [lastEditKey, setLastEditKey] = useState('');
 
     let editTextPosition = ORIGIN;
     let editTextWidth = 0;
@@ -483,6 +479,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editTextWidth = cellWidth(editCellX) - 3;
         editTextHeight = cellHeight(editCellY) - 3;
         editTextTextAlign = style.textAlign || DEFAULT_CELL_STYLE.textAlign || 'left';
+        const editKey = editKeys(...editCell);
+        if (editKey !== lastEditKey) {
+            setLastEditKey('');
+            setEditCell(NO_CELL);
+        }
     }
 
     const [textX, textY] = editTextPosition;
