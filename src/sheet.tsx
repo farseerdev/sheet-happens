@@ -358,17 +358,16 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     ]);
 
     const onKeyDown = (e: KeyboardEvent) => {
-        console.log('onKeyDown', e.key, e)
         if (e.key === 'Escape') {
             setEditCell(NO_CELL);
             return;
         }
 
-        const direction = (e.key === 'Enter' || e.key === 'TAB')
-            ? 'right'
-            : arrowKeyCommitMode
-                ? ARROW_KEYS[e.key]
-                : null;
+        const direction = 
+            e.key === 'Enter' ? 'down' : 
+            e.key === 'Tab' ? 'right' : 
+            arrowKeyCommitMode ? ARROW_KEYS[e.key] : 
+            null;
 
         if (direction) {
             e.preventDefault();
@@ -380,7 +379,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     };
 
     const onGridKeyDown = (e: KeyboardEvent) => {
-        console.log('onGridKeydown', e.key, e)
         if (editMode && arrowKeyCommitMode && (e.key in ARROW_KEYS)) {
             commitEditingCell();
             return;
@@ -469,7 +467,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const editKey = editKeys ? editKeys(...editCell) : '';
     const [lastEditKey, setLastEditKey] = useState(editKey);
-    if (lastEditKey !== editKey) {
+    if (lastEditKey !== NO_CELL.join(',') && lastEditKey !== editKey) {
         setLastEditKey(editKey);
         setEditCell(NO_CELL);
     }
@@ -539,7 +537,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }
 
     return (
-        <div style={{ position: 'relative', height: '100%' }}>
+        <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
             <canvas style={canvasStyles} ref={canvasRef} />
             <div
                 ref={overlayRef}

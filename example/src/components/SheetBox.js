@@ -140,6 +140,9 @@ export function SheetBoxHeader() {
     const sourceData = (x, y) => {
         return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
     };
+    const editKeys = (x, y) => {
+        return `${x},${y}`;
+    };
 
     const onChange = (changes) => {
         const newData = [...data];
@@ -176,6 +179,7 @@ export function SheetBoxHeader() {
                 onCellHeightChange={onCellHeightChange}
                 onColumnOrderChange={onColumnOrderChange}
                 onRowOrderChange={onRowOrderChange}
+                editKeys={editKeys}
                 cacheLayout
             />
         </div>
