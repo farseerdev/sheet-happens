@@ -467,7 +467,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const editKey = editKeys ? editKeys(...editCell) : '';
     const [lastEditKey, setLastEditKey] = useState(editKey);
-    if (lastEditKey !== NO_CELL.join(',') && lastEditKey !== editKey) {
+    if (editMode && lastEditKey !== editKey) {
         setLastEditKey(editKey);
         setEditCell(NO_CELL);
     }
