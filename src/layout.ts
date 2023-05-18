@@ -29,25 +29,27 @@ export const makeCellLayout = (
 
     // Origin for cell, frozen or relative
     const getBaseOriginFor = (index: number, freeze: number, offset: number) => {
-        return index < freeze ? 0 : offset;
+        return index < freeze ? 0 : offset + freeze;
     };
     
     // Get visible pixel x of cell
     const columnToPixel = (column: number, anchor: number = 0): number => {
         const base = getBaseOriginFor(column, freezeX, offsetX);
         const relative = columns.getStart(column) - columns.getStart(base);
+        const adjust = column < freezeX ? 0 : columns.getStart(freezeX) - columns.getStart(0);
         const size = column < 0 ? indentX : columns.getSize(column);
 
-        return column < 0 ? 0 : indentX + relative + anchor * size;
+        return column < 0 ? 0 : indentX + relative + adjust + anchor * size;
     };
 
     // Get visible pixel y of cell
     const rowToPixel = (row: number, anchor: number = 0): number => {
         const base = getBaseOriginFor(row, freezeY, offsetY);
         const relative = rows.getStart(row) - rows.getStart(base);
+        const adjust = row < freezeY ? 0 : rows.getStart(freezeY) - rows.getStart(0);
         const size = row < 0 ? indentY : rows.getSize(row);
 
-        return row < 0 ? 0 : indentY + relative + anchor * size;
+        return row < 0 ? 0 : indentY + relative + adjust + anchor * size;
     };
 
     // Get visible pixel position of cell, offset with anchor [0..1, 0..1]
