@@ -437,6 +437,122 @@ export function SheetBoxFormatting() {
     );
 }
 
+
+export function SheetBoxRender() {
+    const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
+
+    const onSelectionChanged = (x1, y1, x2, y2) => {};
+    const onRightClick = () => {};
+    const columnHeaders = ['A', 'B', 'C'];
+    const cellStyle = (x, y) => {
+        return {};
+    };
+
+    const editData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+    const displayData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+    const sourceData = (x, y) => {
+        return data?.[y]?.[x];
+    };
+
+    const onChange = (changes) => {
+        const newData = [...data];
+        for (const {x, y, value} of changes) {
+            if (!newData[y]) {
+                newData[y] = [];
+            }
+            newData[y][x] = value;
+        }
+        setData(newData);
+    };
+
+    const isReadOnly = (x, y) => {
+        return false;
+    };
+
+    const render = ({
+        visibleCells,
+        cellLayout,
+        selection,
+        editMode,
+    }) => {
+        if (editMode) return;
+        
+        const cell = [1, 2];
+        const [anchor] = selection;
+        const noteOpen = (anchor[0] === cell[0] && anchor[1] === cell[1]);
+
+        const isCellVisible = (
+            visibleCells.columns.includes(cell[0]) &&
+            visibleCells.rows.includes(cell[1])
+        );
+        if (!isCellVisible) return null;
+
+        const [, top] = cellLayout.cellToPixel(cell, [0, 0]);
+        const [right, ] = cellLayout.cellToPixel(cell, [1, 1]);
+
+        const marker = <div
+            style={{
+                position: 'absolute',
+                left: right,
+                top: top,
+                marginLeft: '-12px',
+                borderTop: '12px solid blue',
+                borderLeft: '12px solid transparent',
+                pointerEvents: 'none',
+            }} />
+
+        const note = noteOpen ? (
+            <div
+                style={{
+                    position: 'absolute',
+                    left: right,
+                    top,
+                    padding: 10,
+                    background: '#fff',
+                    border: '1px solid #ccc',
+                }}
+            >
+                Hello world
+            </div>
+        ) : null;
+        
+        return (
+            <div onPointerDown={(e: any) => e.stopPropagation()}>
+                {note}
+                {marker}
+            </div>
+        );
+    };
+
+    return (
+        <div className="sheet-box">
+            <Sheet
+                selection={[[1, 2], [1, 2]]}
+                onSelectionChanged={onSelectionChanged}
+                onRightClick={onRightClick}
+                columnHeaders={columnHeaders}
+                cellStyle={cellStyle}
+                editData={editData}
+                displayData={displayData}
+                sourceData={sourceData}
+                cellWidth={cellWidth}
+                cellHeight={cellHeight}
+                onChange={onChange}
+                readOnly={isReadOnly}
+                onCellWidthChange={onCellWidthChange}
+                onCellHeightChange={onCellHeightChange}
+                render={render}
+                cacheLayout
+            />
+        </div>
+    );
+}
+
 export function SheetBoxVeryBigData() {
     const [loadingStatus, setLoadingStatus] = useState('initial');
     const [data, setData] = useState([]);

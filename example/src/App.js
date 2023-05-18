@@ -15,6 +15,7 @@ import {
 import {
     SheetBoxStyle,
     SheetBoxBasic,
+    SheetBoxRender,
     SheetBoxFormatting,
     SheetBoxVeryBigData,
     SheetBoxCustomInput,
@@ -76,6 +77,17 @@ const App = () => {
                     <p>
                         Sheet Happens uses different datasets for display and edit so you can apply different formatting
                         when displaying the cell and editing the cell.
+                    </p>
+                </div>
+            </Wrap>
+            <Wrap>
+                <div className="box">
+                    <SheetBoxRender />
+                </div>
+                <div className="box">
+                    <h3>Overlays</h3>
+                    <p>
+                        You can attach HTML overlays to the sheet, for additional controls, notes, etc.
                     </p>
                 </div>
             </Wrap>
