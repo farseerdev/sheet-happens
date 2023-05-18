@@ -27,6 +27,7 @@ import {
     InputStyle,
     SheetStyle,
     Style,
+    VisibleLayout,
 } from './types';
 
 import {
@@ -67,6 +68,13 @@ export type SheetInputProps = {
     style: InputStyle,
 };
 
+export type SheetRenderProps = {
+    visibleCells: VisibleLayout,
+    cellLayout: CellLayout,
+    selection: Rectangle,
+    editMode: boolean,
+};
+
 export type SheetProps = {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
@@ -83,6 +91,7 @@ export type SheetProps = {
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
+    selection?: Rectangle,
     secondarySelections?: Selection[];
 
     cacheLayout?: boolean,
@@ -94,6 +103,8 @@ export type SheetProps = {
         props: SheetInputProps,
         commitEditingCell?: () => void
     ) => ReactElement | undefined;
+
+    render?: (props: SheetRenderProps) => React.ReactNode,
 
     onSelectionChanged?: (minX: number, minY: number, maxX: number, maxY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
@@ -116,11 +127,18 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // TODO: smooth scrolling
     // const [pixelOffset, setPixelOffset] = useState<XY>(ORIGIN);
 
-    const [selection, setSelection] = useState<Rectangle>(NO_SELECTION);
+    const selectionProp = props.selection ?? NO_SELECTION;
+    const [selection, setSelection] = useState<Rectangle>(selectionProp);
     const [knobArea, setKnobArea] = useState<Rectangle | null>(null);
     const [dragOffset, setDragOffset] = useState<XY | null>(null);
     const [dropTarget, setDropTarget] = useState<Rectangle | null>(null);
     const [editCell, setEditCell] = useState<XY>(NO_CELL);
+
+    const [lastSelectionProp, setLastSelectionProp] = useState<Rectangle>(selectionProp);
+    if (lastSelectionProp !== selectionProp) {
+        setLastSelectionProp(selectionProp);
+        setSelection(selectionProp);
+    }
 
     const [editValue, setEditValue] = useState<string | number>('');
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
@@ -537,6 +555,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         canvasStyles.width = 'calc(100%)';
     }
 
+    const userRendered = useMemo(
+        () => props.render?.({visibleCells, cellLayout, selection, editMode}),
+        [props.render, visibleCells, cellLayout, selection, editMode]
+    );
+
     return (
         <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
             <canvas style={canvasStyles} ref={canvasRef} />
@@ -567,6 +590,17 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                         backgroundColor: 'rgba(0,0,0,0.0)',
                     }}
                 ></div>
+                {userRendered ? (
+                    <div
+                        style={{
+                            position: 'sticky',
+                            left: 0,
+                            top: 0,
+                        }}
+                    >
+                        {userRendered}
+                    </div>
+                ) : null}
             </div>
             <textarea
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
