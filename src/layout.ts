@@ -99,8 +99,9 @@ export const makeCellLayout = (
             return lookupIndex(relative, anchor);
         }
         else {
-            const base = getStart(offset);
-            return lookupIndex(base + relative, anchor);
+            const base = getStart(offset + freeze);
+            const adjust = getStart(freeze) - getStart(0);
+            return lookupIndex(base + relative - adjust, anchor);
         }
     };
 
