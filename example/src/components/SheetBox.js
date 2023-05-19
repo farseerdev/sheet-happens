@@ -546,7 +546,7 @@ export function SheetBoxRender() {
                 readOnly={isReadOnly}
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
-                render={render}
+                renderInside={render}
                 cacheLayout
             />
         </div>
