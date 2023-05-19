@@ -179,11 +179,11 @@ const parsePastedHtml = (selection: Rectangle, html: string): ParsedChange | nul
                     }
                     y++;
                 }
-                right = Math.max(right, x);
+                right = Math.max(right, x - 1);
             }
         }
     }
-    bottom = y;
+    bottom = Math.max(top, y - 1);
 
     return {
         selection: [[left, top], [right, bottom]],
