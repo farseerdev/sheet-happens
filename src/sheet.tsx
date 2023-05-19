@@ -104,7 +104,8 @@ export type SheetProps = {
         commitEditingCell?: () => void
     ) => ReactElement | undefined;
 
-    render?: (props: SheetRenderProps) => React.ReactNode,
+    renderInside?: (props: SheetRenderProps) => React.ReactNode,
+    renderOutside?: (props: SheetRenderProps) => React.ReactNode,
 
     onSelectionChanged?: (minX: number, minY: number, maxX: number, maxY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
@@ -555,9 +556,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         canvasStyles.width = 'calc(100%)';
     }
 
-    const userRendered = useMemo(
-        () => props.render?.({visibleCells, cellLayout, selection, editMode}),
-        [props.render, visibleCells, cellLayout, selection, editMode]
+    const renderedInside = useMemo(
+        () => props.renderInside?.({visibleCells, cellLayout, selection, editMode}),
+        [props.renderInside, visibleCells, cellLayout, selection, editMode]
+    );
+
+    const renderedOutside = useMemo(
+        () => props.renderOutside?.({visibleCells, cellLayout, selection, editMode}),
+        [props.renderOutside, visibleCells, cellLayout, selection, editMode]
     );
 
     return (
@@ -590,7 +596,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                         backgroundColor: 'rgba(0,0,0,0.0)',
                     }}
                 ></div>
-                {userRendered ? (
+                {renderedInside ? (
                     <div
                         style={{
                             position: 'sticky',
@@ -598,10 +604,21 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                             top: 0,
                         }}
                     >
-                        {userRendered}
+                        {renderedInside}
                     </div>
                 ) : null}
             </div>
+            {renderedOutside ? (
+                <div
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                    }}
+                >
+                    {renderedOutside}
+                </div>
+            ) : null}
             <textarea
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
                 ref={textAreaRef}
