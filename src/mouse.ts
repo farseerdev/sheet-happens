@@ -34,7 +34,7 @@ export const useMouse = (
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
     onDragOffsetChange?: (dragOffset: XY | null) => void,
     onDropTargetChange?: (selection: Rectangle | null) => void,
-    onSelectionChange?: (selection: Rectangle, scrollToHead?: boolean) => void,
+    onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
 
     onInvalidateColumn?: (column: number) => void,
     onInvalidateRow?: (row: number) => void,
@@ -331,24 +331,24 @@ export const useMouse = (
             }
         }
 
-        let scrollToHead = !e.shiftKey;
+        let scrollTo = true;
 
         if (!hideRowHeaders && x < getIndentX()) {
-            scrollToHead = false;
+            scrollTo = false;
             setDraggingRowSelection(true);
             anchor[0] = -1;
             head[0] = -1;
         }
 
         if (!hideColumnHeaders && y < getIndentY()) {
-            scrollToHead = false;
+            scrollTo = false;
             setDraggingColumnSelection(true);
             anchor[1] = -1;
             head[1] = -1;
         }
 
         setDraggingSelection(true);
-        onSelectionChange?.([anchor, head], scrollToHead);
+        onSelectionChange?.([anchor, head], scrollTo, true);
     }, [
         getMousePosition,
         getScrollPosition,
