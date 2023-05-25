@@ -65,13 +65,13 @@ export const scrollToCell = (
     const [right, bottom] = cellToPixel(cell, ONE_ONE);
 
     let [newX, newY] = offset;
-
+    
     // If moving left/up, scroll to head
     if (left <= frozenX) {
-        newX = x;
+        newX = x - freeze[0];
     }
     if (top <= frozenY) {
-        newY = y;
+        newY = y - freeze[1];
     }
 
     // If moving right/down, scroll cell by cell until right/bottom of cell is visible
