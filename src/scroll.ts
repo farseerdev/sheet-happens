@@ -14,13 +14,16 @@ export const useScroll = (
         if (!e.target || !(e.target instanceof Element)) {
             return;
         }
+        const {absoluteToCell, cellToAbsolute} = cellLayout;
+
+        // Zero scroll position is considered in the center of the top/left cell
+        const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
 
         const xy: XY = [
-            e.target.scrollLeft,
-            e.target.scrollTop,
+            e.target.scrollLeft + nudgeX,
+            e.target.scrollTop + nudgeY,
         ];
 
-        const {absoluteToCell} = cellLayout;
         const cell = absoluteToCell(xy);
         if (!isSameXY(cell, offset)) {
             onOffsetChange?.(cell);
@@ -89,12 +92,13 @@ export const scrollToCell = (
 
     if (!isSameXY(newOffset, offset)) {
         const scroll = cellToAbsolute(newOffset);
+        const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
 
         callback(newOffset, maxXY(maxScroll, scroll));
         setTimeout(() => {
             const [scrollX, scrollY] = scroll;
-            element.scrollLeft = scrollX;
-            element.scrollTop = scrollY;
+            element.scrollLeft = scrollX - nudgeX;
+            element.scrollTop = scrollY - nudgeY;
         });
     }
 };
