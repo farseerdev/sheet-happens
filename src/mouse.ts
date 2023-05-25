@@ -331,7 +331,7 @@ export const useMouse = (
             }
         }
 
-        let scrollToHead = true;
+        let scrollToHead = !e.shiftKey;
 
         if (!hideRowHeaders && x < getIndentX()) {
             scrollToHead = false;

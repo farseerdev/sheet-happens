@@ -1,7 +1,7 @@
 import { CellLayout, CellPropertyFunction, RowOrColumnPropertyFunction, InternalSheetStyle, Rectangle, Selection, Clickable, Style, CellContentType, VisibleLayout, XY } from './types';
 import { applyAlignment, resolveCellStyle } from './style';
 import { normalizeSelection, isEmptySelection, isRowSelection, isColumnSelection } from './coordinate';
-import { isInRange, isInRangeLeft, isInRangeRight, isInRangeCenter } from './util';
+import { isInRange, isInRangeLeft, isInRangeCenter } from './util';
 import { COLORS, SIZES, DEFAULT_CELL_STYLE, DEFAULT_COLUMN_HEADER_STYLE, HEADER_SELECTED_STYLE, HEADER_ACTIVE_STYLE, NO_STYLE, ONE_ONE } from './constants';
 
 export const renderSheet = (
@@ -485,15 +485,21 @@ const resolveFrozenSelection = (
     // If the selection starts/ends under the frozen area, treat as off-screen
     if (isInRangeLeft(minX, freezeX, offsetX + freezeX)) {
         left = -1e5;
-        if (isInRangeRight(maxX + 1, freezeX, offsetX + freezeX)) {
-            right = indentX;
+
+        const lastInvisibleX = offsetX + freezeX - 1;
+        if (maxX <= lastInvisibleX) {
+            if (maxX === lastInvisibleX) right = indentX;
+            else right = -1e5;
             hideKnob = true;
         }
     }
     if (isInRangeLeft(minY, freezeY, offsetY + freezeY)) {
         top = -1e5;
-        if (isInRangeRight(maxY + 1, freezeY, offsetY + freezeY)) {
-            bottom = indentY;
+
+        const lastInvisibleY = offsetY + freezeY - 1;
+        if (maxY <= lastInvisibleY) {
+            if (maxY === lastInvisibleY) bottom = indentY;
+            else bottom = -1e5;
             hideKnob = true;
         }
     }
