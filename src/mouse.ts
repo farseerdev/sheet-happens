@@ -387,7 +387,7 @@ export const useMouse = (
             const changes = parseKnobOperation(knobArea, selection, sourceData, editData);
 
             onChange?.(changes);
-            onSelectionChange?.(knobArea);
+            onSelectionChange?.(knobArea, true, true);
             onKnobAreaChange?.(null);
         }
 

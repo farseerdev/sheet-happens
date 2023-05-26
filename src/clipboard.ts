@@ -16,7 +16,13 @@ export const useClipboardCopy = (
         if (editMode) return;
         if (isEmptySelection(selection)) return;
 
-        textArea.value = formatSelectionAsTSV(selection, editData);
+        let v = formatSelectionAsTSV(selection, editData);
+
+        // Bizarre: having only TAB/RETURN characters inside the textarea
+        // prevents native auto-scroll. Also bizarre: auto-scroll doesn't work
+        // if we don't focus the textarea at all.
+        if (v.match(/^[\t\n]*$/)) { v = ' ' + v; }
+        textArea.value = v;
     }, [selection, editMode, editData, textAreaRef]);
 
     useLayoutEffect(() => {
