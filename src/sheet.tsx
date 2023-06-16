@@ -101,7 +101,7 @@ export type SheetProps = {
         x: number,
         y: number,
         props: SheetInputProps,
-        commitEditingCell?: () => void
+        commitEditingCell?: (value?: string | number | null) => void
     ) => ReactElement | undefined;
 
     renderInside?: (props: SheetRenderProps) => React.ReactNode,
@@ -117,7 +117,9 @@ export type SheetProps = {
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
 };
 
-export type SheetRef = CellLayout;
+export type SheetRef = CellLayout & {
+    startEditingCell: (editCell: XY, arrowKeyCommitMode?: boolean) => void,
+};
 
 const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -129,6 +131,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // const [pixelOffset, setPixelOffset] = useState<XY>(ORIGIN);
 
     const selectionProp = props.selection ?? NO_SELECTION;
+
     const [selection, setSelection] = useState<Rectangle>(selectionProp);
     const [knobArea, setKnobArea] = useState<Rectangle | null>(null);
     const [dragOffset, setDragOffset] = useState<XY | null>(null);
@@ -145,9 +148,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
 
     const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: canvasRef });
-
-    //    const freezeColumns = props.freezeColumns || 0;
-    //    const freezeRows = props.freezeRows || 0;
 
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
@@ -201,9 +201,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         ),
         [freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight, dataOffset, columnLayout, rowLayout]
     );
-
-    // External component API
-    useImperativeHandle(ref, () => cellLayout, [cellLayout]);
 
     // Build range of visible cells
     const {getVisibleCells, cellToPixel, getVersion} = cellLayout;
@@ -565,6 +562,12 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         () => props.renderOutside?.({visibleCells, cellLayout, selection, editMode}),
         [props.renderOutside, visibleCells, cellLayout, selection, editMode]
     );
+
+    // External component API
+    useImperativeHandle(ref, () => ({
+        ...cellLayout,
+        startEditingCell,
+    }), [cellLayout, startEditingCell]);
 
     return (
         <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
