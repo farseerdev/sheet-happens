@@ -78,7 +78,7 @@ export const useMouse = (
         return null;
     }, [selection, cellToPixel, version]);
 
-    // Pass dragging state into handlers via ref so they don't need to rebind during resizes/drags
+    // Pass pointer/dragging state into handlers via ref so they don't need to rebind during resizes/drags
     const refState = {
         selection,
         knobArea,
@@ -87,6 +87,7 @@ export const useMouse = (
         sourceData,
         cellLayout,
         visibleCells,
+        hitTarget,
 
         knobPosition,
         columnResize,
@@ -166,6 +167,8 @@ export const useMouse = (
         const hitTarget = getMouseHit(xy);
         if (hitTarget) {
             setHitTarget(hitTarget);
+            // Update hitTarget in ref in case there is no re-render between pointerDown and pointerUp
+            ref.current.hitTarget = hitTarget;
             return;
         }
 
@@ -378,6 +381,7 @@ export const useMouse = (
                 rowDrag,
 
                 draggingKnob,
+                hitTarget,
 
                 cellLayout: {pixelToColumn, pixelToRow, getIndentX, getIndentY},
             },
@@ -439,7 +443,11 @@ export const useMouse = (
         if (!xy || !hitTarget) return;
         setHitTarget(null);
 
-        if (hitTarget === getMouseHit(xy)) {
+        // Check hit target rect to see if it is the same as pointerDown
+        // (object identity might have changed due to react re-render)
+        const previousRect = JSON.stringify(hitTarget.rect);
+        const currentRect = JSON.stringify(getMouseHit(xy)?.rect);
+        if (previousRect === currentRect) {
             const {obj} = hitTarget;
             obj.onClick?.(e);
         }
