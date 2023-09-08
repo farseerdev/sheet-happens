@@ -427,7 +427,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             const changes: Change[] = [];
             for (let y = y1; y <= y2; y++) {
                 for (let x = x1; x <= x2; x++) {
-                    changes.push({ x: x, y: y, value: null });
+                    if (!cellReadOnly(x, y)) {
+                        changes.push({ x: x, y: y, value: null });
+                    }
                 }
             }
             if (props.onChange) {
