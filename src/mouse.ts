@@ -19,6 +19,7 @@ export const useMouse = (
     editMode: boolean,
     editData: CellPropertyFunction<string>,
     sourceData: CellPropertyFunction<string | number | null>,
+    cellReadOnly: CellPropertyFunction<boolean | null>,
 
     canSizeColumn: RowOrColumnPropertyFunction<boolean | null>,
     canSizeRow: RowOrColumnPropertyFunction<boolean | null>,
@@ -388,7 +389,7 @@ export const useMouse = (
         } = ref;
 
         if (knobArea && draggingKnob) {
-            const changes = parseKnobOperation(knobArea, selection, sourceData, editData);
+            const changes = parseKnobOperation(knobArea, selection, sourceData, editData, cellReadOnly);
 
             onChange?.(changes);
             onSelectionChange?.(knobArea, true, true);
@@ -768,6 +769,7 @@ const parseKnobOperation = (
     selection: Rectangle,
     sourceData: CellPropertyFunction<string | number | null>,
     editData: CellPropertyFunction<string>,
+    cellReadOnly: CellPropertyFunction<boolean | null>,
 ): Change[] => {
     const [[kx1, ky1], [kx2, ky2]] = normalizeSelection(knobArea);
     const [[sx1, sy1], [sx2, sy2]] = normalizeSelection(selection);
@@ -797,7 +799,9 @@ const parseKnobOperation = (
         for (let y = fy1; y <= fy2; y++) {
             for (let x = fx1; x <= fx2; x++) {
                 const value = sourceData(x, srcY);
-                changes.push({ x: x, y: y, value: value, source: { x: x, y: srcY } });
+                if (!cellReadOnly(x, y)) {
+                    changes.push({ x: x, y: y, value: value, source: { x: x, y: srcY } });
+                }
             }
             srcY = srcY + 1;
             if (srcY > sy2) {
@@ -820,7 +824,9 @@ const parseKnobOperation = (
         for (let x = fx1; x <= fx2; x++) {
             for (let y = fy1; y <= fy2; y++) {
                 const value = sourceData(srcX, y);
-                changes.push({ x: x, y: y, value: value, source: { x: srcX, y: y } });
+                if (!cellReadOnly(x, y)) {
+                    changes.push({ x: x, y: y, value: value, source: { x: srcX, y: y } });
+                }
             }
             srcX = srcX + 1;
             if (srcX > sx2) {

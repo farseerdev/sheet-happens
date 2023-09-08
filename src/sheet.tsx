@@ -292,6 +292,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editMode,
         editData,
         sourceData,
+        cellReadOnly,
         canSizeColumn,
         canSizeRow,
         canOrderColumn,
