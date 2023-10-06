@@ -7,10 +7,10 @@ export const useClipboardCopy = (
     textAreaRef: RefObject<HTMLTextAreaElement>,
     selection: Rectangle,
     editMode: boolean,
-    editData: CellPropertyFunction<string>,
+    editData: CellPropertyFunction<string>
 ) => {
     useLayoutEffect(() => {
-        const {current: textArea} = textAreaRef;
+        const { current: textArea } = textAreaRef;
         if (!textArea) return;
 
         if (editMode) return;
@@ -21,12 +21,14 @@ export const useClipboardCopy = (
         // Bizarre: having only TAB/RETURN characters inside the textarea
         // prevents native auto-scroll. Also bizarre: auto-scroll doesn't work
         // if we don't focus the textarea at all.
-        if (v.match(/^[\t\n]*$/)) { v = ' ' + v; }
+        if (v.match(/^[\t\n]*$/)) {
+            v = ' ' + v;
+        }
         textArea.value = v;
     }, [selection, editMode, editData, textAreaRef]);
 
     useLayoutEffect(() => {
-        const {current: textArea} = textAreaRef;
+        const { current: textArea } = textAreaRef;
         if (!textArea) return;
 
         const focus = () => {
@@ -49,17 +51,18 @@ export const useClipboardCopy = (
             focus();
         }
     });
-}
+};
 
 export const useClipboardPaste = (
     textAreaRef: RefObject<HTMLTextAreaElement>,
     selection: Rectangle,
     onSelectionChange?: (selection: Rectangle) => void,
     onChange?: (changes: Array<Change>) => void,
+    isReadOnly?: CellPropertyFunction<boolean>
 ) => {
     useEffect(() => {
         const onPaste = (e: any) => {
-            const {current: textArea} = textAreaRef;
+            const { current: textArea } = textAreaRef;
             if (!textArea) return;
 
             if (e.target !== textArea) return;
@@ -71,14 +74,14 @@ export const useClipboardPaste = (
             let parsed;
             if (types.includes('text/html')) {
                 const pastedHtml = clipboardData.getData('text/html');
-                parsed = parsePastedHtml(selection, pastedHtml);
+                parsed = parsePastedHtml(selection, pastedHtml, isReadOnly);
             } else if (types.includes('text/plain')) {
                 const text = clipboardData.getData('text/plain');
-                parsed = parsePastedText(selection, text);
+                parsed = parsePastedText(selection, text, isReadOnly);
             }
             if (!parsed) return;
 
-            const {selection: s, changes} = parsed;
+            const { selection: s, changes } = parsed;
             onChange?.(changes);
             onSelectionChange?.(s);
         };
@@ -88,14 +91,11 @@ export const useClipboardPaste = (
             window.document.removeEventListener('paste', onPaste);
         };
     }, [textAreaRef, selection]);
-}
+};
 
-const formatTSV = (rows: string[][]) => rows.map(row => row.join('\t')).join('\n');
+const formatTSV = (rows: string[][]) => rows.map((row) => row.join('\t')).join('\n');
 
-const formatSelectionAsTSV = (
-    selection: Rectangle,
-    editData: CellPropertyFunction<string>,
-) => {
+const formatSelectionAsTSV = (selection: Rectangle, editData: CellPropertyFunction<string>) => {
     if (isEmptySelection(selection)) return '';
 
     let [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
@@ -126,7 +126,7 @@ const formatSelectionAsTSV = (
     }
 
     return formatTSV(rows);
-}
+};
 
 const findTable = (element: any): any => {
     for (const child of element.children) {
@@ -140,7 +140,11 @@ const findTable = (element: any): any => {
     }
 };
 
-const parsePastedHtml = (selection: Rectangle, html: string): ParsedChange | null => {
+const parsePastedHtml = (
+    selection: Rectangle,
+    html: string,
+    isReadOnly?: CellPropertyFunction<boolean>
+): ParsedChange | null => {
     const div = document.createElement('div');
     div.innerHTML = html.trim();
 
@@ -179,7 +183,8 @@ const parsePastedHtml = (selection: Rectangle, html: string): ParsedChange | nul
                             }
                             str = str.replaceAll('\n', '');
                             str = str.replaceAll(/\s\s+/g, ' ');
-                            changes.push({ x, y, value: str });
+
+                            if (!isReadOnly?.(x, y)) changes.push({ x, y, value: str });
                             x++;
                         }
                     }
@@ -192,12 +197,19 @@ const parsePastedHtml = (selection: Rectangle, html: string): ParsedChange | nul
     bottom = Math.max(top, y - 1);
 
     return {
-        selection: [[left, top], [right, bottom]],
+        selection: [
+            [left, top],
+            [right, bottom],
+        ],
         changes,
     };
 };
 
-const parsePastedText = (selection: Rectangle, text: string): ParsedChange => {
+const parsePastedText = (
+    selection: Rectangle,
+    text: string,
+    isReadOnly?: CellPropertyFunction<boolean>
+): ParsedChange => {
     const [[minX, minY]] = normalizeSelection(selection);
     let left = isMaybeRowSelection(selection) ? 0 : minX;
     let top = isMaybeColumnSelection(selection) ? 0 : minY;
@@ -212,12 +224,18 @@ const parsePastedText = (selection: Rectangle, text: string): ParsedChange => {
         right = Math.max(right, left + cols.length - 1);
 
         for (let x = 0; x < cols.length; x++) {
-            changes.push({ x: left + x, y: top + y, value: cols[x] });
+            const X = left + x;
+            const Y = top + y;
+
+            if (!isReadOnly?.(X, Y)) changes.push({ x: X, y: Y, value: cols[x] });
         }
     }
 
     return {
-        selection: [[left, top], [right, bottom]],
+        selection: [
+            [left, top],
+            [right, bottom],
+        ],
         changes,
     };
 };
