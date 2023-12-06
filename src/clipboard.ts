@@ -7,7 +7,8 @@ export const useClipboardCopy = (
     textAreaRef: RefObject<HTMLTextAreaElement>,
     selection: Rectangle,
     editMode: boolean,
-    editData: CellPropertyFunction<string>
+    editData: CellPropertyFunction<string>,
+    sourceData: CellPropertyFunction<string | number | null>
 ) => {
     useLayoutEffect(() => {
         const { current: textArea } = textAreaRef;
@@ -16,7 +17,7 @@ export const useClipboardCopy = (
         if (editMode) return;
         if (isEmptySelection(selection)) return;
 
-        let v = formatSelectionAsTSV(selection, editData);
+        let v = formatSelectionAsTSV(selection, editData, sourceData);
 
         // Bizarre: having only TAB/RETURN characters inside the textarea
         // prevents native auto-scroll. Also bizarre: auto-scroll doesn't work
@@ -95,7 +96,11 @@ export const useClipboardPaste = (
 
 const formatTSV = (rows: string[][]) => rows.map((row) => row.join('\t')).join('\n');
 
-const formatSelectionAsTSV = (selection: Rectangle, editData: CellPropertyFunction<string>) => {
+const formatSelectionAsTSV = (
+    selection: Rectangle,
+    editData: CellPropertyFunction<string>,
+    sourceData: CellPropertyFunction<string | number | null>
+) => {
     if (isEmptySelection(selection)) return '';
 
     let [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
@@ -116,9 +121,9 @@ const formatSelectionAsTSV = (selection: Rectangle, editData: CellPropertyFuncti
         const row: string[] = [];
 
         for (let x = minX; x <= maxX; x++) {
-            const value = editData(x, y);
+            const value = sourceData(x, y);
             if (value !== null && value !== undefined) {
-                row.push(value != null ? value : '');
+                row.push(typeof value === 'number' ? value.toString() : value);
             }
         }
 

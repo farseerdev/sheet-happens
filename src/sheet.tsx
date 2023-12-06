@@ -280,7 +280,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     // Textarea is used to hold text to copy, and receives pastes
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
-    useClipboardCopy(textAreaRef, selection, editMode, editData);
+    useClipboardCopy(textAreaRef, selection, editMode, editData, sourceData);
     useClipboardPaste(textAreaRef, selection, changeSelection, props.onChange, cellReadOnly);
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
