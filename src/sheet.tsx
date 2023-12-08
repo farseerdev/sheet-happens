@@ -179,13 +179,19 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     // Global layout for unscrolled/unfrozen grid
     // Cached either per width/height pair, or permanently with invalidation on resize/reorder.
-    const columnLayout = useMemo(() => makeLayoutCache(cellWidth), [props.cacheLayout ? null : cellWidth]);
-    const rowLayout = useMemo(() => makeLayoutCache(cellHeight), [props.cacheLayout ? null : cellHeight]);
+    const shouldCacheLayout = (props.cacheLayout ?? false) !== false;
+    const layoutVersion = typeof props.cacheLayout === 'number' ? props.cacheLayout : 0;
+    const columnLayout = useMemo(() => makeLayoutCache(cellWidth), [shouldCacheLayout ? layoutVersion : cellWidth]);
+    const rowLayout = useMemo(() => makeLayoutCache(cellHeight), [shouldCacheLayout ? layoutVersion : cellHeight]);
     useMemo(() => {
-        if (!props.cacheLayout) return;
+        if (!shouldCacheLayout) return;
+
         columnLayout.setSizer(cellWidth);
         rowLayout.setSizer(cellHeight);
-    }, [props.cacheLayout, cellWidth, cellHeight])
+
+        // Depend on layoutVersion to allow for controlled external invalidation
+        // eslint-disable-next-line
+    }, [shouldCacheLayout, layoutVersion, cellWidth, cellHeight]);
 
     // Virtual layout for indented/scrolled/frozen grid
     const { freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight } = sheetStyle;
@@ -539,8 +545,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         borderBottom: '1px solid #ddd',
     };
     const canvasStyles: React.CSSProperties = {
-        width: 'calc(100% - 14px)',
-        height: 'calc(100% - 15px)',
+        width: canvasWidth,
+        height: canvasHeight,
         outline: '1px solid #ddd', // find another better solution ?
     };
 
@@ -548,7 +554,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         delete canvasStyles['outline'];
         delete overlayDivStyles['borderBottom'];
         overlayDivClassName = '';
-        canvasStyles.width = 'calc(100%)';
     }
 
     const renderedInside = useMemo(() => props.renderInside?.({ visibleCells, cellLayout, selection, editMode }), [
