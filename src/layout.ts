@@ -18,7 +18,7 @@ export const makeCellLayout = (
     offset: XY,
 
     columns: LayoutCache,
-    rows: LayoutCache,
+    rows: LayoutCache
 ): CellLayout => {
     const [freezeX, freezeY] = freeze;
     const [indentX, indentY] = indent;
@@ -31,7 +31,7 @@ export const makeCellLayout = (
     const getBaseOriginFor = (index: number, freeze: number, offset: number) => {
         return index < freeze ? 0 : offset + freeze;
     };
-    
+
     // Get visible pixel x of cell
     const columnToPixel = (column: number, anchor: number = 0): number => {
         const base = getBaseOriginFor(column, freezeX, offsetX);
@@ -56,10 +56,7 @@ export const makeCellLayout = (
     const cellToPixel = (cell: XY, anchor: XY = ORIGIN): XY => {
         const [cellX, cellY] = cell;
         const [anchorX, anchorY] = anchor;
-        return [
-            columnToPixel(cellX, anchorX),
-            rowToPixel(cellY, anchorY),
-        ];
+        return [columnToPixel(cellX, anchorX), rowToPixel(cellY, anchorY)];
     };
 
     // Get absolute / unscrolled pixel x of cell
@@ -82,23 +79,26 @@ export const makeCellLayout = (
     const cellToAbsolute = (cell: XY, anchor: XY = ORIGIN): XY => {
         const [cellX, cellY] = cell;
         const [anchorX, anchorY] = anchor;
-        return [
-            columnToAbsolute(cellX, anchorX),
-            rowToAbsolute(cellY, anchorY),
-        ];
+        return [columnToAbsolute(cellX, anchorX), rowToAbsolute(cellY, anchorY)];
     };
 
     // Lookup pixel X or Y in cell layout
-    const pixelToIndex = (pixel: number, anchor: number, indent: number, freeze: number, offset: number, layout: LayoutCache) => {
+    const pixelToIndex = (
+        pixel: number,
+        anchor: number,
+        indent: number,
+        freeze: number,
+        offset: number,
+        layout: LayoutCache
+    ) => {
         const relative = pixel - indent;
         if (relative < 0) return -1;
 
-        const {getStart, lookupIndex} = layout;
+        const { getStart, lookupIndex } = layout;
         const frozen = getStart(freeze);
         if (relative < frozen) {
             return lookupIndex(relative, anchor);
-        }
-        else {
+        } else {
             const base = getStart(offset + freeze);
             const adjust = getStart(freeze) - getStart(0);
             return lookupIndex(base + relative - adjust, anchor);
@@ -106,24 +106,23 @@ export const makeCellLayout = (
     };
 
     // Lookup pixel X or Y in cell layout (helpers)
-    const pixelToColumn = (pixelX: number, anchorX: number = 0) => pixelToIndex(pixelX, anchorX, indentX, freezeX, offsetX, columns);
-    const pixelToRow = (pixelY: number, anchorY: number = 0) => pixelToIndex(pixelY, anchorY, indentY, freezeY, offsetY, rows);
+    const pixelToColumn = (pixelX: number, anchorX: number = 0) =>
+        pixelToIndex(pixelX, anchorX, indentX, freezeX, offsetX, columns);
+    const pixelToRow = (pixelY: number, anchorY: number = 0) =>
+        pixelToIndex(pixelY, anchorY, indentY, freezeY, offsetY, rows);
 
     // Lookup pixel XY in cell layout
     const pixelToCell = (pixel: XY, anchor: XY = ORIGIN): XY => {
         const [pixelX, pixelY] = pixel;
         const [anchorX, anchorY] = anchor;
-        return [
-            pixelToColumn(pixelX, anchorX),
-            pixelToRow(pixelY, anchorY),
-        ];
+        return [pixelToColumn(pixelX, anchorX), pixelToRow(pixelY, anchorY)];
     };
 
     // Lookup absolute / unscrolled pixel X or Y in cell layout
     const absoluteToIndex = (pixel: number, anchor: number, layout: LayoutCache) => {
         if (pixel < 0) return -1;
 
-        const {lookupIndex} = layout;
+        const { lookupIndex } = layout;
         return lookupIndex(pixel, anchor);
     };
 
@@ -135,17 +134,14 @@ export const makeCellLayout = (
     const absoluteToCell = (pixel: XY, anchor: XY = ORIGIN): XY => {
         const [pixelX, pixelY] = pixel;
         const [anchorX, anchorY] = anchor;
-        return [
-            absoluteToColumn(pixelX, anchorX),
-            absoluteToRow(pixelY, anchorY),
-        ];
+        return [absoluteToColumn(pixelX, anchorX), absoluteToRow(pixelY, anchorY)];
     };
 
     // Get visible range of columns or rows
     const getVisibleIndices = (view: number, indent: number, freeze: number, offset: number, layout: LayoutCache) => {
         const indices = [...seq(freeze)];
 
-        const {getStart} = layout;
+        const { getStart } = layout;
         const relative = view - indent + getStart(offset);
         for (let i = offset + freeze; getStart(i) <= relative; ++i) {
             indices.push(i);
@@ -188,7 +184,7 @@ export const makeCellLayout = (
 
         getVersion,
     };
-}
+};
 
 // Offset cache in 1 dimension.
 //
@@ -200,9 +196,7 @@ export const makeCellLayout = (
 // - adds up offset[i] = sizer(0) + sizer(1) + ... + sizer(i - 1)
 // - cache can be truncated during resizing ops at split
 // - to replace sizer function, cache must be destroyed
-export const makeLayoutCache = (
-    sizer: (index: number) => number,
-): LayoutCache => {
+export const makeLayoutCache = (sizer: (index: number) => number): LayoutCache => {
     const offsets = makeIntMap(INITIAL_SIZE);
     const sizes = makeIntMap(INITIAL_SIZE);
 
@@ -224,7 +218,7 @@ export const makeLayoutCache = (
         if (i < 0) return 0;
         if (offsets.has(i)) return offsets.get(i)!;
 
-        let j = (offsets.tail() || 0);
+        let j = offsets.tail() || 0;
 
         // Use a while loop to avoid stack overflow
         while (j < i) {
@@ -273,7 +267,7 @@ export const makeLayoutCache = (
     };
     const getVersion = () => version;
 
-    return {getSize, getStart, getEnd, getVersion, lookupIndex, setSizer, clearAfter};
+    return { getSize, getStart, getEnd, getVersion, lookupIndex, setSizer, clearAfter };
 };
 
 // Fast map<integer, integer> that is mostly filled in from start to end.
@@ -325,7 +319,7 @@ const makeIntMap = (initialSize: number = 128) => {
         while (last > 0 && !used[last]) last--;
     };
 
-    const getTail = () => used[last] ? last : null;
+    const getTail = () => (used[last] ? last : null);
 
     const setValue = (i: number, value: number) => {
         ensure(i + 1);
@@ -334,8 +328,8 @@ const makeIntMap = (initialSize: number = 128) => {
         last = Math.max(last, i);
     };
 
-    const getValue = (i: number) => used[i] ? values[i] : null;
+    const getValue = (i: number) => (used[i] ? values[i] : null);
     const hasValue = (i: number) => !!used[i];
 
-    return {truncate, set: setValue, get: getValue, has: hasValue, tail: getTail};
+    return { truncate, set: setValue, get: getValue, has: hasValue, tail: getTail };
 };

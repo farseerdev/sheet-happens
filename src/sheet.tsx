@@ -32,14 +32,14 @@ import {
 
 import {
     ARROW_KEYS,
-	MAX_SEARCHABLE_INDEX,
-	DEFAULT_CELL_STYLE,
-	INITIAL_MAX_SCROLL,
-	NO_CELL,
+    MAX_SEARCHABLE_INDEX,
+    DEFAULT_CELL_STYLE,
+    INITIAL_MAX_SCROLL,
+    NO_CELL,
     NO_CLICKABLES,
-	NO_SELECTION,
+    NO_SELECTION,
     NO_SELECTIONS,
-	ORIGIN,
+    ORIGIN,
     ONE_ONE,
 } from './constants';
 import {
@@ -61,18 +61,18 @@ import { renderSheet } from './render';
 import { resolveSheetStyle } from './style';
 
 export type SheetInputProps = {
-    value: string,
-    autoFocus: boolean,
-    onKeyDown: KeyboardEventHandler<HTMLElement>,
-    onChange: (value: string) => void,
-    style: InputStyle,
+    value: string;
+    autoFocus: boolean;
+    onKeyDown: KeyboardEventHandler<HTMLElement>;
+    onChange: (value: string) => void;
+    style: InputStyle;
 };
 
 export type SheetRenderProps = {
-    visibleCells: VisibleLayout,
-    cellLayout: CellLayout,
-    selection: Rectangle,
-    editMode: boolean,
+    visibleCells: VisibleLayout;
+    cellLayout: CellLayout;
+    selection: Rectangle;
+    editMode: boolean;
 };
 
 export type SheetProps = {
@@ -91,10 +91,10 @@ export type SheetProps = {
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
-    selection?: Rectangle,
+    selection?: Rectangle;
     secondarySelections?: Selection[];
 
-    cacheLayout?: boolean,
+    cacheLayout?: boolean | number;
     dontCommitEditOnSelectionChange?: boolean;
 
     inputComponent?: (
@@ -104,8 +104,8 @@ export type SheetProps = {
         commitEditingCell?: (value?: string | number | null) => void
     ) => ReactElement | undefined;
 
-    renderInside?: (props: SheetRenderProps) => React.ReactNode,
-    renderOutside?: (props: SheetRenderProps) => React.ReactNode,
+    renderInside?: (props: SheetRenderProps) => React.ReactNode;
+    renderOutside?: (props: SheetRenderProps) => React.ReactNode;
 
     onSelectionChanged?: (minX: number, minY: number, maxX: number, maxY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
@@ -118,7 +118,7 @@ export type SheetProps = {
 };
 
 export type SheetRef = CellLayout & {
-    startEditingCell: (editCell: XY, arrowKeyCommitMode?: boolean) => void,
+    startEditingCell: (editCell: XY, arrowKeyCommitMode?: boolean) => void;
 };
 
 const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
@@ -151,9 +151,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
-    const columnHeaders = useMemo(() => createRowOrColumnProp(props.columnHeaders, null), [
-        props.columnHeaders,
-    ]);
+    const columnHeaders = useMemo(() => createRowOrColumnProp(props.columnHeaders, null), [props.columnHeaders]);
     const columnHeaderStyle = useMemo(() => createRowOrColumnProp(props.columnHeaderStyle, {}), [
         props.columnHeaderStyle,
     ]);
@@ -190,20 +188,21 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [props.cacheLayout, cellWidth, cellHeight])
 
     // Virtual layout for indented/scrolled/frozen grid
-    const {freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight} = sheetStyle;
+    const { freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight } = sheetStyle;
     const cellLayout = useMemo(
-        () => makeCellLayout(
-            [freezeColumns, freezeRows],
-            [rowHeaderWidth, columnHeaderHeight],
-            dataOffset,
-            columnLayout,
-            rowLayout,
-        ),
+        () =>
+            makeCellLayout(
+                [freezeColumns, freezeRows],
+                [rowHeaderWidth, columnHeaderHeight],
+                dataOffset,
+                columnLayout,
+                rowLayout
+            ),
         [freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight, dataOffset, columnLayout, rowLayout]
     );
 
     // Build range of visible cells
-    const {getVisibleCells, cellToPixel, getVersion} = cellLayout;
+    const { getVisibleCells, cellToPixel, getVersion } = cellLayout;
     const visibleCells = useMemo(
         () => getVisibleCells([canvasWidth, canvasHeight]),
         // Need to invalidate view if cached layout version changed
@@ -224,7 +223,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             setSelection(newSelection);
         }
 
-        const {current: overlay} = overlayRef;
+        const { current: overlay } = overlayRef;
         if (!overlay) return;
 
         if (scrollTo) {
@@ -240,7 +239,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 (dataOffset: XY, maxScroll: XY) => {
                     setDataOffset(dataOffset);
                     setMaxScroll(maxScroll);
-                },
+                }
             );
         }
 
@@ -285,7 +284,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
 
-    const {mouseHandlers, knobPosition} = useMouse(
+    const { mouseHandlers, knobPosition } = useMouse(
         hitmapRef,
         selection,
         knobArea,
@@ -317,11 +316,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onCellWidthChange,
         props.onCellHeightChange,
         props.onRightClick,
-        props.dontCommitEditOnSelectionChange,
+        props.dontCommitEditOnSelectionChange
     );
 
     useLayoutEffect(() => {
-        const {current: canvas} = canvasRef;
+        const { current: canvas } = canvasRef;
         if (!canvas) {
             return;
         }
@@ -348,7 +347,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 columnHeaderStyle,
                 displayData,
 
-                dataOffset,
+                dataOffset
             );
         });
 
@@ -381,11 +380,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             return;
         }
 
-        const direction = 
-            e.key === 'Enter' ? 'down' : 
-            e.key === 'Tab' ? 'right' : 
-            arrowKeyCommitMode ? ARROW_KEYS[e.key] : 
-            null;
+        const direction =
+            e.key === 'Enter' ? 'down' : e.key === 'Tab' ? 'right' : arrowKeyCommitMode ? ARROW_KEYS[e.key] : null;
 
         if (direction) {
             e.preventDefault();
@@ -397,7 +393,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     };
 
     const onGridKeyDown = (e: KeyboardEvent) => {
-        if (editMode && arrowKeyCommitMode && (e.key in ARROW_KEYS)) {
+        if (editMode && arrowKeyCommitMode && e.key in ARROW_KEYS) {
             commitEditingCell();
             return;
         }
@@ -408,7 +404,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
         // copy
         if ((e.metaKey || e.ctrlKey) && String.fromCharCode(e.which).toLowerCase() === 'c') {
-            const {current: textArea} = textAreaRef;
+            const { current: textArea } = textAreaRef;
             textArea?.select();
             return;
         }
@@ -471,8 +467,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
             if (e.metaKey || e.ctrlKey) {
                 head = findInDisplayData(displayData, head, direction);
-            }
-            else {
+            } else {
                 head = maxXY(addXY(head, step), ORIGIN);
             }
             if (!e.shiftKey) {
@@ -556,21 +551,31 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         canvasStyles.width = 'calc(100%)';
     }
 
-    const renderedInside = useMemo(
-        () => props.renderInside?.({visibleCells, cellLayout, selection, editMode}),
-        [props.renderInside, visibleCells, cellLayout, selection, editMode]
-    );
+    const renderedInside = useMemo(() => props.renderInside?.({ visibleCells, cellLayout, selection, editMode }), [
+        props.renderInside,
+        visibleCells,
+        cellLayout,
+        selection,
+        editMode,
+    ]);
 
-    const renderedOutside = useMemo(
-        () => props.renderOutside?.({visibleCells, cellLayout, selection, editMode}),
-        [props.renderOutside, visibleCells, cellLayout, selection, editMode]
-    );
+    const renderedOutside = useMemo(() => props.renderOutside?.({ visibleCells, cellLayout, selection, editMode }), [
+        props.renderOutside,
+        visibleCells,
+        cellLayout,
+        selection,
+        editMode,
+    ]);
 
     // External component API
-    useImperativeHandle(ref, () => ({
-        ...cellLayout,
-        startEditingCell,
-    }), [cellLayout, startEditingCell]);
+    useImperativeHandle(
+        ref,
+        () => ({
+            ...cellLayout,
+            startEditingCell,
+        }),
+        [cellLayout, startEditingCell]
+    );
 
     return (
         <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>

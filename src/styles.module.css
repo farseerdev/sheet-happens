@@ -1,18 +1,21 @@
 .sheetscroll::-webkit-scrollbar {
-  -webkit-appearance: none;
+    -webkit-appearance: none;
 }
 .sheetscroll::-webkit-scrollbar:vertical {
-  width: 13px;
+    width: 13px;
 }
 .sheetscroll::-webkit-scrollbar:horizontal {
-  height: 13px;
+    height: 13px;
+}
+.sheetscroll::-webkit-scrollbar-corner {
+    background: #fff;
 }
 .sheetscroll::-webkit-scrollbar-thumb {
-  border-radius: 8px;
-  background-color: #c1c1c1;
-  border: 2px solid #fff;
+    border-radius: 8px;
+    background-color: #c1c1c1;
+    border: 2px solid #fff;
 }
 .sheetscroll::-webkit-scrollbar-track {
-  background-color: #fff;
-  border-radius: 0px;
+    background-color: #fff;
+    border-radius: 0px;
 }

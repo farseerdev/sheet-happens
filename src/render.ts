@@ -1,8 +1,29 @@
-import { CellLayout, CellPropertyFunction, RowOrColumnPropertyFunction, InternalSheetStyle, Rectangle, Selection, Clickable, Style, CellContentType, VisibleLayout, XY } from './types';
+import {
+    CellLayout,
+    CellPropertyFunction,
+    RowOrColumnPropertyFunction,
+    InternalSheetStyle,
+    Rectangle,
+    Selection,
+    Clickable,
+    Style,
+    CellContentType,
+    VisibleLayout,
+    XY,
+} from './types';
 import { applyAlignment, resolveCellStyle } from './style';
 import { normalizeSelection, isEmptySelection, isRowSelection, isColumnSelection } from './coordinate';
 import { isInRange, isInRangeLeft, isInRangeCenter } from './util';
-import { COLORS, SIZES, DEFAULT_CELL_STYLE, DEFAULT_COLUMN_HEADER_STYLE, HEADER_SELECTED_STYLE, HEADER_ACTIVE_STYLE, NO_STYLE, ONE_ONE } from './constants';
+import {
+    COLORS,
+    SIZES,
+    DEFAULT_CELL_STYLE,
+    DEFAULT_COLUMN_HEADER_STYLE,
+    HEADER_SELECTED_STYLE,
+    HEADER_ACTIVE_STYLE,
+    NO_STYLE,
+    ONE_ONE,
+} from './constants';
 
 export const renderSheet = (
     context: CanvasRenderingContext2D,
@@ -24,10 +45,10 @@ export const renderSheet = (
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     displayData: CellPropertyFunction<CellContentType>,
 
-    dataOffset: XY,
+    dataOffset: XY
 ): Clickable[] => {
-    const {canvas} = context;
-    const {width, height} = canvas;
+    const { canvas } = context;
+    const { width, height } = canvas;
     const {
         hideGridlines,
         hideRowHeaders,
@@ -36,12 +57,12 @@ export const renderSheet = (
         columnHeaderHeight,
         freezeColumns,
         freezeRows,
+        shadowBlur,
+        shadowColor,
+        shadowOpacity,
     } = sheetStyle;
-    const {columns, rows} = visibleCells;
-    const {
-        columnToPixel,
-        rowToPixel,
-    } = cellLayout;
+    const { columns, rows } = visibleCells;
+    const { columnToPixel, rowToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
 
     const clickables: Clickable[] = [];
 
@@ -52,6 +73,7 @@ export const renderSheet = (
     context.clearRect(0, 0, width, height);
     context.fillStyle = 'white';
     context.fillRect(0, 0, width, height);
+    context.shadowColor = '#00000080';
 
     // Cell fill
     for (const y of rows) {
@@ -61,7 +83,7 @@ export const renderSheet = (
             const top = rowToPixel(y);
             const bottom = rowToPixel(y, 1);
 
-            const {fillColor} = cellStyle(x, y);
+            const { fillColor } = cellStyle(x, y);
             if (fillColor) {
                 context.fillStyle = fillColor;
                 context.fillRect(left, top, right - left, bottom - top);
@@ -74,13 +96,7 @@ export const renderSheet = (
     const columnSelectionActive = isColumnSelection(selection);
 
     // Get selection range
-    const [selected, hideKnob] = resolveFrozenSelection(
-        selection,
-        cellLayout,
-        freeze,
-        indent,
-        dataOffset,
-    );
+    const [selected, hideKnob] = resolveFrozenSelection(selection, cellLayout, freeze, indent, dataOffset);
 
     // Selection fill
     if (selectionActive) {
@@ -124,15 +140,15 @@ export const renderSheet = (
 
     const drawGridLineX = (x: number, height: number) => {
         context.beginPath();
-        context.moveTo(x - .5, 0);
-        context.lineTo(x - .5, height);
+        context.moveTo(x - 0.5, 0);
+        context.lineTo(x - 0.5, height);
         context.stroke();
     };
 
     const drawGridLineY = (y: number, width: number) => {
         context.beginPath();
-        context.moveTo(0, y - .5);
-        context.lineTo(width, y - .5);
+        context.moveTo(0, y - 0.5);
+        context.lineTo(width, y - 0.5);
         context.stroke();
     };
 
@@ -164,22 +180,24 @@ export const renderSheet = (
             // Row selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
             const isActive = isInRange(row, minY, maxY);
-            const isSelected = (rowSelectionActive && !columnSelectionActive) && isActive;
+            const isSelected = rowSelectionActive && !columnSelectionActive && isActive;
             const style = isSelected ? HEADER_SELECTED_STYLE : isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
 
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
-            clickables.push(...renderCell(
-                context,
-                content,
-                style,
-                DEFAULT_COLUMN_HEADER_STYLE,
-                0,
-                top,
-                rowHeaderWidth,
-                bottom - top,
-            ));
+            clickables.push(
+                ...renderCell(
+                    context,
+                    content,
+                    style,
+                    DEFAULT_COLUMN_HEADER_STYLE,
+                    0,
+                    top,
+                    rowHeaderWidth,
+                    bottom - top
+                )
+            );
         }
     }
 
@@ -194,8 +212,8 @@ export const renderSheet = (
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
             const isActive = isInRange(column, minX, maxX);
-            const selectedStyle = (columnSelectionActive && !rowSelectionActive) && isActive
-                ? HEADER_SELECTED_STYLE : NO_STYLE;
+            const selectedStyle =
+                columnSelectionActive && !rowSelectionActive && isActive ? HEADER_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const style = {
                 ...columnHeaderStyle(column),
@@ -206,16 +224,18 @@ export const renderSheet = (
             const left = columnToPixel(column);
             const right = columnToPixel(column, 1);
 
-            clickables.push(...renderCell(
-                context,
-                content,
-                style,
-                DEFAULT_COLUMN_HEADER_STYLE,
-                left,
-                0,
-                right - left,
-                columnHeaderHeight
-            ));
+            clickables.push(
+                ...renderCell(
+                    context,
+                    content,
+                    style,
+                    DEFAULT_COLUMN_HEADER_STYLE,
+                    left,
+                    0,
+                    right - left,
+                    columnHeaderHeight
+                )
+            );
         }
     }
 
@@ -225,25 +245,14 @@ export const renderSheet = (
         context.lineWidth = 2;
 
         const [[left, top], [right, bottom]] = selected;
-        context.strokeRect(
-            left,
-            top,
-            right - left - 1,
-            bottom - top - 1,
-        );
+        context.strokeRect(left, top, right - left - 1, bottom - top - 1);
     }
 
     for (const secondarySelection of secondarySelections) {
         const selection = secondarySelection.span;
         if (isEmptySelection(selection)) continue;
 
-        const [selected] = resolveFrozenSelection(
-            selection,
-            cellLayout,
-            freeze,
-            indent,
-            dataOffset,
-        );
+        const [selected] = resolveFrozenSelection(selection, cellLayout, freeze, indent, dataOffset);
         const [[left, top], [right, bottom]] = selected;
 
         context.strokeStyle = secondarySelection.color;
@@ -300,6 +309,27 @@ export const renderSheet = (
         context.strokeRect(left - 1, top - 1, right - left, bottom - top);
     }
 
+    // Draw frozen row/col shadow
+    const [scrollX, scrollY] = dataOffset;
+    const hasRowShadow = freezeRows > 0 && scrollY > 0;
+    const hasColumnShadow = freezeColumns > 0 && scrollX > 0;
+    if (hasRowShadow || hasColumnShadow) {
+        if (hasRowShadow) {
+            const h = columnHeaderHeight + rowToAbsolute(freezeRows);
+            const gradient = context.createLinearGradient(0, h, 0, h + shadowBlur);
+            halfShadowGradient(gradient, shadowColor, shadowOpacity);
+            context.fillStyle = gradient;
+            context.fillRect(0, h, width, shadowBlur);
+        }
+        if (hasColumnShadow) {
+            const w = rowHeaderWidth + columnToAbsolute(freezeColumns);
+            const gradient = context.createLinearGradient(w, 0, w + shadowBlur, 0);
+            halfShadowGradient(gradient, shadowColor, shadowOpacity);
+            context.fillStyle = gradient;
+            context.fillRect(w, 0, shadowBlur, height);
+        }
+    }
+
     // Cell contents
     context.textBaseline = 'middle';
 
@@ -313,7 +343,18 @@ export const renderSheet = (
             const cellContent = displayData(x, y);
             if (cellContent !== null && cellContent !== undefined) {
                 const style = cellStyle(x, y);
-                clickables.push(...renderCell(context, cellContent, style, DEFAULT_CELL_STYLE, left, top, right - left, bottom - top));
+                clickables.push(
+                    ...renderCell(
+                        context,
+                        cellContent,
+                        style,
+                        DEFAULT_CELL_STYLE,
+                        left,
+                        top,
+                        right - left,
+                        bottom - top
+                    )
+                );
             }
         }
     }
@@ -394,7 +435,10 @@ export const renderCell = (
             }
             if (obj.onClick) {
                 clickables.push({
-                    rect: [[x, y], [x + w, y + h]],
+                    rect: [
+                        [x, y],
+                        [x + w, y + h],
+                    ],
                     obj,
                 });
             }
@@ -406,11 +450,8 @@ export const renderCell = (
 };
 
 // Resolve selection into a consistent rectangle, without dealing with frozen rows/columns
-const resolveSelection = (
-    selection: Rectangle,
-    cellLayout: CellLayout,
-) => {
-    const {cellToPixel} = cellLayout;
+const resolveSelection = (selection: Rectangle, cellLayout: CellLayout) => {
+    const { cellToPixel } = cellLayout;
 
     const rowSelectionActive = isRowSelection(selection);
     const columnSelectionActive = isColumnSelection(selection);
@@ -430,7 +471,10 @@ const resolveSelection = (
         bottom = 1e5;
     }
 
-    return [[left, top], [right, bottom]];
+    return [
+        [left, top],
+        [right, bottom],
+    ];
 };
 
 // Resolve selection into a consistent rectangle, handling edge cases around frozen rows/columns.
@@ -440,9 +484,9 @@ const resolveFrozenSelection = (
 
     freeze: XY,
     indent: XY,
-    offset: XY,
+    offset: XY
 ) => {
-    const {cellToPixel, columnToAbsolute, rowToAbsolute} = cellLayout;
+    const { cellToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
 
     const rowSelectionActive = isRowSelection(selection);
     const columnSelectionActive = isColumnSelection(selection);
@@ -520,7 +564,10 @@ const resolveFrozenSelection = (
     }
 
     return [
-        [[left, top], [right, bottom]],
+        [
+            [left, top],
+            [right, bottom],
+        ],
         hideKnob,
     ] as [Rectangle, boolean];
 };
@@ -556,4 +603,16 @@ const excelHeaderString = (num: number) => {
         num = ((num - t) / 26) | 0;
     }
     return s || '';
+};
+
+const halfShadowGradient = (gradient: CanvasGradient, rgb: string, opacity: number) => {
+    const hex = (x: number) => ('0' + Math.round(x).toString(16)).slice(-2);
+    // Half-sine ease
+    const ease = (x: number) => 1.0 - Math.sin((x * Math.PI) / 2);
+    // Gamma adjustment assuming blend on white
+    const adjust = (x: number) => 1.0 - Math.pow(1.0 - x, 2.2);
+    for (let i = 0; i <= 16; ++i) {
+        const f = i / 16;
+        gradient.addColorStop(f, rgb + hex(adjust(opacity * ease(f) * 0.5) * 255));
+    }
 };

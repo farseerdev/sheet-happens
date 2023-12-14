@@ -1,18 +1,18 @@
 import { XY, Rectangle, Selection, Clickable, Direction, Style } from './types';
 
-export const INITIAL_MAX_SCROLL: XY = [ 2000, 1000 ];
+export const INITIAL_MAX_SCROLL: XY = [2000, 1000];
 
-export const ORIGIN: XY = [ 0, 0 ];
-export const ONE_ONE: XY = [ 1, 1 ];
+export const ORIGIN: XY = [0, 0];
+export const ONE_ONE: XY = [1, 1];
 
-export const NO_CELL: XY = [ -1, -1 ];
+export const NO_CELL: XY = [-1, -1];
 export const NO_SELECTION: Rectangle = [NO_CELL, NO_CELL];
 export const NO_SELECTIONS: Selection[] = [];
 export const NO_CLICKABLES: Clickable[] = [];
 export const NO_STYLE = {};
 
 export const MAX_SEARCHABLE_INDEX = 65536;
-export const MAX_XY: XY = [ MAX_SEARCHABLE_INDEX, MAX_SEARCHABLE_INDEX ];
+export const MAX_XY: XY = [MAX_SEARCHABLE_INDEX, MAX_SEARCHABLE_INDEX];
 
 export const COLORS = {
     selectionBorder: '#1a66ff',
@@ -31,6 +31,8 @@ export const COLORS = {
 
     headerSelected: '#1a66ff',
     headerSelectedText: '#ffffff',
+
+    shadowColor: '#000000',
 };
 
 export const SIZES = {
@@ -42,6 +44,9 @@ export const SIZES = {
     resizeZone: 4,
     scrollZone: 50,
     scrollSpeed: 30,
+
+    shadowBlur: 12,
+    shadowOpacity: 0.05,
 };
 
 export const DEFAULT_CELL_STYLE: Required<Style> = {
@@ -78,8 +83,8 @@ export const HEADER_SELECTED_STYLE = {
 };
 
 export const ARROW_KEYS: Record<string, Direction> = {
-    'ArrowRight': 'right',
-    'ArrowLeft': 'left',
-    'ArrowUp': 'up',
-    'ArrowDown': 'down',
+    ArrowRight: 'right',
+    ArrowLeft: 'left',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
 };
