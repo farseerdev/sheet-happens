@@ -1,5 +1,5 @@
 import { InternalSheetStyle, SheetStyle, Style } from './types';
-import { SIZES } from './constants';
+import { COLORS, SIZES } from './constants';
 
 export const resolveSheetStyle = (sheetStyle?: SheetStyle): InternalSheetStyle => {
     return {
@@ -11,6 +11,9 @@ export const resolveSheetStyle = (sheetStyle?: SheetStyle): InternalSheetStyle =
         hideScrollBars: sheetStyle?.hideScrollBars || false,
         columnHeaderHeight: sheetStyle?.hideColumnHeaders ? 1 : SIZES.headerHeight,
         rowHeaderWidth: sheetStyle?.hideRowHeaders ? 1 : SIZES.headerWidth,
+        shadowBlur: sheetStyle?.shadowBlur ?? SIZES.shadowBlur,
+        shadowOpacity: sheetStyle?.shadowOpacity ?? SIZES.shadowOpacity,
+        shadowColor: sheetStyle?.shadowColor ?? COLORS.shadowColor,
     };
 };
 
@@ -26,7 +29,7 @@ export const applyAlignment = (
     cellSize: number,
     style: Required<Style>,
     imageWidth: number,
-    alignment: 'left' | 'center' | 'right' = style.textAlign,
+    alignment: 'left' | 'center' | 'right' = style.textAlign
 ): number => {
     if (alignment === 'left') {
         return start + style.marginLeft;

@@ -1,4 +1,13 @@
-import { Direction, XY, CellContentType, CellProperty, CellPropertyFunction, PropTypes, RowOrColumnProperty, RowOrColumnPropertyFunction } from './types';
+import {
+    Direction,
+    XY,
+    CellContentType,
+    CellProperty,
+    CellPropertyFunction,
+    PropTypes,
+    RowOrColumnProperty,
+    RowOrColumnPropertyFunction,
+} from './types';
 import { MAX_SEARCHABLE_INDEX, MAX_XY, ORIGIN } from './constants';
 import { clampXY, addXY, subXY, maxXY, getDirectionStep } from './coordinate';
 
@@ -22,7 +31,7 @@ export const createRowOrColumnProp = <T extends PropTypes>(
     } else {
         return () => defaultValue;
     }
-}
+};
 
 // Inject cell props from a nested array, function, constant or default value
 export const createCellProp = <T extends PropTypes>(
@@ -48,7 +57,7 @@ export const createCellProp = <T extends PropTypes>(
     } else {
         return () => defaultValue;
     }
-}
+};
 
 export const findApproxMaxEditDataIndex = (editData: CellPropertyFunction<string>): XY => {
     let x = 0;
@@ -101,12 +110,12 @@ export const findApproxMaxEditDataIndex = (editData: CellPropertyFunction<string
         growthIncrement = Math.floor(growthIncrement * growthIncrementFactor);
     }
     return [x, y];
-}
+};
 
 export const findInDisplayData = (
     displayData: CellPropertyFunction<CellContentType>,
     start: XY,
-    direction: Direction,
+    direction: Direction
 ): XY => {
     const step = getDirectionStep(direction);
 
@@ -135,4 +144,4 @@ export const findInDisplayData = (
     }
 
     return maxXY(cell, [0, 0]);
-}
+};
