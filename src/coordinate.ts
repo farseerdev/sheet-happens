@@ -72,16 +72,34 @@ export const isPointInsideSelection = (selection: Rectangle, point: XY) => {
 
 // Normalize rectangle to min/max pair
 export const normalizeSelection = (selection: Rectangle): Rectangle => {
-    let [[left, top], [right, bottom]] = selection;
-    if (left > right) {
-        [left, right] = [right, left];
-    }
-    if (top > bottom) {
-        [top, bottom] = [bottom, top];
-    }
+    const [anchor, head] = selection;
+    const [ax, ay] = anchor;
+    const [hx, hy] = head;
+
+    const left = Math.min(ax, hx);
+    const right = Math.max(ax, hx);
+    const top = Math.min(ay, hy);
+    const bottom = Math.max(ay, hy);
 
     return [
         [left, top],
         [right, bottom],
+    ];
+};
+
+// Orient normalized rectangle to match existing orientation
+export const orientSelection = (normalized: Rectangle, to: Rectangle): Rectangle => {
+    const [[left, top], [right, bottom]] = normalized;
+
+    const [anchor, head] = to;
+    const [ax, ay] = anchor;
+    const [hx, hy] = head;
+
+    const swapX = (ax - hx || 1) * (left - right || 1) < 0;
+    const swapY = (ay - hy || 1) * (top - bottom || 1) < 0;
+
+    return [
+        [swapX ? right : left, swapY ? bottom : top],
+        [swapX ? left : right, swapY ? top : bottom],
     ];
 };

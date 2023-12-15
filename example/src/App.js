@@ -16,6 +16,7 @@ import {
     SheetBoxStyle,
     SheetBoxBasic,
     SheetBoxRender,
+    SheetBoxGrouped,
     SheetBoxFormatting,
     SheetBoxVeryBigData,
     SheetBoxCustomInput,
@@ -51,8 +52,8 @@ const App = () => {
                     <h3>Basic spreadsheet</h3>
                     <p>
                         It has all the features you'd expect from the spreadsheet: keyboard navigation, copy cells by
-                        dragging the small square, copy/paste from and to Excel and Google Sheets, resize and reorder columns and
-                        rows.
+                        dragging the small square, copy/paste from and to Excel and Google Sheets, resize and reorder
+                        columns and rows.
                     </p>
                 </div>
             </Wrap>
@@ -86,9 +87,16 @@ const App = () => {
                 </div>
                 <div className="box">
                     <h3>Overlays</h3>
-                    <p>
-                        You can attach HTML overlays to the sheet, for additional controls, notes, etc.
-                    </p>
+                    <p>You can attach HTML overlays to the sheet, for additional controls, notes, etc.</p>
+                </div>
+            </Wrap>
+            <Wrap>
+                <div className="box">
+                    <SheetBoxGrouped />
+                </div>
+                <div className="box">
+                    <h3>Grouped rows and columns</h3>
+                    <p>You can make rows act as a group for drag-and-drop operation.</p>
                 </div>
             </Wrap>
 
@@ -273,8 +281,8 @@ const App = () => {
                     {/* inputComponent */}
                     <h3>Custom input</h3>
                     <p>
-                        By default edit mode turns the cell into a text edit component. But you can send your custom input
-                        component via <Emphased text="inputComponent" /> props. It will be called with{' '}
+                        By default edit mode turns the cell into a text edit component. But you can send your custom
+                        input component via <Emphased text="inputComponent" /> props. It will be called with{' '}
                         <Emphased text="x" />, <Emphased text="y" />, <Emphased text="inputProps" /> and{' '}
                         <Emphased text="commitEditingCell" /> arguments.
                     </p>
