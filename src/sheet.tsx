@@ -55,6 +55,7 @@ import {
 import { useMouse } from './mouse';
 import { useScroll, scrollToCell } from './scroll';
 import { useClipboardCopy, useClipboardPaste } from './clipboard';
+import { expandSelectionToColumnGroups, expandSelectionToRowGroups } from './group';
 import { makeLayoutCache, makeCellLayout } from './layout';
 import { createCellProp, createRowOrColumnProp, findInDisplayData } from './props';
 import { renderSheet } from './render';
@@ -86,6 +87,8 @@ export type SheetProps = {
     canSizeRow?: RowOrColumnProperty<boolean>;
     canOrderColumn?: RowOrColumnProperty<boolean>;
     canOrderRow?: RowOrColumnProperty<boolean>;
+    columnGroupKeys?: RowOrColumnProperty<string | number | null>;
+    rowGroupKeys?: RowOrColumnProperty<string | number | null>;
     sourceData?: CellProperty<string | number | null>;
     displayData?: CellProperty<CellContentType>;
     editData?: CellProperty<string>;
@@ -161,6 +164,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const canOrderColumn = useMemo(() => createRowOrColumnProp(props.canOrderColumn, true), [props.canOrderColumn]);
     const canOrderRow = useMemo(() => createRowOrColumnProp(props.canOrderRow, true), [props.canOrderRow]);
 
+    const rowGroupKeys = useMemo(() => createRowOrColumnProp(props.rowGroupKeys, null), [props.rowGroupKeys]);
+    const columnGroupKeys = useMemo(() => createRowOrColumnProp(props.columnGroupKeys, null), [props.columnGroupKeys]);
+
     const cellReadOnly = useMemo(() => createCellProp(props.readOnly, false), [props.readOnly]);
 
     const sourceData = useMemo(() => createCellProp(props.sourceData, null), [props.sourceData]);
@@ -224,7 +230,16 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [visibleCells, props.onScrollChange]);
 
     // Set selection with scrolling
-    const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false) => {
+    const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false, dragOperation = false) => {
+        if (!dragOperation) {
+            if (isColumnSelection(newSelection) && columnGroupKeys) {
+                newSelection = expandSelectionToColumnGroups(newSelection, columnGroupKeys);
+            }
+            if (isRowSelection(newSelection) && rowGroupKeys) {
+                newSelection = expandSelectionToRowGroups(newSelection, rowGroupKeys);
+            }
+        }
+
         if (!isSameSelection(selection, newSelection)) {
             setSelection(newSelection);
         }
@@ -298,13 +313,18 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editData,
         sourceData,
         cellReadOnly,
+
         canSizeColumn,
         canSizeRow,
         canOrderColumn,
         canOrderRow,
+
         cellLayout,
         visibleCells,
         sheetStyle,
+
+        columnGroupKeys,
+        rowGroupKeys,
 
         startEditingCell,
         commitEditingCell,

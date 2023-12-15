@@ -23,6 +23,7 @@ import {
     maxXY,
 } from './coordinate';
 import { ONE_ONE, ORIGIN, SIZES } from './constants';
+import { isBoundaryInsideGroup } from './group';
 import { findApproxMaxEditDataIndex } from './props';
 import { isInRange } from './util';
 
@@ -51,12 +52,15 @@ export const useMouse = (
     visibleCells: VisibleLayout,
     sheetStyle: SheetStyle,
 
+    columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
+    rowGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
+
     onEdit?: (cell: XY) => void,
     onCommit?: () => void,
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
     onDragOffsetChange?: (dragOffset: XY | null) => void,
     onDropTargetChange?: (selection: Rectangle | null) => void,
-    onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
+    onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean, dragOperation?: boolean) => void,
 
     onInvalidateColumn?: (column: number) => void,
     onInvalidateRow?: (row: number) => void,
@@ -385,6 +389,7 @@ export const useMouse = (
             canSizeRow,
             canOrderColumn,
             canOrderRow,
+            dontCommitEditOnSelectionChange,
         ]
     );
 
@@ -433,10 +438,15 @@ export const useMouse = (
                     const insideSelection = cellX >= minX && cellX <= maxX + 1;
                     if (!insideSelection) {
                         const order = cellX > minX ? cellX - indices.length : cellX;
-                        onSelectionChange?.([
-                            [order, minY],
-                            [order + maxX - minX, maxY],
-                        ]);
+                        onSelectionChange?.(
+                            [
+                                [order, minY],
+                                [order + maxX - minX, maxY],
+                            ],
+                            false,
+                            false,
+                            true
+                        );
                         onColumnOrderChange?.(indices, order);
                         onInvalidateColumn?.(Math.min(minX, order));
                     }
@@ -447,10 +457,15 @@ export const useMouse = (
                     const insideSelection = cellY >= minY && cellY <= maxY + 1;
                     if (!insideSelection) {
                         const order = cellY > minY ? cellY - indices.length : cellY;
-                        onSelectionChange?.([
-                            [minX, order],
-                            [maxX, order + maxY - minY],
-                        ]);
+                        onSelectionChange?.(
+                            [
+                                [minX, order],
+                                [maxX, order + maxY - minY],
+                            ],
+                            false,
+                            false,
+                            true
+                        );
                         onRowOrderChange?.(indices, order);
                         onInvalidateRow?.(Math.min(minY, order));
                     }
@@ -716,6 +731,7 @@ export const useMouse = (
                 if (columnDrag) {
                     const cellX = pixelToColumn(Math.max(x, getIndentX()), 0.5);
                     const insideSelection = cellX >= minX && cellX <= maxX + 1;
+                    const insideGroup = isBoundaryInsideGroup(cellX, columnGroupKeys);
 
                     const { anchor, scroll } = columnDrag;
                     const shift = x - anchor;
@@ -723,7 +739,7 @@ export const useMouse = (
 
                     onDragOffsetChange?.([shift + currentScroll - scroll, 0]);
                     onDropTargetChange?.(
-                        insideSelection
+                        insideSelection || insideGroup
                             ? null
                             : [
                                   [cellX, -1],
@@ -734,6 +750,7 @@ export const useMouse = (
                 if (rowDrag) {
                     const cellY = pixelToRow(Math.max(y, getIndentY()), 0.5);
                     const insideSelection = cellY >= minY && cellY <= maxY + 1;
+                    const insideGroup = isBoundaryInsideGroup(cellY, rowGroupKeys);
 
                     const { anchor, scroll } = rowDrag;
                     const shift = y - anchor;
@@ -741,7 +758,7 @@ export const useMouse = (
 
                     onDragOffsetChange?.([0, shift + currentScroll - scroll]);
                     onDropTargetChange?.(
-                        insideSelection
+                        insideSelection || insideGroup
                             ? null
                             : [
                                   [-1, cellY],
@@ -751,7 +768,19 @@ export const useMouse = (
                 }
             }
         },
-        [getMousePosition, getScrollPosition, getMouseHit, onCellWidthChange, onCellHeightChange]
+        [
+            getMousePosition,
+            getScrollPosition,
+            getMouseHit,
+            onCellWidthChange,
+            onCellHeightChange,
+            onDragOffsetChange,
+            onDropTargetChange,
+            onSelectionChange,
+            onKnobAreaChange,
+            onInvalidateRow,
+            onInvalidateColumn,
+        ]
     );
 
     const onDoubleClick = useCallback(

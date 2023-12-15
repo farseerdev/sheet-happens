@@ -45,7 +45,7 @@ export function useWidthHeightControl(
     initialWidths = [],
     initialHeights = [],
     getColumnOrder = (i: number) => i,
-    getRowOrder = (i: number) => i,
+    getRowOrder = (i: number) => i
 ) {
     const [cellWidth, setCellWidth] = useState(initialWidths);
     const [cellHeight, setCellHeight] = useState(initialHeights);
@@ -95,11 +95,14 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
         const co = [...columnOrder];
 
         const min = indices[0];
-        const n = Math.max(order + indices.length, indices.reduce((a, b) => Math.max(a, b)));
+        const n = Math.max(
+            order + indices.length,
+            indices.reduce((a, b) => Math.max(a, b))
+        );
         while (co.length < n) co.push(co.length);
 
         co.splice(min, indices.length);
-        co.splice(order, 0, ...indices.map(i => getColumnOrder(i)));
+        co.splice(order, 0, ...indices.map((i) => getColumnOrder(i)));
         setColumnOrder(co);
     };
 
@@ -107,11 +110,14 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
         const ro = [...rowOrder];
 
         const min = indices[0];
-        const n = Math.max(order + indices.length, indices.reduce((a, b) => Math.max(a, b)));
+        const n = Math.max(
+            order + indices.length,
+            indices.reduce((a, b) => Math.max(a, b))
+        );
         while (ro.length < n) ro.push(ro.length);
 
         ro.splice(min, indices.length);
-        ro.splice(order, 0, ...indices.map(i => getRowOrder(i)));
+        ro.splice(order, 0, ...indices.map((i) => getRowOrder(i)));
         setRowOrder(ro);
     };
 
@@ -122,7 +128,12 @@ export function SheetBoxHeader() {
     const [data, setData] = useState(initialDataBig);
 
     const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl([], [], getColumnOrder, getRowOrder);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
+        [],
+        [],
+        getColumnOrder,
+        getRowOrder
+    );
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -189,7 +200,12 @@ export function SheetBoxHeader() {
 export function SheetBoxBasic() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
-    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl([], [], getColumnOrder, getRowOrder);
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
+        [],
+        [],
+        getColumnOrder,
+        getRowOrder
+    );
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
@@ -437,7 +453,6 @@ export function SheetBoxFormatting() {
     );
 }
 
-
 export function SheetBoxRender() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
@@ -461,7 +476,7 @@ export function SheetBoxRender() {
 
     const onChange = (changes) => {
         const newData = [...data];
-        for (const {x, y, value} of changes) {
+        for (const { x, y, value } of changes) {
             if (!newData[y]) {
                 newData[y] = [];
             }
@@ -474,37 +489,32 @@ export function SheetBoxRender() {
         return false;
     };
 
-    const render = ({
-        visibleCells,
-        cellLayout,
-        selection,
-        editMode,
-    }) => {
+    const render = ({ visibleCells, cellLayout, selection, editMode }) => {
         if (editMode) return;
-        
+
         const cell = [1, 2];
         const [anchor] = selection;
-        const noteOpen = (anchor[0] === cell[0] && anchor[1] === cell[1]);
+        const noteOpen = anchor[0] === cell[0] && anchor[1] === cell[1];
 
-        const isCellVisible = (
-            visibleCells.columns.includes(cell[0]) &&
-            visibleCells.rows.includes(cell[1])
-        );
+        const isCellVisible = visibleCells.columns.includes(cell[0]) && visibleCells.rows.includes(cell[1]);
         if (!isCellVisible) return null;
 
         const [, top] = cellLayout.cellToPixel(cell, [0, 0]);
-        const [right, ] = cellLayout.cellToPixel(cell, [1, 1]);
+        const [right] = cellLayout.cellToPixel(cell, [1, 1]);
 
-        const marker = <div
-            style={{
-                position: 'absolute',
-                left: right,
-                top: top,
-                marginLeft: '-12px',
-                borderTop: '12px solid blue',
-                borderLeft: '12px solid transparent',
-                pointerEvents: 'none',
-            }} />
+        const marker = (
+            <div
+                style={{
+                    position: 'absolute',
+                    left: right,
+                    top: top,
+                    marginLeft: '-12px',
+                    borderTop: '12px solid blue',
+                    borderLeft: '12px solid transparent',
+                    pointerEvents: 'none',
+                }}
+            />
+        );
 
         const note = noteOpen ? (
             <div
@@ -520,7 +530,7 @@ export function SheetBoxRender() {
                 Hello world
             </div>
         ) : null;
-        
+
         return (
             <div onPointerDown={(e: any) => e.stopPropagation()}>
                 {note}
@@ -532,7 +542,10 @@ export function SheetBoxRender() {
     return (
         <div className="sheet-box">
             <Sheet
-                selection={[[1, 2], [1, 2]]}
+                selection={[
+                    [1, 2],
+                    [1, 2],
+                ]}
                 onSelectionChanged={onSelectionChanged}
                 onRightClick={onRightClick}
                 columnHeaders={columnHeaders}
@@ -547,6 +560,98 @@ export function SheetBoxRender() {
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
                 renderInside={render}
+                cacheLayout
+            />
+        </div>
+    );
+}
+
+export function SheetBoxGrouped() {
+    const [data, setData] = useState(initialDataBig);
+
+    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
+        [],
+        [],
+        getColumnOrder,
+        getRowOrder
+    );
+
+    const groupKeys = [1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8];
+    const orderedGroupKeys = groupKeys.map((_, i) => groupKeys[getRowOrder(i)]);
+
+    const alternatingGroups = orderedGroupKeys
+        .map((key, i) => key !== orderedGroupKeys[i - 1])
+        .reduce((list, start) => {
+            const last = list.at(-1) ?? 1;
+            const bit = start ? 1 - last : last;
+            list.push(bit);
+            return list;
+        }, []);
+
+    const onSelectionChanged = (x1, y1, x2, y2) => {};
+    const onRightClick = () => {};
+    const columnHeaders = ['A', 'B', 'C'];
+    const cellStyle = (x, y) => {
+        return {
+            fillColor: ['#ffffff', '#e0e0e0'][alternatingGroups[y]],
+        };
+    };
+
+    const rowGroupKeys = (y) => {
+        return orderedGroupKeys[y];
+    };
+
+    const editData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const displayData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const sourceData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const editKeys = (x, y) => {
+        return `${x},${y}`;
+    };
+
+    const onChange = (changes) => {
+        const newData = [...data];
+        for (const change of changes) {
+            const cx = getColumnOrder(change.x);
+            const cy = getRowOrder(change.y);
+            if (!newData[cy]) {
+                newData[cy] = [];
+            }
+            newData[cy][cx] = change.value;
+        }
+        setData(newData);
+    };
+
+    const isReadOnly = (x, y) => {
+        return false;
+    };
+
+    return (
+        <div className="sheet-box">
+            <Sheet
+                onSelectionChanged={onSelectionChanged}
+                onRightClick={onRightClick}
+                columnHeaders={columnHeaders}
+                cellStyle={cellStyle}
+                editData={editData}
+                displayData={displayData}
+                sourceData={sourceData}
+                cellWidth={cellWidth}
+                cellHeight={cellHeight}
+                onChange={onChange}
+                readOnly={isReadOnly}
+                onCellWidthChange={onCellWidthChange}
+                onCellHeightChange={onCellHeightChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onRowOrderChange={onRowOrderChange}
+                rowGroupKeys={rowGroupKeys}
+                editKeys={editKeys}
                 cacheLayout
             />
         </div>
@@ -642,16 +747,14 @@ export function SheetBoxVeryBigData() {
 
     return (
         <>
-            {loadingStatus === 'initial' ?
-                (
-                    // eslint-disable-next-line jsx-a11y/anchor-is-valid
-                    <a href="#" onClick={loadClick}>
-                        Load global database of power plants
-                    </a>
-                ) : loadingStatus === 'loading' ? (
-                    'Loading...'
-                ) : null
-            }
+            {loadingStatus === 'initial' ? (
+                // eslint-disable-next-line jsx-a11y/anchor-is-valid
+                <a href="#" onClick={loadClick}>
+                    Load global database of power plants
+                </a>
+            ) : loadingStatus === 'loading' ? (
+                'Loading...'
+            ) : null}
             <div className="sheet-box">
                 <Sheet
                     cellStyle={cellStyle}

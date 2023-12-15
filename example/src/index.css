@@ -195,7 +195,7 @@ p {
 .sheet-box {
     position: relative;
     background-color: #fff;
-    min-height: 330px;
+    height: 330px;
     width: 100%;
     color: #160901;
     flex-grow: 1;

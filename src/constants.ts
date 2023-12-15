@@ -16,7 +16,7 @@ export const MAX_XY: XY = [MAX_SEARCHABLE_INDEX, MAX_SEARCHABLE_INDEX];
 
 export const COLORS = {
     selectionBorder: '#1a66ff',
-    selectionBackground: '#e8f0ff',
+    selectionBackground: '#d8e6ff80',
 
     gridLine: '#0000001f',
 

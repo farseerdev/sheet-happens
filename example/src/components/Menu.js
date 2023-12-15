@@ -9,10 +9,10 @@ function Menu() {
         var offsetPosition = elementPosition - headerOffset;
 
         window.scrollTo({
-             top: offsetPosition,
-             behavior: "smooth"
+            top: offsetPosition,
+            behavior: 'smooth',
         });
-    }
+    };
 
     return (
         <div className="container blue-bg menu">
@@ -22,10 +22,18 @@ function Menu() {
                     <h2 className="page-title">sheet - happens</h2>
                 </div>
                 <div className="nav">
-                    <div className="nav-item" onClick={() => scrollTo('home')} >home</div>
-                    <div className="nav-item" onClick={() => scrollTo('usage')} >usage</div>
-                    <div className="nav-item" onClick={() => scrollTo('features')} >features</div>
-                    <div className="nav-item" onClick={() => scrollTo('documentation')} >documentation</div>
+                    <div className="nav-item" onClick={() => scrollTo('home')}>
+                        home
+                    </div>
+                    <div className="nav-item" onClick={() => scrollTo('usage')}>
+                        usage
+                    </div>
+                    <div className="nav-item" onClick={() => scrollTo('features')}>
+                        features
+                    </div>
+                    <div className="nav-item" onClick={() => scrollTo('documentation')}>
+                        documentation
+                    </div>
                 </div>
             </div>
         </div>
