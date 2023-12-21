@@ -44,18 +44,20 @@ import {
 } from './constants';
 import {
     normalizeSelection,
+    validateSelection,
     isSameSelection,
     isRowSelection,
     isColumnSelection,
     isEmptySelection,
     getDirectionStep,
+    mapSelectionColumns,
+    mapSelectionRows,
     maxXY,
     addXY,
 } from './coordinate';
 import { useMouse } from './mouse';
 import { useScroll, scrollToCell } from './scroll';
 import { useClipboardCopy, useClipboardPaste } from './clipboard';
-import { expandSelectionToColumnGroups, expandSelectionToRowGroups } from './group';
 import { makeLayoutCache, makeCellLayout } from './layout';
 import { createCellProp, createRowOrColumnProp, findInDisplayData } from './props';
 import { renderSheet } from './render';
@@ -99,6 +101,7 @@ export type SheetProps = {
 
     cacheLayout?: boolean | number;
     dontCommitEditOnSelectionChange?: boolean;
+    dontChangeSelectionOnOrderChange?: boolean;
 
     inputComponent?: (
         x: number,
@@ -138,6 +141,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const [selection, setSelection] = useState<Rectangle>(selectionProp);
     const [knobArea, setKnobArea] = useState<Rectangle | null>(null);
     const [dragOffset, setDragOffset] = useState<XY | null>(null);
+    const [dragIndices, setDragIndices] = useState<[number[] | null, number[] | null]>([null, null]);
     const [dropTarget, setDropTarget] = useState<Rectangle | null>(null);
     const [editCell, setEditCell] = useState<XY>(NO_CELL);
 
@@ -177,6 +181,21 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const sheetStyle: InternalSheetStyle = useMemo(() => resolveSheetStyle(props.sheetStyle), [props.sheetStyle]);
     const secondarySelections = props.secondarySelections ?? NO_SELECTIONS;
+
+    const selectedColumnGroups = useMemo(
+        () =>
+            props.columnGroupKeys
+                ? new Set(mapSelectionColumns(selection)((x: number) => columnGroupKeys(x)).filter((x) => x != null))
+                : null,
+        [props.columnGroupKeys, columnGroupKeys, selection]
+    );
+    const selectedRowGroups = useMemo(
+        () =>
+            props.rowGroupKeys
+                ? new Set(mapSelectionRows(selection)((y: number) => rowGroupKeys(y)).filter((x) => x != null))
+                : null,
+        [props.rowGroupKeys, rowGroupKeys, selection]
+    );
 
     const [maxScrollX, maxScrollY] = maxScroll;
 
@@ -230,18 +249,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [visibleCells, props.onScrollChange]);
 
     // Set selection with scrolling
-    const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false, dragOperation = false) => {
-        if (!dragOperation) {
-            if (isColumnSelection(newSelection) && columnGroupKeys) {
-                newSelection = expandSelectionToColumnGroups(newSelection, columnGroupKeys);
-            }
-            if (isRowSelection(newSelection) && rowGroupKeys) {
-                newSelection = expandSelectionToRowGroups(newSelection, rowGroupKeys);
-            }
-        }
-
+    const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false) => {
         if (!isSameSelection(selection, newSelection)) {
-            setSelection(newSelection);
+            setSelection(validateSelection(newSelection));
         }
 
         const { current: overlay } = overlayRef;
@@ -325,10 +335,13 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
         columnGroupKeys,
         rowGroupKeys,
+        selectedColumnGroups,
+        selectedRowGroups,
 
         startEditingCell,
         commitEditingCell,
         setKnobArea,
+        setDragIndices,
         setDragOffset,
         setDropTarget,
         changeSelection,
@@ -342,7 +355,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onCellWidthChange,
         props.onCellHeightChange,
         props.onRightClick,
-        props.dontCommitEditOnSelectionChange
+        props.dontCommitEditOnSelectionChange,
+        props.dontChangeSelectionOnOrderChange
     );
 
     useLayoutEffect(() => {
@@ -359,19 +373,28 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         const animationFrameId = window.requestAnimationFrame(() => {
             hitmapRef.current = renderSheet(
                 context,
+
                 cellLayout,
                 visibleCells,
                 sheetStyle,
                 cellStyle,
                 selection,
                 secondarySelections,
+
                 knobPosition,
                 knobArea,
+                dragIndices,
                 dragOffset,
                 dropTarget,
+
                 columnHeaders,
                 columnHeaderStyle,
                 displayData,
+
+                columnGroupKeys,
+                rowGroupKeys,
+                selectedColumnGroups,
+                selectedRowGroups,
 
                 dataOffset
             );
@@ -396,6 +419,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         columnHeaders,
         columnHeaderStyle,
         displayData,
+
+        columnGroupKeys,
+        rowGroupKeys,
+        selectedColumnGroups,
+        selectedRowGroups,
 
         dataOffset,
     ]);

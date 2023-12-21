@@ -13,6 +13,8 @@ import {
 import { MouseEvent, PointerEvent, RefObject, useCallback, useMemo, useRef, useState } from 'react';
 import {
     normalizeSelection,
+    mapSelectionColumns,
+    mapSelectionRows,
     isColumnSelection,
     isRowSelection,
     isCellSelection,
@@ -23,9 +25,9 @@ import {
     maxXY,
 } from './coordinate';
 import { ONE_ONE, ORIGIN, SIZES } from './constants';
-import { isBoundaryInsideGroup } from './group';
+import { isBoundaryInsideGroup, expandSelectionToRowOrColumnGroups } from './group';
 import { findApproxMaxEditDataIndex } from './props';
-import { isInRange } from './util';
+import { isInRange, seq } from './util';
 
 type DragOp = {
     anchor: number;
@@ -54,13 +56,16 @@ export const useMouse = (
 
     columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
     rowGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
+    selectedColumnGroups: Set<string | number | null> | null,
+    selectedRowGroups: Set<string | number | null> | null,
 
     onEdit?: (cell: XY) => void,
     onCommit?: () => void,
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
+    onDragIndicesChange?: (indices: [number[] | null, number[] | null]) => void,
     onDragOffsetChange?: (dragOffset: XY | null) => void,
     onDropTargetChange?: (selection: Rectangle | null) => void,
-    onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean, dragOperation?: boolean) => void,
+    onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
 
     onInvalidateColumn?: (column: number) => void,
     onInvalidateRow?: (row: number) => void,
@@ -72,7 +77,8 @@ export const useMouse = (
     onCellHeightChange?: (indices: number[], value: number) => void,
     onRightClick?: (e: SheetMouseEvent) => void,
 
-    dontCommitEditOnSelectionChange?: boolean
+    dontCommitEditOnSelectionChange?: boolean,
+    dontChangeSelectionOnOrderChange?: boolean
 ) => {
     const [hitTarget, setHitTarget] = useState<Clickable | null>(null);
 
@@ -199,12 +205,11 @@ export const useMouse = (
                 return;
             }
 
-            const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
+            const normalized = normalizeSelection(selection);
+            const [[minX, minY], [maxX, maxY]] = normalized;
 
-            const selectedColumns = [];
-            const selectedRows = [];
-            for (let i = minX; i <= maxX; i++) selectedColumns.push(i);
-            for (let i = minY; i <= maxY; i++) selectedRows.push(i);
+            const selectedColumns = mapSelectionColumns(selection)((i) => i);
+            const selectedRows = mapSelectionRows(selection)((i) => i);
 
             // Column header
             if (!hideColumnHeaders && y < getIndentY()) {
@@ -213,7 +218,7 @@ export const useMouse = (
                     // Trim off start/end so resize works there
                     const start = columnToPixel(minX) + SIZES.resizeZone;
                     const end = columnToPixel(maxX, 1) - SIZES.resizeZone;
-                    if (isInRange(x, start, end)) {
+                    if (isInRange(x, start, end) || selectedColumnGroups) {
                         for (const index of columns) {
                             const start = columnToPixel(index, 0);
                             const end = columnToPixel(index, 1);
@@ -221,12 +226,45 @@ export const useMouse = (
                             if (
                                 isColumnSelection(selection) &&
                                 isInRange(x, start, end) &&
-                                isInRange(index, minX, maxX) &&
+                                (isInRange(index, minX, maxX) || selectedColumnGroups?.has(columnGroupKeys(index))) &&
                                 canOrderColumn(index)
                             ) {
                                 window.document.body.style.cursor = 'grabbing';
 
-                                const indices = selectedColumns;
+                                // Find all indices that need to be moved, from selection or matching groups
+                                const indices = [
+                                    ...new Set([
+                                        ...selectedColumns,
+                                        ...(selectedColumnGroups
+                                            ? columns.filter((index) =>
+                                                  selectedColumnGroups.has(columnGroupKeys(index))
+                                              )
+                                            : []),
+                                    ]).values(),
+                                ];
+                                indices.sort((a, b) => a - b);
+
+                                // Make one continuous drag shadow around the cursor for a contiguous group
+                                let dragIndices = indices;
+                                if (selectedColumnGroups) {
+                                    const clickSelection: Rectangle = [
+                                        [index, -1],
+                                        [index, -1],
+                                    ];
+                                    const [[left], [right]] = expandSelectionToRowOrColumnGroups(
+                                        clickSelection,
+                                        columnGroupKeys,
+                                        selectedColumnGroups,
+                                        0
+                                    );
+
+                                    // Extend to whole selection if it's part of the same 'chunk'
+                                    const connected = !(minX > right || maxX < left);
+                                    const dragStart = connected ? Math.min(minX, left) : left;
+                                    const dragEnd = connected ? Math.max(maxX, right) : right;
+                                    dragIndices = seq(dragEnd - dragStart + 1, dragStart);
+                                }
+
                                 const size = columnToPixel(maxX, 1) - columnToPixel(minX);
                                 const [scroll] = getScrollPosition(e);
 
@@ -237,6 +275,7 @@ export const useMouse = (
                                     indices,
                                 });
                                 onDragOffsetChange?.([0, 0]);
+                                onDragIndicesChange?.([dragIndices, null]);
                                 return;
                             }
                         }
@@ -277,7 +316,8 @@ export const useMouse = (
                     // Trim off start/end so resize works there
                     const start = rowToPixel(minY) + SIZES.resizeZone;
                     const end = rowToPixel(maxY, 1) - SIZES.resizeZone;
-                    if (isInRange(y, start, end)) {
+
+                    if (isInRange(y, start, end) || selectedRowGroups) {
                         for (const index of rows) {
                             const start = rowToPixel(index, 0);
                             const end = rowToPixel(index, 1);
@@ -285,12 +325,45 @@ export const useMouse = (
                             if (
                                 isRowSelection(selection) &&
                                 isInRange(y, start, end) &&
-                                isInRange(index, minY, maxY) &&
+                                (isInRange(index, minY, maxY) || selectedRowGroups?.has(rowGroupKeys(index))) &&
                                 canOrderRow(index)
                             ) {
                                 window.document.body.style.cursor = 'grabbing';
 
-                                const indices = selectedRows;
+                                // Find all indices that need to be moved, from selection or matching groups
+                                const indices = [
+                                    ...new Set([
+                                        ...selectedRows,
+                                        ...(selectedRowGroups
+                                            ? rows
+                                                  .map((_, i) => i)
+                                                  .filter((index) => selectedRowGroups.has(rowGroupKeys(index)))
+                                            : []),
+                                    ]).values(),
+                                ];
+                                indices.sort((a, b) => a - b);
+
+                                // Make one continuous drag shadow around the cursor for a contiguous group
+                                let dragIndices = indices;
+                                if (selectedRowGroups) {
+                                    const clickSelection: Rectangle = [
+                                        [-1, index],
+                                        [-1, index],
+                                    ];
+                                    const [[, top], [, bottom]] = expandSelectionToRowOrColumnGroups(
+                                        clickSelection,
+                                        rowGroupKeys,
+                                        selectedRowGroups,
+                                        1
+                                    );
+
+                                    // Extend to whole selection if it's part of the same 'chunk'
+                                    const connected = !(minY > bottom || maxY < top);
+                                    const dragStart = connected ? Math.min(minY, top) : top;
+                                    const dragEnd = connected ? Math.max(maxY, bottom) : bottom;
+                                    dragIndices = seq(dragEnd - dragStart + 1, dragStart);
+                                }
+
                                 const size = rowToPixel(maxY, 1) - rowToPixel(minY);
                                 const [, scroll] = getScrollPosition(e);
 
@@ -301,6 +374,7 @@ export const useMouse = (
                                     indices,
                                 });
                                 onDragOffsetChange?.([0, 0]);
+                                onDragIndicesChange?.([null, dragIndices]);
                                 return;
                             }
                         }
@@ -390,6 +464,10 @@ export const useMouse = (
             canOrderColumn,
             canOrderRow,
             dontCommitEditOnSelectionChange,
+            columnGroupKeys,
+            rowGroupKeys,
+            selectedColumnGroups,
+            selectedRowGroups,
         ]
     );
 
@@ -423,6 +501,7 @@ export const useMouse = (
             const xy = getMousePosition(e);
             if (xy && (columnDrag || rowDrag)) {
                 window.document.body.style.cursor = 'auto';
+                onDragIndicesChange?.([null, null]);
                 onDragOffsetChange?.(null);
                 onDropTargetChange?.(null);
 
@@ -436,17 +515,15 @@ export const useMouse = (
                     const { indices } = columnDrag;
 
                     const insideSelection = cellX >= minX && cellX <= maxX + 1;
-                    if (!insideSelection) {
-                        const order = cellX > minX ? cellX - indices.length : cellX;
-                        onSelectionChange?.(
-                            [
+                    const insideGroup = selectedColumnGroups?.has(columnGroupKeys(x));
+                    if (!insideSelection && !insideGroup) {
+                        const preceding = indices.filter((i) => i < cellX);
+                        const order = cellX - preceding.length;
+                        dontChangeSelectionOnOrderChange ||
+                            onSelectionChange?.([
                                 [order, minY],
-                                [order + maxX - minX, maxY],
-                            ],
-                            false,
-                            false,
-                            true
-                        );
+                                [order + indices.length - 1, maxY],
+                            ]);
                         onColumnOrderChange?.(indices, order);
                         onInvalidateColumn?.(Math.min(minX, order));
                     }
@@ -455,17 +532,15 @@ export const useMouse = (
                     const { indices } = rowDrag;
 
                     const insideSelection = cellY >= minY && cellY <= maxY + 1;
-                    if (!insideSelection) {
-                        const order = cellY > minY ? cellY - indices.length : cellY;
-                        onSelectionChange?.(
-                            [
+                    const insideGroup = selectedRowGroups?.has(rowGroupKeys(y));
+                    if (!insideSelection && !insideGroup) {
+                        const preceding = indices.filter((i) => i < cellY);
+                        const order = cellY - preceding.length;
+                        dontChangeSelectionOnOrderChange ||
+                            onSelectionChange?.([
                                 [minX, order],
-                                [maxX, order + maxY - minY],
-                            ],
-                            false,
-                            false,
-                            true
-                        );
+                                [maxX, order + indices.length - 1],
+                            ]);
                         onRowOrderChange?.(indices, order);
                         onInvalidateRow?.(Math.min(minY, order));
                     }
@@ -502,6 +577,7 @@ export const useMouse = (
             onDropTargetChange,
             onColumnOrderChange,
             onRowOrderChange,
+            dontChangeSelectionOnOrderChange,
         ]
     );
 
@@ -568,7 +644,7 @@ export const useMouse = (
                         // Trim off start/end so resize works there
                         const start = columnToPixel(minX) + SIZES.resizeZone;
                         const end = columnToPixel(maxX, 1) - SIZES.resizeZone;
-                        if (isInRange(x, start, end)) {
+                        if (isInRange(x, start, end) || selectedColumnGroups) {
                             for (const index of columns) {
                                 const start = columnToPixel(index);
                                 const end = columnToPixel(index, 1);
@@ -577,7 +653,8 @@ export const useMouse = (
                                     !draggingColumnSelection &&
                                     isColumnSelection(selection) &&
                                     isInRange(x, start, end) &&
-                                    isInRange(index, minX, maxX) &&
+                                    (isInRange(index, minX, maxX) ||
+                                        selectedColumnGroups?.has(columnGroupKeys(index))) &&
                                     canOrderColumn(index)
                                 ) {
                                     window.document.body.style.cursor = 'grab';
@@ -602,7 +679,7 @@ export const useMouse = (
                         // Trim off start/end so resize works there
                         const start = rowToPixel(minY) + SIZES.resizeZone;
                         const end = rowToPixel(maxY, 1) - SIZES.resizeZone;
-                        if (isInRange(y, start, end)) {
+                        if (isInRange(y, start, end) || selectedRowGroups) {
                             for (const index of rows) {
                                 const start = rowToPixel(index);
                                 const end = rowToPixel(index, 1);
@@ -611,7 +688,7 @@ export const useMouse = (
                                     !draggingRowSelection &&
                                     isRowSelection(selection) &&
                                     isInRange(y, start, end) &&
-                                    isInRange(index, minY, maxY) &&
+                                    (isInRange(index, minY, maxY) || selectedRowGroups?.has(rowGroupKeys(index))) &&
                                     canOrderRow(index)
                                 ) {
                                     window.document.body.style.cursor = 'grab';
@@ -774,12 +851,15 @@ export const useMouse = (
             getMouseHit,
             onCellWidthChange,
             onCellHeightChange,
+            onDragIndicesChange,
             onDragOffsetChange,
             onDropTargetChange,
             onSelectionChange,
             onKnobAreaChange,
             onInvalidateRow,
             onInvalidateColumn,
+            columnGroupKeys,
+            rowGroupKeys,
         ]
     );
 

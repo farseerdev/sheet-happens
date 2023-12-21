@@ -93,31 +93,35 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
 
     const onColumnOrderChange = (indices: number[], order: number) => {
         const co = [...columnOrder];
+        console.log({ indices, order });
 
-        const min = indices[0];
-        const n = Math.max(
-            order + indices.length,
-            indices.reduce((a, b) => Math.max(a, b))
-        );
+        // Extend column order to cover operation
+        const n = Math.max(order + indices.length, order + indices.reduce((a, b) => Math.max(a, b), 0));
         while (co.length < n) co.push(co.length);
 
-        co.splice(min, indices.length);
-        co.splice(order, 0, ...indices.map((i) => getColumnOrder(i)));
+        // Remove old columns one by one (indices may be disjoint but are always increasing)
+        for (let i = 0; i < indices.length; ++i) co.splice(indices[i] - i, 1);
+
+        // Splice in new indices mapped to old order
+        co.splice(order, 0, ...indices.map((i) => columnOrder[i] ?? i));
+
         setColumnOrder(co);
     };
 
     const onRowOrderChange = (indices: number[], order: number) => {
         const ro = [...rowOrder];
 
-        const min = indices[0];
-        const n = Math.max(
-            order + indices.length,
-            indices.reduce((a, b) => Math.max(a, b))
-        );
+        // Extend row order to cover operation
+        const n = Math.max(order + indices.length, order + indices.reduce((a, b) => Math.max(a, b), 0));
+
         while (ro.length < n) ro.push(ro.length);
 
-        ro.splice(min, indices.length);
-        ro.splice(order, 0, ...indices.map((i) => getRowOrder(i)));
+        // Remove old rows one by one (indices may be disjoint but are always increasing)
+        for (let i = 0; i < indices.length; ++i) ro.splice(indices[i] - i, 1);
+
+        // Splice in new indices mapped to old order
+        ro.splice(order, 0, ...indices.map((i) => rowOrder[i] ?? i));
+
         setRowOrder(ro);
     };
 

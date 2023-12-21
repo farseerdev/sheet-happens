@@ -12,7 +12,7 @@ import {
     XY,
 } from './types';
 import { applyAlignment, resolveCellStyle } from './style';
-import { normalizeSelection, isEmptySelection, isRowSelection, isColumnSelection } from './coordinate';
+import { normalizeSelection, isEmptySelection, isColumnSelection, isRowSelection } from './coordinate';
 import { isInRange, isInRangeLeft, isInRangeCenter } from './util';
 import {
     COLORS,
@@ -20,6 +20,7 @@ import {
     DEFAULT_CELL_STYLE,
     DEFAULT_COLUMN_HEADER_STYLE,
     HEADER_SELECTED_STYLE,
+    HEADER_GROUP_SELECTED_STYLE,
     HEADER_ACTIVE_STYLE,
     NO_STYLE,
     ONE_ONE,
@@ -38,12 +39,18 @@ export const renderSheet = (
 
     knobPosition: XY | null,
     knobArea: Rectangle | null,
+    dragIndices: [number[] | null, number[] | null],
     dragOffset: XY | null,
     dropTarget: Rectangle | null,
 
     columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     displayData: CellPropertyFunction<CellContentType>,
+
+    columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
+    rowGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
+    selectedColumnGroups: Set<string | number | null> | null,
+    selectedRowGroups: Set<string | number | null> | null,
 
     dataOffset: XY
 ): Clickable[] => {
@@ -180,8 +187,20 @@ export const renderSheet = (
             // Row selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
             const isActive = isInRange(row, minY, maxY);
-            const isSelected = rowSelectionActive && !columnSelectionActive && isActive;
-            const style = isSelected ? HEADER_SELECTED_STYLE : isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+
+            const groupKey = rowGroupKeys(row);
+            const isInRowGroup = groupKey != null && selectedRowGroups?.has(groupKey);
+
+            const isSelfSelected = rowSelectionActive && isActive;
+            const isGroupSelected = rowSelectionActive && isInRowGroup;
+
+            const style = isSelfSelected
+                ? HEADER_SELECTED_STYLE
+                : isGroupSelected
+                ? HEADER_GROUP_SELECTED_STYLE
+                : isActive
+                ? HEADER_ACTIVE_STYLE
+                : NO_STYLE;
 
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
@@ -212,8 +231,12 @@ export const renderSheet = (
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
             const isActive = isInRange(column, minX, maxX);
-            const selectedStyle =
-                columnSelectionActive && !rowSelectionActive && isActive ? HEADER_SELECTED_STYLE : NO_STYLE;
+
+            const groupKey = columnGroupKeys(column);
+            const isInColumnGroup = groupKey != null && selectedColumnGroups?.has(groupKey);
+
+            const isSelected = columnSelectionActive && !rowSelectionActive && (isActive || isInColumnGroup);
+            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const style = {
                 ...columnHeaderStyle(column),
@@ -287,10 +310,24 @@ export const renderSheet = (
     // Drag ghost (pixels)
     if (dragOffset) {
         const [shiftX, shiftY] = dragOffset;
-        const [[left, top], [right, bottom]] = resolveSelection(selection, cellLayout);
+        const [dragColumns, dragRows] = dragIndices;
 
         context.fillStyle = COLORS.dragGhost;
-        context.fillRect(left + shiftX, top + shiftY, right - left, bottom - top);
+
+        if (dragColumns) {
+            for (const column of dragColumns) {
+                const left = columnToPixel(column);
+                const right = columnToPixel(column, 1);
+                context.fillRect(left + shiftX, 0, right - left, height);
+            }
+        }
+        if (dragRows) {
+            for (const row of dragRows) {
+                const top = rowToPixel(row);
+                const bottom = rowToPixel(row, 1);
+                context.fillRect(0, top + shiftY, width, bottom - top);
+            }
+        }
     }
 
     // Drop target
@@ -298,7 +335,7 @@ export const renderSheet = (
         let [[left, top], [right, bottom]] = resolveSelection(dropTarget, cellLayout);
 
         context.strokeStyle = COLORS.dropTarget;
-        context.lineWidth = 2;
+        context.lineWidth = 4;
 
         if (isColumnSelection(dropTarget)) {
             right = left;
