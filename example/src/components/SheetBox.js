@@ -93,7 +93,6 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
 
     const onColumnOrderChange = (indices: number[], order: number) => {
         const co = [...columnOrder];
-        console.log({ indices, order });
 
         // Extend column order to cover operation
         const n = Math.max(order + indices.length, order + indices.reduce((a, b) => Math.max(a, b), 0));
