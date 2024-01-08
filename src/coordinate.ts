@@ -27,6 +27,31 @@ export const isSameSelection = (a: Rectangle, b: Rectangle) => {
     return isSameXY(a1, b1) && isSameXY(a2, b2);
 };
 
+export const forRange = (min: number, max: number, callback: (i: number) => void) => {
+    for (let i = min; i <= max; ++i) callback(i);
+};
+
+export const forSelectionColumns = (selection: Rectangle) => (callback: (i: number) => void) => {
+    const [[left], [right]] = normalizeSelection(selection);
+    forRange(left, right, callback);
+};
+
+export const forSelectionRows = (selection: Rectangle) => (callback: (i: number) => void) => {
+    const [[, top], [, bottom]] = normalizeSelection(selection);
+    forRange(top, bottom, callback);
+};
+
+const forToMap = <A extends Array<any>>(forLoop: (callback: (...args: A) => void) => void) => <B>(
+    map: (...args: A) => B
+) => {
+    const out: B[] = [];
+    forLoop((...args: A) => out.push(map(...args)));
+    return out;
+};
+
+export const mapSelectionColumns = (selection: Rectangle) => forToMap(forSelectionColumns(selection));
+export const mapSelectionRows = (selection: Rectangle) => forToMap(forSelectionRows(selection));
+
 // Selection is infinite horizontally
 export const isMaybeRowSelection = (selection: Rectangle) => {
     const [[left], [right]] = selection;
@@ -70,21 +95,23 @@ export const isPointInsideSelection = (selection: Rectangle, point: XY) => {
     return x >= left && x <= right && y >= top && y <= bottom;
 };
 
+// Validate selections to avoid half-infinite anchor/head
+export const validateSelection = (selection: Rectangle): Rectangle => {
+    let [anchor, head] = selection;
+    anchor = anchor.slice() as XY;
+    head = head.slice() as XY;
+
+    const min = minXY(anchor, head);
+    if (min[0] === -1) anchor[0] = head[0] = -1;
+    if (min[1] === -1) anchor[1] = head[1] = -1;
+
+    return [anchor, head];
+};
+
 // Normalize rectangle to min/max pair
 export const normalizeSelection = (selection: Rectangle): Rectangle => {
     const [anchor, head] = selection;
-    const [ax, ay] = anchor;
-    const [hx, hy] = head;
-
-    const left = Math.min(ax, hx);
-    const right = Math.max(ax, hx);
-    const top = Math.min(ay, hy);
-    const bottom = Math.max(ay, hy);
-
-    return [
-        [left, top],
-        [right, bottom],
-    ];
+    return [minXY(anchor, head), maxXY(anchor, head)];
 };
 
 // Orient normalized rectangle to match existing orientation
@@ -95,8 +122,8 @@ export const orientSelection = (normalized: Rectangle, to: Rectangle): Rectangle
     const [ax, ay] = anchor;
     const [hx, hy] = head;
 
-    const swapX = (ax - hx || 1) * (left - right || 1) < 0;
-    const swapY = (ay - hy || 1) * (top - bottom || 1) < 0;
+    const swapX = (ax - hx || 1) * (right - left || 1) < 0;
+    const swapY = (ay - hy || 1) * (bottom - top || 1) < 0;
 
     return [
         [swapX ? right : left, swapY ? bottom : top],

@@ -30,7 +30,9 @@ export const COLORS = {
     headerActiveText: '#1a66ff',
 
     headerSelected: '#1a66ff',
+    headerSelectedGroup: '#1a66ff70',
     headerSelectedText: '#ffffff',
+    headerSelectedGroupText: '#ffffff',
 
     shadowColor: '#000000',
 };
@@ -80,6 +82,11 @@ export const HEADER_ACTIVE_STYLE = {
 export const HEADER_SELECTED_STYLE = {
     backgroundColor: COLORS.headerSelected,
     color: COLORS.headerSelectedText,
+};
+
+export const HEADER_GROUP_SELECTED_STYLE = {
+    backgroundColor: COLORS.headerSelectedGroup,
+    color: COLORS.headerSelectedGroupText,
 };
 
 export const ARROW_KEYS: Record<string, Direction> = {
