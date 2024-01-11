@@ -232,8 +232,8 @@ export const useMouse = (
                                 window.document.body.style.cursor = 'grabbing';
 
                                 // Find all indices that need to be moved, from selection or matching groups
-                                const indices = [
-                                    ...new Set([
+                                const indices = Array.from(
+                                    new Set([
                                         ...selectedColumns,
                                         ...(selectedColumnGroups
                                             ? columns.filter((index) =>
@@ -241,7 +241,7 @@ export const useMouse = (
                                               )
                                             : []),
                                     ]).values(),
-                                ];
+                                );
                                 indices.sort((a, b) => a - b);
 
                                 // Make one continuous drag shadow around the cursor for a contiguous group
@@ -331,8 +331,8 @@ export const useMouse = (
                                 window.document.body.style.cursor = 'grabbing';
 
                                 // Find all indices that need to be moved, from selection or matching groups
-                                const indices = [
-                                    ...new Set([
+                                const indices = Array.from(
+                                    new Set([
                                         ...selectedRows,
                                         ...(selectedRowGroups
                                             ? rows
@@ -340,7 +340,7 @@ export const useMouse = (
                                                   .filter((index) => selectedRowGroups.has(rowGroupKeys(index)))
                                             : []),
                                     ]).values(),
-                                ];
+                                );
                                 indices.sort((a, b) => a - b);
 
                                 // Make one continuous drag shadow around the cursor for a contiguous group
