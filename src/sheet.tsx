@@ -154,7 +154,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const [editValue, setEditValue] = useState<string | number>('');
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
 
-    const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: canvasRef });
+    const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: overlayRef });
 
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
