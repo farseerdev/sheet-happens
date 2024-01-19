@@ -44,6 +44,7 @@ import {
 } from './constants';
 import {
     normalizeSelection,
+    clipSelection,
     validateSelection,
     isSameSelection,
     isRowSelection,
@@ -99,6 +100,8 @@ export type SheetProps = {
     selection?: Rectangle;
     secondarySelections?: Selection[];
 
+    maxRows?: number;
+    maxColumns?: number;
     cacheLayout?: boolean | number;
     dontCommitEditOnSelectionChange?: boolean;
     dontChangeSelectionOnOrderChange?: boolean;
@@ -265,6 +268,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 [canvasWidth, canvasHeight],
                 [freezeColumns, freezeRows],
                 dataOffset,
+                [maxColumns, maxRows],
                 maxScroll,
                 cellLayout,
                 (dataOffset: XY, maxScroll: XY) => {
@@ -304,6 +308,18 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setArrowKeyCommitMode(arrowKeyCommitMode);
         setLastEditKey(editKeys(...editCell));
     };
+
+    // If max row or column count changes, keep selection in range and view
+    const { maxColumns = Infinity, maxRows = Infinity } = props;
+    useLayoutEffect(() => {
+        const [, [maxX, maxY]] = normalizeSelection(selection);
+        const overflowX = maxX > maxColumns;
+        const overflowY = maxY > maxRows;
+        if (!overflowX && !overflowY) return;
+
+        const corner: XY = [maxColumns - 1, maxRows - 1];
+        changeSelection(clipSelection(selection, corner), true);
+    }, [maxRows, maxColumns]);
 
     // Output from rendered layout is used to drive events on user content
     const hitmapRef = useRef<Clickable[]>(NO_CLICKABLES);

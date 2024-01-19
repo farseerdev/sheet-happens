@@ -51,6 +51,7 @@ export const scrollToCell = (
     view: XY,
     freeze: XY,
     offset: XY,
+    maxCells: XY,
     maxScroll: XY,
     cellLayout: CellLayout,
     callback: (offset: XY, maxScroll: XY) => void
@@ -58,8 +59,20 @@ export const scrollToCell = (
     const [x, y] = cell;
     const [w, h] = view;
     const [offsetX, offsetY] = offset;
+    const [maxColumns, maxRows] = maxCells;
 
-    const { cellToAbsolute, cellToPixel, columnToPixel, rowToPixel } = cellLayout;
+    const {
+        cellToAbsolute,
+        cellToPixel,
+        columnToPixel,
+        rowToPixel,
+        absoluteToColumn,
+        columnToAbsolute,
+        absoluteToRow,
+        rowToAbsolute,
+        getIndentX,
+        getIndentY,
+    } = cellLayout;
     const [frozenX, frozenY] = cellToAbsolute(freeze);
     const [left, top] = cellToPixel(cell);
     const [right, bottom] = cellToPixel(cell, ONE_ONE);
@@ -69,9 +82,27 @@ export const scrollToCell = (
     // If moving left/up, scroll to head
     if (left <= frozenX) {
         newX = x - freeze[0];
+
+        // If view extends past end of table
+        const scrollW = w - frozenX - getIndentX();
+        const rightEdge = absoluteToColumn(columnToAbsolute(newX) + scrollW);
+        if (rightEdge > maxColumns) {
+            // Limit auto-scroll to table contents
+            const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX);
+            newX = absoluteToColumn(columnToAbsolute(newX) - scrollW + remainder) + 1;
+        }
     }
     if (top <= frozenY) {
         newY = y - freeze[1];
+
+        // If view extends past end of table
+        const scrollH = h - frozenY - getIndentY();
+        const bottomEdge = absoluteToRow(rowToAbsolute(newY) + scrollH);
+        if (bottomEdge > maxRows) {
+            // Limit auto-scroll to table contents
+            const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY);
+            newY = absoluteToRow(rowToAbsolute(newY) - scrollH + remainder) + 1;
+        }
     }
 
     // If moving right/down, scroll cell by cell until right/bottom of cell is visible

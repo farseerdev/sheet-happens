@@ -130,3 +130,9 @@ export const orientSelection = (normalized: Rectangle, to: Rectangle): Rectangle
         [swapX ? left : right, swapY ? top : bottom],
     ];
 };
+
+// Clip rectangle to max range
+export const clipSelection = (selection: Rectangle, max: XY): Rectangle => {
+    const [anchor, head] = selection;
+    return [minXY(anchor, max), minXY(head, max)];
+};

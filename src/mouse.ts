@@ -240,7 +240,7 @@ export const useMouse = (
                                                   selectedColumnGroups.has(columnGroupKeys(index))
                                               )
                                             : []),
-                                    ]).values(),
+                                    ]).values()
                                 );
                                 indices.sort((a, b) => a - b);
 
@@ -339,7 +339,7 @@ export const useMouse = (
                                                   .map((_, i) => i)
                                                   .filter((index) => selectedRowGroups.has(rowGroupKeys(index)))
                                             : []),
-                                    ]).values(),
+                                    ]).values()
                                 );
                                 indices.sort((a, b) => a - b);
 
