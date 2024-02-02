@@ -51,31 +51,34 @@ export function useWidthHeightControl(
     const [cellHeight, setCellHeight] = useState(initialHeights);
 
     const onCellWidthChange = (indices, newWidth) => {
-        const cw = [...cellWidth];
-        for (const order of indices) {
-            const idx = getColumnOrder(order);
-            if (idx > cw.length) {
-                for (let i = cw.length; i <= idx; i++) {
-                    cw.push(DEFAULT_CELL_WIDTH);
+        setCellWidth((cellWidth) => {
+            const cw = [...cellWidth];
+            for (const order of indices) {
+                const idx = getColumnOrder(order);
+                if (idx > cw.length) {
+                    for (let i = cw.length; i <= idx; i++) {
+                        cw.push(DEFAULT_CELL_WIDTH);
+                    }
                 }
+                cw[idx] = newWidth;
             }
-            cw[idx] = newWidth;
-        }
-        setCellWidth(cw);
+            return cw;
+        });
     };
 
     const onCellHeightChange = (indices, newHeight) => {
-        const ch = [...cellHeight];
-        for (const order of indices) {
-            const idx = getRowOrder(order);
-            if (idx > ch.length) {
-                for (let i = ch.length; i <= idx; i++) {
-                    ch.push(DEFAULT_CELL_HEIGHT);
+        setCellHeight((cellHeight) => {
+            const ch = [...cellHeight];
+            for (const order of indices) {
+                const idx = getRowOrder(order);
+                if (idx > ch.length) {
+                    for (let i = ch.length; i <= idx; i++) {
+                        ch.push(DEFAULT_CELL_HEIGHT);
+                    }
                 }
+                ch[idx] = newHeight;
             }
-            ch[idx] = newHeight;
-        }
-        setCellHeight(ch);
+        });
     };
 
     const cw = (x: number) => cellWidth[getColumnOrder(x)] ?? DEFAULT_CELL_WIDTH;

@@ -59,6 +59,8 @@ export const useMouse = (
     selectedColumnGroups: Set<string | number | null> | null,
     selectedRowGroups: Set<string | number | null> | null,
 
+    getAutoSizeWidth: (column: number) => number,
+
     onEdit?: (cell: XY) => void,
     onCommit?: () => void,
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
@@ -873,7 +875,8 @@ export const useMouse = (
         (e: MouseEvent) => {
             const {
                 current: {
-                    cellLayout: { pixelToCell },
+                    selection,
+                    cellLayout: { pixelToCell, columnToPixel },
                 },
             } = ref;
 
@@ -882,6 +885,35 @@ export const useMouse = (
 
             const xy = getMousePosition(e);
             if (!xy) return;
+
+            // Double click column divider to autosize
+            const [x] = xy;
+            const { columns } = visibleCells;
+            if (onCellWidthChange) {
+                const autosized = [];
+
+                for (const index of columns) {
+                    const edge = columnToPixel(index, 1);
+
+                    if (Math.abs(edge - x) < SIZES.resizeZone && canSizeColumn(index)) {
+                        const [[minX], [maxX]] = normalizeSelection(selection);
+
+                        // Autosize entire selection if double-clicking a right edge
+                        const indices =
+                            isColumnSelection(selection) && index >= minX && index <= maxX
+                                ? mapSelectionColumns(selection)((i) => i)
+                                : [index];
+
+                        autosized.push(...indices);
+                    }
+                }
+
+                for (const column of autosized) {
+                    onInvalidateColumn?.(column - 1);
+                    onCellWidthChange([column], getAutoSizeWidth(column));
+                }
+                if (autosized.length) return;
+            }
 
             const hitTarget = getMouseHit(xy);
             if (hitTarget) {
@@ -893,7 +925,17 @@ export const useMouse = (
             if (editMode) onCommit?.();
             onEdit?.(editCell);
         },
-        [getMousePosition, getMouseHit, onCommit, onEdit]
+        [
+            getMousePosition,
+            getMouseHit,
+            onCommit,
+            onEdit,
+            onInvalidateColumn,
+            onCellWidthChange,
+            getAutoSizeWidth,
+            visibleCells,
+            canSizeColumn,
+        ]
     );
 
     const onContextMenu = useCallback(
