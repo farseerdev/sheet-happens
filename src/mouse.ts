@@ -143,6 +143,12 @@ export const useMouse = (
 
         const rect = e.target.getBoundingClientRect();
         const xy: XY = [e.clientX - rect.left, e.clientY - rect.top];
+
+        // Ignore clicks on scrollbar
+        if (xy[0] > e.target.clientWidth || xy[1] > e.target.clientHeight) {
+            return null;
+        }
+
         return xy;
     }, []);
 
@@ -611,10 +617,10 @@ export const useMouse = (
                 },
             } = ref;
 
+            window.document.body.style.cursor = 'auto';
+
             const xy = getMousePosition(e);
             if (!xy) return;
-
-            window.document.body.style.cursor = 'auto';
 
             const hitTarget = getMouseHit(xy);
             if (hitTarget) {
