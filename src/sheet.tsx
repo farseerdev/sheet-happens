@@ -58,6 +58,7 @@ import {
 } from './coordinate';
 import { useMouse } from './mouse';
 import { useScroll, scrollToCell } from './scroll';
+import { useAutoSizeColumn } from './autosize';
 import { useClipboardCopy, useClipboardPaste } from './clipboard';
 import { makeLayoutCache, makeCellLayout } from './layout';
 import { createCellProp, createRowOrColumnProp, findInDisplayData } from './props';
@@ -331,6 +332,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
 
+    const getAutoSizeWidth = useAutoSizeColumn(visibleCells.rows, displayData, cellStyle);
+
     const { mouseHandlers, knobPosition } = useMouse(
         hitmapRef,
         selection,
@@ -353,6 +356,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         rowGroupKeys,
         selectedColumnGroups,
         selectedRowGroups,
+
+        getAutoSizeWidth,
 
         startEditingCell,
         commitEditingCell,
