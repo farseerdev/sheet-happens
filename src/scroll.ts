@@ -27,12 +27,6 @@ export const useScroll = (
                 onOffsetChange?.(cell);
             }
 
-            // TODO: smooth scrolling
-            // const pixel = subXY(cellToAbsolute(cell), xy);
-            //if (!isSameXY(pixel, pixelOffset)) {
-            //     setPixelOffset(pixel);
-            //}
-
             const [x, y] = xy;
             const [maxScrollX, maxScrollY] = maxScroll;
             const growX = maxScrollX < x + 1 ? 1.5 : 1;
@@ -45,27 +39,44 @@ export const useScroll = (
     );
 };
 
-export const scrollToCell = (
-    element: HTMLDivElement,
-    cell: XY,
-    view: XY,
-    freeze: XY,
-    offset: XY,
-    maxCells: XY,
-    maxScroll: XY,
-    cellLayout: CellLayout,
-    callback: (offset: XY, maxScroll: XY) => void
-) => {
-    const [x, y] = cell;
-    const [w, h] = view;
-    const [offsetX, offsetY] = offset;
+// If view extends past end of table
+// Limit view to table contents
+export const clipDataOffset = (view: XY, offset: XY, freeze: XY, maxCells: XY, cellLayout: CellLayout): XY => {
+    let [newX, newY] = offset;
     const [maxColumns, maxRows] = maxCells;
 
+    const { absoluteToColumn, columnToAbsolute, absoluteToRow, rowToAbsolute } = cellLayout;
+
+    const {
+        edge: [rightEdge, bottomEdge],
+        viewport: [scrollW, scrollH],
+    } = getViewExtent(view, [newX, newY], freeze, cellLayout);
+
+    // Move extra space on the right/bottom to equivalent on the left/top
+    if (rightEdge > maxColumns) {
+        const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX);
+        newX = absoluteToColumn(columnToAbsolute(newX) - scrollW + remainder) + 1;
+    }
+    if (bottomEdge > maxRows) {
+        const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY);
+        newY = absoluteToRow(rowToAbsolute(newY) - scrollH + remainder) + 1;
+    }
+
+    return [newX, newY];
+};
+
+// Get bottom-right corner cell + non-frozen viewport size
+export const getViewExtent = (
+    view: XY,
+    offset: XY,
+    freeze: XY,
+    cellLayout: CellLayout
+): {
+    edge: XY;
+    viewport: XY;
+} => {
     const {
         cellToAbsolute,
-        cellToPixel,
-        columnToPixel,
-        rowToPixel,
         absoluteToColumn,
         columnToAbsolute,
         absoluteToRow,
@@ -73,6 +84,41 @@ export const scrollToCell = (
         getIndentX,
         getIndentY,
     } = cellLayout;
+
+    const [x, y] = offset;
+    const [w, h] = view;
+    const [frozenX, frozenY] = cellToAbsolute(freeze);
+
+    const scrollW = w - frozenX - getIndentX();
+    const scrollH = h - frozenY - getIndentY();
+
+    const leftEdge = x + freeze[0];
+    const topEdge = y + freeze[1];
+    const rightEdge = absoluteToColumn(columnToAbsolute(leftEdge) + scrollW);
+    const bottomEdge = absoluteToRow(rowToAbsolute(topEdge) + scrollH);
+
+    return {
+        edge: [rightEdge, bottomEdge],
+        viewport: [scrollW, scrollH],
+    };
+};
+
+export const scrollToCell = (
+    element: HTMLDivElement,
+    cell: XY,
+    view: XY,
+    freeze: XY,
+    offset: XY,
+    maxScroll: XY,
+    cellLayout: CellLayout,
+    callback: (offset: XY, maxScroll: XY) => void
+) => {
+    const [x, y] = cell;
+    const [w, h] = view;
+    const [offsetX, offsetY] = offset;
+
+    const { cellToAbsolute, cellToPixel, columnToPixel, rowToPixel } = cellLayout;
+
     const [frozenX, frozenY] = cellToAbsolute(freeze);
     const [left, top] = cellToPixel(cell);
     const [right, bottom] = cellToPixel(cell, ONE_ONE);
@@ -82,27 +128,9 @@ export const scrollToCell = (
     // If moving left/up, scroll to head
     if (left <= frozenX) {
         newX = x - freeze[0];
-
-        // If view extends past end of table
-        const scrollW = w - frozenX - getIndentX();
-        const rightEdge = absoluteToColumn(columnToAbsolute(newX) + scrollW);
-        if (rightEdge > maxColumns) {
-            // Limit auto-scroll to table contents
-            const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX);
-            newX = absoluteToColumn(columnToAbsolute(newX) - scrollW + remainder) + 1;
-        }
     }
     if (top <= frozenY) {
         newY = y - freeze[1];
-
-        // If view extends past end of table
-        const scrollH = h - frozenY - getIndentY();
-        const bottomEdge = absoluteToRow(rowToAbsolute(newY) + scrollH);
-        if (bottomEdge > maxRows) {
-            // Limit auto-scroll to table contents
-            const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY);
-            newY = absoluteToRow(rowToAbsolute(newY) - scrollH + remainder) + 1;
-        }
     }
 
     // If moving right/down, scroll cell by cell until right/bottom of cell is visible

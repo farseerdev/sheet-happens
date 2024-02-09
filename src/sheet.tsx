@@ -44,7 +44,6 @@ import {
 } from './constants';
 import {
     normalizeSelection,
-    clipSelection,
     validateSelection,
     isSameSelection,
     isRowSelection,
@@ -57,7 +56,7 @@ import {
     addXY,
 } from './coordinate';
 import { useMouse } from './mouse';
-import { useScroll, scrollToCell } from './scroll';
+import { useScroll, scrollToCell, clipDataOffset } from './scroll';
 import { useAutoSizeColumn } from './autosize';
 import { useClipboardCopy, useClipboardPaste } from './clipboard';
 import { makeLayoutCache, makeCellLayout } from './layout';
@@ -137,8 +136,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const [maxScroll, setMaxScroll] = useState<XY>(INITIAL_MAX_SCROLL);
     const [dataOffset, setDataOffset] = useState<XY>(ORIGIN);
-    // TODO: smooth scrolling
-    // const [pixelOffset, setPixelOffset] = useState<XY>(ORIGIN);
 
     const selectionProp = props.selection ?? NO_SELECTION;
 
@@ -252,6 +249,29 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         }
     }, [visibleCells, props.onScrollChange]);
 
+    const scrollToSelection = (selection: Rectangle, toHead = false) => {
+        const { current: overlay } = overlayRef;
+        if (!overlay) return;
+
+        const [anchor, head] = selection;
+        const view: XY = [canvasWidth, canvasHeight];
+        const freeze: XY = [freezeColumns, freezeRows];
+
+        scrollToCell(
+            overlay,
+            toHead ? head : anchor,
+            view,
+            freeze,
+            dataOffset,
+            maxScroll,
+            cellLayout,
+            (dataOffset: XY, maxScroll: XY) => {
+                setDataOffset(dataOffset);
+                setMaxScroll(maxScroll);
+            }
+        );
+    };
+
     // Set selection with scrolling
     const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false) => {
         if (!isSameSelection(selection, newSelection)) {
@@ -262,21 +282,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         if (!overlay) return;
 
         if (scrollTo) {
-            const [anchor, head] = newSelection;
-            scrollToCell(
-                overlay,
-                toHead ? head : anchor,
-                [canvasWidth, canvasHeight],
-                [freezeColumns, freezeRows],
-                dataOffset,
-                [maxColumns, maxRows],
-                maxScroll,
-                cellLayout,
-                (dataOffset: XY, maxScroll: XY) => {
-                    setDataOffset(dataOffset);
-                    setMaxScroll(maxScroll);
-                }
-            );
+            scrollToSelection(newSelection, toHead);
         }
 
         if (props.onSelectionChanged) {
@@ -310,16 +316,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setLastEditKey(editKeys(...editCell));
     };
 
-    // If max row or column count changes, keep selection in range and view
+    // If max row or column count changes, keep sheet in view
     const { maxColumns = Infinity, maxRows = Infinity } = props;
     useLayoutEffect(() => {
-        const [, [maxX, maxY]] = normalizeSelection(selection);
-        const overflowX = maxX > maxColumns;
-        const overflowY = maxY > maxRows;
-        if (!overflowX && !overflowY) return;
+        const view: XY = [canvasWidth, canvasHeight];
+        const freeze: XY = [freezeColumns, freezeRows];
 
-        const corner: XY = [maxColumns - 1, maxRows - 1];
-        changeSelection(clipSelection(selection, corner), true);
+        setDataOffset(clipDataOffset(view, dataOffset, freeze, [maxColumns, maxRows], cellLayout));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maxRows, maxColumns]);
 
     // Output from rendered layout is used to drive events on user content
