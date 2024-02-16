@@ -332,7 +332,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
 
-    const getAutoSizeWidth = useAutoSizeColumn(visibleCells.rows, displayData, cellStyle);
+    const getAutoSizeWidth = useAutoSizeColumn(
+        visibleCells.rows,
+        displayData,
+        cellStyle,
+        columnHeaders,
+        columnHeaderStyle,
+        canvasWidth
+    );
 
     const { mouseHandlers, knobPosition } = useMouse(
         hitmapRef,

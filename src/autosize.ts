@@ -1,12 +1,15 @@
 import { useCallback, useMemo } from 'react';
-import { DEFAULT_CELL_STYLE } from './constants';
+import { DEFAULT_CELL_STYLE, SIZES } from './constants';
 import { resolveCellStyle } from './style';
-import { CellPropertyFunction, CellContentType, Style } from './types';
+import { RowOrColumnPropertyFunction, CellPropertyFunction, CellContentType, Style } from './types';
 
 export const useAutoSizeColumn = (
     rows: number[],
     displayData: CellPropertyFunction<CellContentType>,
-    cellStyle: CellPropertyFunction<Style>
+    cellStyle: CellPropertyFunction<Style>,
+    columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
+    columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
+    canvasWidth: number
 ) => {
     const context = useMemo(() => document.createElement('canvas').getContext('2d'), []);
 
@@ -14,33 +17,58 @@ export const useAutoSizeColumn = (
         (x: number) => {
             if (!context) return 0;
 
-            let maxWidth = 0;
+            const getWidth = (cellContent: Exclude<CellContentType, null>, style: Style) => {
+                const finalStyle = resolveCellStyle(style, DEFAULT_CELL_STYLE);
+                context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
+
+                const inlineMargin = finalStyle.marginLeft + finalStyle.marginRight;
+                if (typeof cellContent === 'string' || typeof cellContent === 'number') {
+                    const { width } = context.measureText(cellContent.toString());
+                    return width + inlineMargin;
+                } else if (typeof cellContent === 'object') {
+                    let maxWidth = 0;
+                    let extraWidth = 0;
+
+                    for (const obj of cellContent.items) {
+                        let width = 0;
+                        if (typeof obj.content === 'string' || typeof obj.content === 'number') {
+                            const { width: w } = context.measureText(obj.content.toString());
+                            width = obj.x + w + inlineMargin;
+                        } else if (obj.width) {
+                            width = obj.width;
+                        }
+
+                        if (obj.horizontalAlign === 'right') {
+                            extraWidth += width;
+                        } else {
+                            maxWidth = Math.max(maxWidth, width);
+                        }
+                    }
+
+                    return maxWidth + extraWidth;
+                }
+                return 0;
+            };
+
+            let maxWidth = SIZES.minimumWidth;
+
+            const headerContent = columnHeaders(x);
+            if (headerContent) {
+                const headerStyle = columnHeaderStyle(x);
+                maxWidth = Math.max(maxWidth, getWidth(headerContent, headerStyle));
+            }
+
             for (const y of rows) {
                 const cellContent = displayData(x, y);
                 if (cellContent != null) {
                     const style = cellStyle(x, y);
-
-                    const finalStyle = resolveCellStyle(style, DEFAULT_CELL_STYLE);
-                    context.fillStyle = finalStyle.color;
-                    context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
-
-                    if (typeof cellContent === 'string' || typeof cellContent === 'number') {
-                        const { width } = context.measureText(cellContent.toString());
-                        maxWidth = Math.max(maxWidth, width + finalStyle.marginLeft + finalStyle.marginRight);
-                    } else if (typeof cellContent === 'object') {
-                        for (const obj of cellContent.items) {
-                            if (typeof obj.content === 'string' || typeof obj.content === 'number') {
-                                const { width } = context.measureText(obj.content.toString());
-                                maxWidth = Math.max(maxWidth, obj.x + width);
-                            }
-                        }
-                    }
+                    maxWidth = Math.max(maxWidth, getWidth(cellContent, style));
                 }
             }
 
-            return Math.ceil(maxWidth);
+            return Math.ceil(Math.min(canvasWidth, maxWidth));
         },
-        [context]
+        [context, displayData, cellStyle, columnHeaders, columnHeaderStyle]
     );
 
     return getAutoSizeWidth;
