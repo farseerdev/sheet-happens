@@ -141,9 +141,13 @@ export const makeCellLayout = (
     const getVisibleIndices = (view: number, indent: number, freeze: number, offset: number, layout: LayoutCache) => {
         const indices = [...seq(freeze)];
 
-        const { getStart } = layout;
-        const relative = view - indent + getStart(offset);
-        for (let i = offset + freeze; getStart(i) <= relative; ++i) {
+        const { getStart, getEnd } = layout;
+
+        const frozen = getEnd(freeze - 1);
+        const notFrozen = getStart(offset + freeze);
+
+        const relative = view - indent - frozen;
+        for (let i = offset + freeze; getStart(i) - notFrozen <= relative; ++i) {
             indices.push(i);
         }
 
