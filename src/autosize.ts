@@ -1,13 +1,19 @@
 import { useCallback, useMemo } from 'react';
-import { DEFAULT_CELL_STYLE, SIZES } from './constants';
-import { resolveCellStyle } from './style';
-import { RowOrColumnPropertyFunction, CellPropertyFunction, CellContentType, Style } from './types';
+import { DEFAULT_COLUMN_HEADER_STYLE, DEFAULT_CELL_STYLE, SIZES } from './constants';
+import {
+    RowOrColumnPropertyFunction,
+    RowOrColumnPropertyStyledFunction,
+    CellPropertyFunction,
+    CellPropertyStyledFunction,
+    CellContentType,
+    Style,
+} from './types';
 
 export const useAutoSizeColumn = (
     rows: number[],
-    displayData: CellPropertyFunction<CellContentType>,
+    displayData: CellPropertyStyledFunction<CellContentType>,
     cellStyle: CellPropertyFunction<Style>,
-    columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
+    columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     canvasWidth: number
 ) => {
@@ -17,11 +23,10 @@ export const useAutoSizeColumn = (
         (x: number) => {
             if (!context) return 0;
 
-            const getWidth = (cellContent: Exclude<CellContentType, null>, style: Style) => {
-                const finalStyle = resolveCellStyle(style, DEFAULT_CELL_STYLE);
-                context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
+            const getWidth = (cellContent: Exclude<CellContentType, null>, style: Required<Style>) => {
+                context.font = style.weight + ' ' + style.fontSize + 'px ' + style.fontFamily;
 
-                const inlineMargin = finalStyle.marginLeft + finalStyle.marginRight;
+                const inlineMargin = style.marginLeft + style.marginRight;
                 if (typeof cellContent === 'string' || typeof cellContent === 'number') {
                     const { width } = context.measureText(cellContent.toString());
                     return width + inlineMargin;
@@ -52,16 +57,16 @@ export const useAutoSizeColumn = (
 
             let maxWidth = SIZES.minimumWidth;
 
-            const headerContent = columnHeaders(x);
+            const headerStyle = { ...DEFAULT_COLUMN_HEADER_STYLE, ...columnHeaderStyle(x) };
+            const headerContent = columnHeaders(x, headerStyle);
             if (headerContent) {
-                const headerStyle = columnHeaderStyle(x);
                 maxWidth = Math.max(maxWidth, getWidth(headerContent, headerStyle));
             }
 
             for (const y of rows) {
-                const cellContent = displayData(x, y);
+                const style = { ...DEFAULT_CELL_STYLE, ...cellStyle(x, y) };
+                const cellContent = displayData(x, y, style);
                 if (cellContent != null) {
-                    const style = cellStyle(x, y);
                     maxWidth = Math.max(maxWidth, getWidth(cellContent, style));
                 }
             }

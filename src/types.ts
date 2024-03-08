@@ -6,8 +6,17 @@ import { MouseEvent, PointerEvent, CSSProperties } from 'react';
 
 export type PropTypes = string | number | boolean | Style | CellContentType;
 
+export type CellPropertyStyledFunction<T extends PropTypes> = (x: number, y: number, style: Required<Style>) => T;
+export type RowOrColumnPropertyStyledFunction<T extends PropTypes> = (
+    rowOrColIndex: number,
+    style: Required<Style>
+) => T;
+
 export type CellPropertyFunction<T extends PropTypes> = (x: number, y: number) => T;
 export type RowOrColumnPropertyFunction<T extends PropTypes> = (rowOrColIndex: number) => T;
+
+export type CellPropertyStyled<T extends PropTypes> = T | T[][] | CellPropertyStyledFunction<T>;
+export type RowOrColumnPropertyStyled<T extends PropTypes> = T | T[] | RowOrColumnPropertyStyledFunction<T>;
 
 export type CellProperty<T extends PropTypes> = T | T[][] | CellPropertyFunction<T>;
 export type RowOrColumnProperty<T extends PropTypes> = T | T[] | RowOrColumnPropertyFunction<T>;
@@ -99,6 +108,17 @@ export type Resizable = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+// Clipboard
+////////////////////////////////////////////////////////////////////////////////
+
+export type ClipboardPayload<T> = {
+    cut: boolean;
+    data: T;
+    origin: string;
+    version: number;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 // Changes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,11 +127,6 @@ export type Change = {
     y: number;
     value: string | number | null;
     source?: { x: number; y: number };
-};
-
-export type ParsedChange = {
-    selection: Rectangle;
-    changes: Change[];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
