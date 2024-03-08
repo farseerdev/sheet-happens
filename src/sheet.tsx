@@ -6,7 +6,6 @@ import React, {
     useLayoutEffect,
     useState,
     useMemo,
-    KeyboardEvent,
     KeyboardEventHandler,
     ReactElement,
 } from 'react';
@@ -17,7 +16,10 @@ import {
     Rectangle,
     CellLayout,
     CellProperty,
+    CellPropertyStyled,
     CellContentType,
+    ClipboardPayload,
+    RowOrColumnPropertyStyled,
     RowOrColumnProperty,
     Selection,
     Clickable,
@@ -31,8 +33,6 @@ import {
 } from './types';
 
 import {
-    ARROW_KEYS,
-    MAX_SEARCHABLE_INDEX,
     DEFAULT_CELL_STYLE,
     INITIAL_MAX_SCROLL,
     NO_CELL,
@@ -46,21 +46,17 @@ import {
     normalizeSelection,
     validateSelection,
     isSameSelection,
-    isRowSelection,
-    isColumnSelection,
-    isEmptySelection,
-    getDirectionStep,
     mapSelectionColumns,
     mapSelectionRows,
-    maxXY,
     addXY,
 } from './coordinate';
 import { useMouse } from './mouse';
+import { useKeyboard } from './keyboard';
 import { useScroll, scrollToCell, clipDataOffset } from './scroll';
 import { useAutoSizeColumn } from './autosize';
-import { useClipboardCopy, useClipboardPaste } from './clipboard';
+import { useClipboardAPI } from './clipboard';
 import { makeLayoutCache, makeCellLayout } from './layout';
-import { createCellProp, createRowOrColumnProp, findInDisplayData } from './props';
+import { createCellProp, createCellStyledProp, createRowOrColumnProp, createRowOrColumnStyledProp } from './props';
 import { renderSheet } from './render';
 import { resolveSheetStyle } from './style';
 
@@ -82,7 +78,7 @@ export type SheetRenderProps = {
 export type SheetProps = {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
-    columnHeaders?: RowOrColumnProperty<CellContentType>;
+    columnHeaders?: RowOrColumnPropertyStyled<CellContentType>;
     columnHeaderStyle?: RowOrColumnProperty<Style>;
     cellStyle?: CellProperty<Style>;
     readOnly?: CellProperty<boolean>;
@@ -93,7 +89,7 @@ export type SheetProps = {
     columnGroupKeys?: RowOrColumnProperty<string | number | null>;
     rowGroupKeys?: RowOrColumnProperty<string | number | null>;
     sourceData?: CellProperty<string | number | null>;
-    displayData?: CellProperty<CellContentType>;
+    displayData?: CellPropertyStyled<CellContentType>;
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
     sheetStyle?: SheetStyle;
@@ -106,6 +102,7 @@ export type SheetProps = {
     dontCommitEditOnSelectionChange?: boolean;
     dontChangeSelectionOnOrderChange?: boolean;
 
+    autoFocus?: boolean;
     inputComponent?: (
         x: number,
         y: number,
@@ -124,10 +121,20 @@ export type SheetProps = {
     onCellWidthChange?: (indices: number[], value: number) => void;
     onCellHeightChange?: (indices: number[], value: number) => void;
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
+
+    onCopy?: (selection: Rectangle, cells: string[][]) => ClipboardPayload<any> | null | undefined;
+    onPaste?: (
+        selection: Rectangle,
+        cells: string[][],
+        payload: ClipboardPayload<any>
+    ) => boolean | null | undefined | Promise<boolean | null | undefined>;
 };
 
 export type SheetRef = CellLayout & {
     startEditingCell: (editCell: XY, arrowKeyCommitMode?: boolean) => void;
+    copySelection: (selection: Rectangle, cut?: boolean) => Promise<void>;
+    pasteSelection: (selection: Rectangle) => Promise<void>;
+    canPasteSelection: () => boolean;
 };
 
 const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
@@ -139,17 +146,19 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const selectionProp = props.selection ?? NO_SELECTION;
 
-    const [selection, setSelection] = useState<Rectangle>(selectionProp);
+    const [rawSelection, setRawSelection] = useState<Rectangle>(selectionProp);
     const [knobArea, setKnobArea] = useState<Rectangle | null>(null);
     const [dragOffset, setDragOffset] = useState<XY | null>(null);
     const [dragIndices, setDragIndices] = useState<[number[] | null, number[] | null]>([null, null]);
     const [dropTarget, setDropTarget] = useState<Rectangle | null>(null);
     const [editCell, setEditCell] = useState<XY>(NO_CELL);
 
+    const [focused, setFocused] = useState(!!props.autoFocus);
+
     const [lastSelectionProp, setLastSelectionProp] = useState<Rectangle>(selectionProp);
     if (lastSelectionProp !== selectionProp) {
         setLastSelectionProp(selectionProp);
-        setSelection(selectionProp);
+        setRawSelection(selectionProp);
     }
 
     const [editValue, setEditValue] = useState<string | number>('');
@@ -159,7 +168,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
-    const columnHeaders = useMemo(() => createRowOrColumnProp(props.columnHeaders, null), [props.columnHeaders]);
+    const columnHeaders = useMemo(() => createRowOrColumnStyledProp(props.columnHeaders, null), [props.columnHeaders]);
     const columnHeaderStyle = useMemo(() => createRowOrColumnProp(props.columnHeaderStyle, {}), [
         props.columnHeaderStyle,
     ]);
@@ -175,13 +184,15 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const cellReadOnly = useMemo(() => createCellProp(props.readOnly, false), [props.readOnly]);
 
     const sourceData = useMemo(() => createCellProp(props.sourceData, null), [props.sourceData]);
-    const displayData = useMemo(() => createCellProp(props.displayData, ''), [props.displayData]);
+    const displayData = useMemo(() => createCellStyledProp(props.displayData, ''), [props.displayData]);
     const editData = useMemo(() => createCellProp(props.editData, ''), [props.editData]);
     const editKeys = useMemo(() => createCellProp(props.editKeys, ''), [props.editKeys]);
     const cellStyle = useMemo(() => createCellProp(props.cellStyle, DEFAULT_CELL_STYLE), [props.cellStyle]);
 
     const sheetStyle: InternalSheetStyle = useMemo(() => resolveSheetStyle(props.sheetStyle), [props.sheetStyle]);
     const secondarySelections = props.secondarySelections ?? NO_SELECTIONS;
+
+    const selection = useMemo(() => validateSelection(rawSelection), [rawSelection]);
 
     const selectedColumnGroups = useMemo(
         () =>
@@ -275,7 +286,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // Set selection with scrolling
     const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false) => {
         if (!isSameSelection(selection, newSelection)) {
-            setSelection(validateSelection(newSelection));
+            setRawSelection(newSelection);
         }
 
         const { current: overlay } = overlayRef;
@@ -286,9 +297,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         }
 
         if (props.onSelectionChanged) {
-            const [[minX, minY], [maxX, maxY]] = normalizeSelection(newSelection);
+            const [[minX, minY], [maxX, maxY]] = normalizeSelection(validateSelection(newSelection));
             props.onSelectionChanged(minX, minY, maxX, maxY);
         }
+    };
+
+    const cancelEditingCell = () => {
+        setEditCell(NO_CELL);
+        setFocused(true);
     };
 
     const commitEditingCell = (value?: string) => {
@@ -297,6 +313,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             props.onChange([{ x: cellX, y: cellY, value: value !== undefined ? value : editValue }]);
         }
         setEditCell(NO_CELL);
+        setFocused(true);
     };
 
     const startEditingCell = (editCell: XY, arrowKeyCommitMode = false) => {
@@ -329,10 +346,19 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // Output from rendered layout is used to drive events on user content
     const hitmapRef = useRef<Clickable[]>(NO_CLICKABLES);
 
-    // Textarea is used to hold text to copy, and receives pastes
-    const textAreaRef = useRef<HTMLTextAreaElement>(null);
-    useClipboardCopy(textAreaRef, selection, editMode, editData);
-    useClipboardPaste(textAreaRef, selection, changeSelection, props.onChange, cellReadOnly);
+    // Detect focus on canvas
+    const isFocused = focused || editMode;
+
+    const { clipboardApi, onClipboardCopy } = useClipboardAPI(
+        selection,
+        editData,
+        cellReadOnly,
+        isFocused,
+        changeSelection,
+        props.onChange,
+        props.onCopy,
+        props.onPaste
+    );
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
 
@@ -377,6 +403,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setDragOffset,
         setDropTarget,
         changeSelection,
+        setFocused,
 
         props.cacheLayout ? columnLayout.clearAfter : undefined,
         props.cacheLayout ? rowLayout.clearAfter : undefined,
@@ -389,6 +416,27 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onRightClick,
         props.dontCommitEditOnSelectionChange,
         props.dontChangeSelectionOnOrderChange
+    );
+
+    const { onInputKeyDown, onGridKeyDown, onGridFocus, onGridBlur } = useKeyboard(
+        arrowKeyCommitMode,
+        overlayRef,
+        cellReadOnly,
+        displayData,
+        editCell,
+        editMode,
+        focused,
+        rawSelection,
+        selection,
+
+        startEditingCell,
+        commitEditingCell,
+        cancelEditingCell,
+        changeSelection,
+        setFocused,
+        onClipboardCopy,
+
+        props.onChange
     );
 
     useLayoutEffect(() => {
@@ -412,6 +460,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 cellStyle,
                 selection,
                 secondarySelections,
+                isFocused,
 
                 knobPosition,
                 knobArea,
@@ -442,6 +491,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         cellStyle,
         selection,
         secondarySelections,
+        isFocused,
 
         knobPosition,
         knobArea,
@@ -459,112 +509,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
         dataOffset,
     ]);
-
-    const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            setEditCell(NO_CELL);
-            return;
-        }
-
-        const direction =
-            e.key === 'Enter' ? 'down' : e.key === 'Tab' ? 'right' : arrowKeyCommitMode ? ARROW_KEYS[e.key] : null;
-
-        if (direction) {
-            e.preventDefault();
-            const step = getDirectionStep(direction);
-            const head = maxXY(addXY(editCell, step), ORIGIN);
-            commitEditingCell();
-            changeSelection([head, head]);
-        }
-    };
-
-    const onGridKeyDown = (e: KeyboardEvent) => {
-        if (editMode && arrowKeyCommitMode && e.key in ARROW_KEYS) {
-            commitEditingCell();
-            return;
-        }
-
-        if ((e.metaKey || e.ctrlKey) && String.fromCharCode(e.which).toLowerCase() === 'v') {
-            return;
-        }
-
-        // copy
-        if ((e.metaKey || e.ctrlKey) && String.fromCharCode(e.which).toLowerCase() === 'c') {
-            const { current: textArea } = textAreaRef;
-            textArea?.select();
-            return;
-        }
-
-        if (e.key === 'Backspace' || e.key === 'Delete') {
-            let [[x1, y1], [x2, y2]] = normalizeSelection(selection);
-            if (isRowSelection(selection)) {
-                x1 = 0;
-                x2 = MAX_SEARCHABLE_INDEX;
-            }
-            if (isColumnSelection(selection)) {
-                y1 = 0;
-                y2 = MAX_SEARCHABLE_INDEX;
-            }
-
-            const changes: Change[] = [];
-            for (let y = y1; y <= y2; y++) {
-                for (let x = x1; x <= x2; x++) {
-                    if (!cellReadOnly(x, y)) {
-                        changes.push({ x: x, y: y, value: null });
-                    }
-                }
-            }
-            if (props.onChange) {
-                props.onChange(changes);
-            }
-            return;
-        }
-
-        // nothing selected
-        if (isEmptySelection(selection)) {
-            return;
-        }
-
-        if (
-            (e.keyCode >= 48 && e.keyCode <= 57) ||
-            (e.keyCode >= 96 && e.keyCode <= 105) ||
-            (e.keyCode >= 65 && e.keyCode <= 90) ||
-            e.key === 'Enter' ||
-            e.key === '-' ||
-            e.key === '.' ||
-            e.key === ','
-        ) {
-            const [cell] = selection;
-            const [cellX, cellY] = cell;
-            if (cellReadOnly(cellX, cellY)) {
-                e.preventDefault(); // so we dont get keystrokes inside the text area
-                return;
-            }
-
-            startEditingCell(cell, e.key !== 'Enter');
-            return;
-        }
-
-        if (e.key in ARROW_KEYS) {
-            let [anchor, head] = selection;
-
-            const direction = ARROW_KEYS[e.key];
-            const step = getDirectionStep(direction);
-
-            if (e.metaKey || e.ctrlKey) {
-                head = findInDisplayData(displayData, head, direction);
-            } else {
-                head = maxXY(addXY(head, step), ORIGIN);
-            }
-            if (!e.shiftKey) {
-                anchor = head;
-            }
-            changeSelection([anchor, head], true, true);
-            return;
-        }
-
-        e.preventDefault();
-    };
 
     const [lastEditKey, setLastEditKey] = useState('');
 
@@ -590,7 +534,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const inputProps = {
         value: editValue,
         autoFocus: true,
-        onKeyDown: onKeyDown,
+        onKeyDown: onInputKeyDown,
         style: {
             position: 'absolute',
             left: textX,
@@ -622,6 +566,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         top: 0,
         left: 0,
         overflow: 'scroll',
+        outline: 0,
         borderBottom: '1px solid #ddd',
     };
     const canvasStyles: React.CSSProperties = {
@@ -657,9 +602,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         ref,
         () => ({
             ...cellLayout,
+            ...clipboardApi,
             startEditingCell,
         }),
-        [cellLayout, startEditingCell]
+        [cellLayout, clipboardApi, startEditingCell]
     );
 
     return (
@@ -668,6 +614,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             <div
                 ref={overlayRef}
                 {...mouseHandlers}
+                onKeyDown={onGridKeyDown}
+                onFocus={onGridFocus}
+                onBlur={onGridBlur}
+                tabIndex={0}
                 onScroll={onScroll}
                 className={overlayDivClassName}
                 style={overlayDivStyles}
@@ -718,17 +668,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                     {renderedOutside}
                 </div>
             ) : null}
-            <textarea
-                style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0.01 }}
-                ref={textAreaRef}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck="false"
-                onFocus={(e) => e.target.select()}
-                tabIndex={0}
-                onKeyDown={onGridKeyDown}
-            ></textarea>
             {editMode &&
                 (input !== undefined ? (
                     input

@@ -17,13 +17,6 @@ export const resolveSheetStyle = (sheetStyle?: SheetStyle): InternalSheetStyle =
     };
 };
 
-export const resolveCellStyle = (optionalStyle: Style, defaultStyle: Required<Style>): Required<Style> => {
-    return {
-        ...defaultStyle,
-        ...optionalStyle,
-    };
-};
-
 export const applyAlignment = (
     start: number,
     cellSize: number,

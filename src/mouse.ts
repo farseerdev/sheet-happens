@@ -68,6 +68,7 @@ export const useMouse = (
     onDragOffsetChange?: (dragOffset: XY | null) => void,
     onDropTargetChange?: (selection: Rectangle | null) => void,
     onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
+    onFocusChange?: (focus: boolean) => void,
 
     onInvalidateColumn?: (column: number) => void,
     onInvalidateRow?: (row: number) => void,
@@ -196,6 +197,8 @@ export const useMouse = (
                     knobPosition,
                 },
             } = ref;
+
+            onFocusChange?.(true);
 
             if (e.button !== 0) return;
 
@@ -497,6 +500,8 @@ export const useMouse = (
                     cellLayout: { pixelToColumn, pixelToRow, getIndentX, getIndentY },
                 },
             } = ref;
+
+            onFocusChange?.(true);
 
             if (knobArea && draggingKnob) {
                 const changes = parseKnobOperation(knobArea, selection, sourceData, editData, cellReadOnly);

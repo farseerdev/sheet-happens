@@ -1,7 +1,9 @@
 import {
     CellLayout,
     CellPropertyFunction,
+    CellPropertyStyledFunction,
     RowOrColumnPropertyFunction,
+    RowOrColumnPropertyStyledFunction,
     InternalSheetStyle,
     Rectangle,
     Selection,
@@ -11,7 +13,7 @@ import {
     VisibleLayout,
     XY,
 } from './types';
-import { applyAlignment, resolveCellStyle } from './style';
+import { applyAlignment } from './style';
 import { normalizeSelection, isEmptySelection, isColumnSelection, isRowSelection } from './coordinate';
 import { isInRange, isInRangeLeft, isInRangeCenter } from './util';
 import {
@@ -36,6 +38,7 @@ export const renderSheet = (
 
     selection: Rectangle,
     secondarySelections: Selection[],
+    isFocused: boolean,
 
     knobPosition: XY | null,
     knobArea: Rectangle | null,
@@ -43,9 +46,9 @@ export const renderSheet = (
     dragOffset: XY | null,
     dropTarget: Rectangle | null,
 
-    columnHeaders: RowOrColumnPropertyFunction<CellContentType>,
+    columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
-    displayData: CellPropertyFunction<CellContentType>,
+    displayData: CellPropertyStyledFunction<CellContentType>,
 
     columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
     rowGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
@@ -202,21 +205,12 @@ export const renderSheet = (
                 ? HEADER_ACTIVE_STYLE
                 : NO_STYLE;
 
+            const resolvedStyle = { ...DEFAULT_COLUMN_HEADER_STYLE, ...style };
+
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
-            clickables.push(
-                ...renderCell(
-                    context,
-                    content,
-                    style,
-                    DEFAULT_COLUMN_HEADER_STYLE,
-                    0,
-                    top,
-                    rowHeaderWidth,
-                    bottom - top
-                )
-            );
+            clickables.push(...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top));
         }
     }
 
@@ -226,8 +220,6 @@ export const renderSheet = (
         context.textAlign = 'center';
 
         for (const column of columns) {
-            const content = columnHeaders(column) ?? excelHeaderString(column + 1);
-
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
             const isActive = isInRange(column, minX, maxX);
@@ -239,6 +231,7 @@ export const renderSheet = (
             const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const style = {
+                ...DEFAULT_COLUMN_HEADER_STYLE,
                 ...columnHeaderStyle(column),
                 ...activeStyle,
                 ...selectedStyle,
@@ -247,18 +240,9 @@ export const renderSheet = (
             const left = columnToPixel(column);
             const right = columnToPixel(column, 1);
 
-            clickables.push(
-                ...renderCell(
-                    context,
-                    content,
-                    style,
-                    DEFAULT_COLUMN_HEADER_STYLE,
-                    left,
-                    0,
-                    right - left,
-                    columnHeaderHeight
-                )
-            );
+            const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
+
+            clickables.push(...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight));
         }
     }
 
@@ -266,9 +250,12 @@ export const renderSheet = (
     if (selectionActive) {
         context.strokeStyle = COLORS.selectionBorder;
         context.lineWidth = 2;
+        context.globalAlpha = isFocused ? 1 : 0.5;
 
         const [[left, top], [right, bottom]] = selected;
         context.strokeRect(left, top, right - left - 1, bottom - top - 1);
+
+        context.globalAlpha = 1;
     }
 
     for (const secondarySelection of secondarySelections) {
@@ -377,21 +364,13 @@ export const renderSheet = (
             const top = rowToPixel(y);
             const bottom = rowToPixel(y, 1);
 
-            const cellContent = displayData(x, y);
+            const style = {
+                ...DEFAULT_CELL_STYLE,
+                ...cellStyle(x, y),
+            };
+            const cellContent = displayData(x, y, style);
             if (cellContent !== null && cellContent !== undefined) {
-                const style = cellStyle(x, y);
-                clickables.push(
-                    ...renderCell(
-                        context,
-                        cellContent,
-                        style,
-                        DEFAULT_CELL_STYLE,
-                        left,
-                        top,
-                        right - left,
-                        bottom - top
-                    )
-                );
+                clickables.push(...renderCell(context, cellContent, style, left, top, right - left, bottom - top));
             }
         }
     }
@@ -402,8 +381,7 @@ export const renderSheet = (
 export const renderCell = (
     context: CanvasRenderingContext2D,
     cellContent: CellContentType,
-    style: Style,
-    defaultCellStyle: Required<Style>,
+    style: Required<Style>,
     xCoord: number,
     yCoord: number,
     cellWidth: number,
@@ -415,10 +393,9 @@ export const renderCell = (
         return clickables;
     }
 
-    const finalStyle = resolveCellStyle(style, defaultCellStyle);
-    context.fillStyle = finalStyle.color;
-    context.font = finalStyle.weight + ' ' + finalStyle.fontSize + 'px ' + finalStyle.fontFamily;
-    context.textAlign = finalStyle.textAlign;
+    context.fillStyle = style.color;
+    context.font = style.weight + ' ' + style.fontSize + 'px ' + style.fontFamily;
+    context.textAlign = style.textAlign;
 
     const yy = Math.floor(yCoord + cellHeight * 0.5);
 
@@ -427,14 +404,14 @@ export const renderCell = (
     context.rect(xCoord, yCoord, cellWidth, cellHeight);
     context.clip();
 
-    if (finalStyle.backgroundColor !== '') {
-        context.fillStyle = finalStyle.backgroundColor;
+    if (style.backgroundColor !== '') {
+        context.fillStyle = style.backgroundColor;
         context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
-        context.fillStyle = finalStyle.color;
+        context.fillStyle = style.color;
     }
 
     if (typeof cellContent === 'string' || typeof cellContent === 'number') {
-        const xx = applyAlignment(xCoord, cellWidth, finalStyle, 0);
+        const xx = applyAlignment(xCoord, cellWidth, style, 0);
         const text = '' + cellContent;
         context.fillText(text, xx, yy);
     } else if (typeof cellContent === 'object') {
@@ -448,7 +425,7 @@ export const renderCell = (
                 w = obj.width || cellWidth;
                 h = obj.height || cellHeight;
 
-                const finalX = applyAlignment(xCoord, cellWidth, finalStyle, w, obj.horizontalAlign);
+                const finalX = applyAlignment(xCoord, cellWidth, style, w, obj.horizontalAlign);
                 x = finalX + obj.x;
                 y = yy + obj.y;
 
@@ -457,7 +434,7 @@ export const renderCell = (
                 if (obj.horizontalAlign) {
                     context.textAlign = obj.horizontalAlign;
                 }
-                const finalX = applyAlignment(xCoord, cellWidth, finalStyle, 0, obj.horizontalAlign);
+                const finalX = applyAlignment(xCoord, cellWidth, style, 0, obj.horizontalAlign);
                 const text = '' + obj.content;
 
                 const left = finalX + obj.x;

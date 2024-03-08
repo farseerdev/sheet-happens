@@ -4,6 +4,7 @@ export const INITIAL_MAX_SCROLL: XY = [2000, 1000];
 
 export const ORIGIN: XY = [0, 0];
 export const ONE_ONE: XY = [1, 1];
+export const NEG_NEG: XY = [-1, -1];
 
 export const NO_CELL: XY = [-1, -1];
 export const NO_SELECTION: Rectangle = [NO_CELL, NO_CELL];
@@ -11,8 +12,7 @@ export const NO_SELECTIONS: Selection[] = [];
 export const NO_CLICKABLES: Clickable[] = [];
 export const NO_STYLE = {};
 
-export const MAX_SEARCHABLE_INDEX = 65536;
-export const MAX_XY: XY = [MAX_SEARCHABLE_INDEX, MAX_SEARCHABLE_INDEX];
+export const MAX_SEARCHABLE_INDEX = 100000;
 
 export const COLORS = {
     selectionBorder: '#1a66ff',

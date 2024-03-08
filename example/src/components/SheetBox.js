@@ -78,6 +78,7 @@ export function useWidthHeightControl(
                 }
                 ch[idx] = newHeight;
             }
+            return ch;
         });
     };
 
@@ -197,6 +198,7 @@ export function SheetBoxHeader() {
                 onColumnOrderChange={onColumnOrderChange}
                 onRowOrderChange={onRowOrderChange}
                 editKeys={editKeys}
+                autoFocus
                 cacheLayout
             />
         </div>
