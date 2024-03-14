@@ -44,7 +44,7 @@ export const useAutoSizeColumn = (
                         }
 
                         if (obj.horizontalAlign === 'right') {
-                            extraWidth += width;
+                            extraWidth += style.textAlign === 'right' ? width * 2 : width;
                         } else {
                             maxWidth = Math.max(maxWidth, width);
                         }

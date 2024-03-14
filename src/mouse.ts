@@ -76,8 +76,8 @@ export const useMouse = (
     onChange?: (changes: Change[]) => void,
     onColumnOrderChange?: (indices: number[], order: number) => void,
     onRowOrderChange?: (indices: number[], order: number) => void,
-    onCellWidthChange?: (indices: number[], value: number) => void,
-    onCellHeightChange?: (indices: number[], value: number) => void,
+    onCellWidthChange?: (indices: number[], values: number[]) => void,
+    onCellHeightChange?: (indices: number[], values: number[]) => void,
     onRightClick?: (e: SheetMouseEvent) => void,
 
     dontCommitEditOnSelectionChange?: boolean,
@@ -739,7 +739,10 @@ export const useMouse = (
                         SIZES.minimumWidth * indices.length
                     );
                     onInvalidateColumn?.(indices[0] - 1);
-                    onCellWidthChange(indices, newWidth / indices.length);
+                    onCellWidthChange(
+                        indices,
+                        indices.map((_) => newWidth / indices.length)
+                    );
                 }
                 return;
             }
@@ -753,7 +756,10 @@ export const useMouse = (
                         SIZES.minimumHeight * indices.length
                     );
                     onInvalidateRow?.(indices[0] - 1);
-                    onCellHeightChange(indices, newHeight / indices.length);
+                    onCellHeightChange(
+                        indices,
+                        indices.map((_) => newHeight / indices.length)
+                    );
                 }
                 return;
             }
@@ -915,8 +921,11 @@ export const useMouse = (
 
                 for (const column of autosized) {
                     onInvalidateColumn?.(column - 1);
-                    onCellWidthChange([column], getAutoSizeWidth(column));
                 }
+                onCellWidthChange(
+                    autosized,
+                    autosized.map((column) => getAutoSizeWidth(column))
+                );
                 if (autosized.length) return;
             }
 

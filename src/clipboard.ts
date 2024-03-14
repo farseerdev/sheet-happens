@@ -38,10 +38,12 @@ export const useClipboardTable = () => {
 
     useLayoutEffect(() => {
         const softRefresh = async () => {
-            const status = await navigator.permissions.query({ name: 'clipboard-read' as any });
-            if (status.state !== 'granted') return;
+            try {
+                const status = await navigator.permissions.query({ name: 'clipboard-read' as any });
+                if (status.state !== 'granted') return;
 
-            hardRefresh();
+                hardRefresh();
+            } catch (e) {}
         };
 
         const hardRefresh = async () => {
