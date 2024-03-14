@@ -118,8 +118,8 @@ export type SheetProps = {
     onChange?: (changes: Array<Change>) => void;
     onColumnOrderChange?: (indices: number[], order: number) => void;
     onRowOrderChange?: (indices: number[], order: number) => void;
-    onCellWidthChange?: (indices: number[], value: number) => void;
-    onCellHeightChange?: (indices: number[], value: number) => void;
+    onCellWidthChange?: (indices: number[], values: number[]) => void;
+    onCellHeightChange?: (indices: number[], values: number[]) => void;
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
 
     onCopy?: (selection: Rectangle, cells: string[][]) => ClipboardPayload<any> | null | undefined;

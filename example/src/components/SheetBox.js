@@ -50,33 +50,33 @@ export function useWidthHeightControl(
     const [cellWidth, setCellWidth] = useState(initialWidths);
     const [cellHeight, setCellHeight] = useState(initialHeights);
 
-    const onCellWidthChange = (indices, newWidth) => {
+    const onCellWidthChange = (indices, newWidths) => {
         setCellWidth((cellWidth) => {
             const cw = [...cellWidth];
-            for (const order of indices) {
+            for (const [i, order] of indices.entries()) {
                 const idx = getColumnOrder(order);
                 if (idx > cw.length) {
                     for (let i = cw.length; i <= idx; i++) {
                         cw.push(DEFAULT_CELL_WIDTH);
                     }
                 }
-                cw[idx] = newWidth;
+                cw[idx] = newWidths[i];
             }
             return cw;
         });
     };
 
-    const onCellHeightChange = (indices, newHeight) => {
+    const onCellHeightChange = (indices, newHeights) => {
         setCellHeight((cellHeight) => {
             const ch = [...cellHeight];
-            for (const order of indices) {
+            for (const [i, order] of indices.entries()) {
                 const idx = getRowOrder(order);
                 if (idx > ch.length) {
                     for (let i = ch.length; i <= idx; i++) {
                         ch.push(DEFAULT_CELL_HEIGHT);
                     }
                 }
-                ch[idx] = newHeight;
+                ch[idx] = newHeights[i];
             }
             return ch;
         });
