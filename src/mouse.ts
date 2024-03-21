@@ -741,7 +741,7 @@ export const useMouse = (
                     onInvalidateColumn?.(indices[0] - 1);
                     onCellWidthChange(
                         indices,
-                        indices.map((_) => newWidth / indices.length)
+                        indices.map((_) => Math.round(newWidth / indices.length))
                     );
                 }
                 return;
@@ -887,7 +887,7 @@ export const useMouse = (
             const {
                 current: {
                     selection,
-                    cellLayout: { pixelToCell, columnToPixel },
+                    cellLayout: { pixelToCell, columnToPixel, getIndentY },
                 },
             } = ref;
 
@@ -898,9 +898,10 @@ export const useMouse = (
             if (!xy) return;
 
             // Double click column divider to autosize
-            const [x] = xy;
+            const [x, y] = xy;
+            const indentY = getIndentY();
             const { columns } = visibleCells;
-            if (onCellWidthChange) {
+            if (onCellWidthChange && y < indentY) {
                 const autosized = [];
 
                 for (const index of columns) {

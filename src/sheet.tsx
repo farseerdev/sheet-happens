@@ -353,7 +353,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         selection,
         editData,
         cellReadOnly,
-        isFocused,
+        isFocused && !editMode,
         changeSelection,
         props.onChange,
         props.onCopy,
