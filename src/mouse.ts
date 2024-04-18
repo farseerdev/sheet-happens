@@ -495,7 +495,6 @@ export const useMouse = (
                     rowDrag,
 
                     draggingKnob,
-                    hitTarget,
 
                     cellLayout: { pixelToColumn, pixelToRow, getIndentX, getIndentY },
                 },
@@ -568,9 +567,6 @@ export const useMouse = (
             setColumnDrag(null);
             setRowResize(null);
             setRowDrag(null);
-
-            if (!xy || !hitTarget) return;
-            setHitTarget(null);
         },
         [
             getMousePosition,
@@ -882,6 +878,8 @@ export const useMouse = (
 
             const xy = getMousePosition(e);
             if (!xy) return;
+
+            setHitTarget(null);
 
             // Check hit target rect to see if it is the same as pointerDown
             // (object identity might have changed due to react re-render)
