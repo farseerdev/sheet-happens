@@ -878,8 +878,10 @@ export const useMouse = (
             const {
                 current: { hitTarget },
             } = ref;
+            if (!hitTarget) return;
 
             const xy = getMousePosition(e);
+            if (!xy) return;
 
             // Check hit target rect to see if it is the same as pointerDown
             // (object identity might have changed due to react re-render)
