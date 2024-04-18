@@ -571,15 +571,6 @@ export const useMouse = (
 
             if (!xy || !hitTarget) return;
             setHitTarget(null);
-
-            // Check hit target rect to see if it is the same as pointerDown
-            // (object identity might have changed due to react re-render)
-            const previousRect = JSON.stringify(hitTarget.rect);
-            const currentRect = JSON.stringify(getMouseHit(xy)?.rect);
-            if (previousRect === currentRect) {
-                const { obj } = hitTarget;
-                obj.onClick?.(e);
-            }
         },
         [
             getMousePosition,
@@ -882,6 +873,26 @@ export const useMouse = (
         ]
     );
 
+    const onClick = useCallback(
+        (e: MouseEvent) => {
+            const {
+                current: { hitTarget },
+            } = ref;
+
+            const xy = getMousePosition(e);
+
+            // Check hit target rect to see if it is the same as pointerDown
+            // (object identity might have changed due to react re-render)
+            const previousRect = JSON.stringify(hitTarget.rect);
+            const currentRect = JSON.stringify(getMouseHit(xy)?.rect);
+            if (previousRect === currentRect) {
+                const { obj } = hitTarget;
+                obj.onClick?.(e);
+            }
+        },
+        [getMousePosition, getMouseHit]
+    );
+
     const onDoubleClick = useCallback(
         (e: MouseEvent) => {
             const {
@@ -993,6 +1004,7 @@ export const useMouse = (
         onPointerDown,
         onPointerMove,
         onPointerUp,
+        onClick,
         onDoubleClick,
         onContextMenu,
     };
