@@ -52,7 +52,7 @@ import {
 } from './coordinate';
 import { useMouse } from './mouse';
 import { useKeyboard } from './keyboard';
-import { useScroll, scrollToCell, clipDataOffset } from './scroll';
+import { useScroll, scrollToCell, clipDataOffset, updateScrollPosition } from './scroll';
 import { useAutoSizeColumn } from './autosize';
 import { useClipboardAPI } from './clipboard';
 import { makeLayoutCache, makeCellLayout } from './layout';
@@ -336,10 +336,17 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // If max row or column count changes, keep sheet in view
     const { maxColumns = Infinity, maxRows = Infinity } = props;
     useLayoutEffect(() => {
+        const { current: overlay } = overlayRef;
+        if (!overlay) return;
+
         const view: XY = [canvasWidth, canvasHeight];
         const freeze: XY = [freezeColumns, freezeRows];
 
-        setDataOffset(clipDataOffset(view, dataOffset, freeze, [maxColumns, maxRows], cellLayout));
+        const newOffset = clipDataOffset(view, dataOffset, freeze, [maxColumns, maxRows], cellLayout);
+        setDataOffset(newOffset);
+        updateScrollPosition(overlay, newOffset, cellLayout);
+
+        // Only fire if extents change
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maxRows, maxColumns]);
 
