@@ -43,6 +43,7 @@ export const useScroll = (
 // Limit view to table contents
 export const clipDataOffset = (view: XY, offset: XY, freeze: XY, maxCells: XY, cellLayout: CellLayout): XY => {
     let [newX, newY] = offset;
+    const [freezeX, freezeY] = freeze;
     const [maxColumns, maxRows] = maxCells;
 
     const { absoluteToColumn, columnToAbsolute, absoluteToRow, rowToAbsolute } = cellLayout;
@@ -54,12 +55,12 @@ export const clipDataOffset = (view: XY, offset: XY, freeze: XY, maxCells: XY, c
 
     // Move extra space on the right/bottom to equivalent on the left/top
     if (rightEdge > maxColumns) {
-        const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX);
-        newX = absoluteToColumn(columnToAbsolute(newX) - scrollW + remainder) + 1;
+        const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX + freezeX);
+        newX = Math.max(0, absoluteToColumn(columnToAbsolute(newX + freezeX) - scrollW + remainder) - freezeX + 1);
     }
     if (bottomEdge > maxRows) {
-        const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY);
-        newY = absoluteToRow(rowToAbsolute(newY) - scrollH + remainder) + 1;
+        const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY + freezeY);
+        newY = Math.max(0, absoluteToRow(rowToAbsolute(newY + freezeY) - scrollH + remainder) - freezeY + 1);
     }
 
     return [newX, newY];
@@ -148,13 +149,21 @@ export const scrollToCell = (
 
     if (!isSameXY(newOffset, offset)) {
         const scroll = cellToAbsolute(newOffset);
-        const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
-
         callback(newOffset, maxXY(maxScroll, scroll));
+
         setTimeout(() => {
-            const [scrollX, scrollY] = scroll;
-            element.scrollLeft = scrollX - nudgeX;
-            element.scrollTop = scrollY - nudgeY;
+            updateScrollPosition(element, newOffset, cellLayout);
         });
     }
+};
+
+export const updateScrollPosition = (element: HTMLDivElement, dataOffset: XY, cellLayout: CellLayout) => {
+    const { cellToAbsolute } = cellLayout;
+
+    const scroll = cellToAbsolute(dataOffset);
+    const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
+
+    const [scrollX, scrollY] = scroll;
+    element.scrollLeft = scrollX - nudgeX;
+    element.scrollTop = scrollY - nudgeY;
 };
