@@ -49,16 +49,16 @@ export const clipDataOffset = (view: XY, offset: XY, freeze: XY, maxCells: XY, c
     const { absoluteToColumn, columnToAbsolute, absoluteToRow, rowToAbsolute } = cellLayout;
 
     const {
-        edge: [rightEdge, bottomEdge],
+        edge: [leftEdge, topEdge],
         viewport: [scrollW, scrollH],
     } = getViewExtent(view, [newX, newY], freeze, cellLayout);
 
     // Move extra space on the right/bottom to equivalent on the left/top
-    if (rightEdge > maxColumns) {
+    if (leftEdge >= maxColumns) {
         const remainder = columnToAbsolute(maxColumns) - columnToAbsolute(newX + freezeX);
         newX = Math.max(0, absoluteToColumn(columnToAbsolute(newX + freezeX) - scrollW + remainder) - freezeX + 1);
     }
-    if (bottomEdge > maxRows) {
+    if (topEdge >= maxRows) {
         const remainder = rowToAbsolute(maxRows) - rowToAbsolute(newY + freezeY);
         newY = Math.max(0, absoluteToRow(rowToAbsolute(newY + freezeY) - scrollH + remainder) - freezeY + 1);
     }
@@ -78,10 +78,6 @@ export const getViewExtent = (
 } => {
     const {
         cellToAbsolute,
-        absoluteToColumn,
-        columnToAbsolute,
-        absoluteToRow,
-        rowToAbsolute,
         getIndentX,
         getIndentY,
     } = cellLayout;
@@ -95,11 +91,9 @@ export const getViewExtent = (
 
     const leftEdge = x + freeze[0];
     const topEdge = y + freeze[1];
-    const rightEdge = absoluteToColumn(columnToAbsolute(leftEdge) + scrollW);
-    const bottomEdge = absoluteToRow(rowToAbsolute(topEdge) + scrollH);
 
     return {
-        edge: [rightEdge, bottomEdge],
+        edge: [leftEdge, topEdge],
         viewport: [scrollW, scrollH],
     };
 };
