@@ -721,10 +721,10 @@ export const useMouse = (
                 if (onCellWidthChange) {
                     const { size, anchor, scroll, indices } = columnResize;
                     const [currentScroll] = getScrollPosition(e);
-                    const newWidth = Math.max(
+                    const newWidth = Math.round(Math.max(
                         size + x - anchor + scroll - currentScroll,
                         SIZES.minimumWidth * indices.length
-                    );
+                    ));
                     onInvalidateColumn?.(indices[0] - 1);
                     onCellWidthChange(
                         indices,
@@ -738,10 +738,10 @@ export const useMouse = (
                 if (onCellHeightChange) {
                     const { size, anchor, scroll, indices } = rowResize;
                     const [, currentScroll] = getScrollPosition(e);
-                    const newHeight = Math.max(
+                    const newHeight = Math.round(Math.max(
                         size + y - anchor + scroll - currentScroll,
                         SIZES.minimumHeight * indices.length
-                    );
+                    ));
                     onInvalidateRow?.(indices[0] - 1);
                     onCellHeightChange(
                         indices,

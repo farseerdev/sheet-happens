@@ -118,6 +118,7 @@ export const useKeyboard = (
                 return;
             }
 
+            if (e.key === 'Enter') e.preventDefault();
             onEdit?.(cell, e.key !== 'Enter');
             return;
         }
