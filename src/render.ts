@@ -79,7 +79,7 @@ export const renderSheet = (
     const freeze: XY = [freezeColumns, freezeRows];
     const indent: XY = [rowHeaderWidth, columnHeaderHeight];
 
-    resizeCanvas(canvas);
+    const pixelRatio = resizeCanvas(canvas);
     context.clearRect(0, 0, width, height);
     context.fillStyle = 'white';
     context.fillRect(0, 0, width, height);
@@ -210,7 +210,7 @@ export const renderSheet = (
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
-            clickables.push(...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top));
+            clickables.push(...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top, pixelRatio));
         }
     }
 
@@ -242,7 +242,7 @@ export const renderSheet = (
 
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            clickables.push(...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight));
+            clickables.push(...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight, pixelRatio));
         }
     }
 
@@ -370,7 +370,7 @@ export const renderSheet = (
             };
             const cellContent = displayData(x, y, style);
             if (cellContent !== null && cellContent !== undefined) {
-                clickables.push(...renderCell(context, cellContent, style, left, top, right - left, bottom - top));
+                clickables.push(...renderCell(context, cellContent, style, left, top, right - left, bottom - top, pixelRatio));
             }
         }
     }
@@ -385,7 +385,8 @@ export const renderCell = (
     xCoord: number,
     yCoord: number,
     cellWidth: number,
-    cellHeight: number
+    cellHeight: number,
+    pixelRatio: number,
 ): Clickable[] => {
     const clickables: Clickable[] = [];
 
@@ -397,7 +398,8 @@ export const renderCell = (
     context.font = style.weight + ' ' + style.fontSize + 'px ' + style.fontFamily;
     context.textAlign = style.textAlign;
 
-    const yy = Math.floor(yCoord + cellHeight * 0.5);
+    // Snap to device-pixels for better alignment
+    const yy = Math.round((yCoord + cellHeight * 0.5) * pixelRatio) / pixelRatio;
 
     context.save();
     context.beginPath();
@@ -602,10 +604,8 @@ const resizeCanvas = (canvas: HTMLCanvasElement) => {
             canvas.height = newCanvasHeight;
             context.scale(ratio, ratio);
         }
-        return true;
     }
-
-    return false;
+    return ratio;
 };
 
 const excelHeaderString = (num: number) => {
