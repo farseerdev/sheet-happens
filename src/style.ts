@@ -22,7 +22,7 @@ export const applyAlignment = (
     cellSize: number,
     style: Required<Style>,
     imageWidth: number,
-    alignment: 'left' | 'center' | 'right' = style.textAlign
+    alignment: 'left' | 'center' | 'right' = style.textAlign,
 ): number => {
     if (alignment === 'left') {
         return start + style.marginLeft;

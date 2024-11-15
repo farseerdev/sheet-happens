@@ -18,7 +18,7 @@ export const makeCellLayout = (
     offset: XY,
 
     columns: LayoutCache,
-    rows: LayoutCache
+    rows: LayoutCache,
 ): CellLayout => {
     const [freezeX, freezeY] = freeze;
     const [indentX, indentY] = indent;
@@ -89,7 +89,7 @@ export const makeCellLayout = (
         indent: number,
         freeze: number,
         offset: number,
-        layout: LayoutCache
+        layout: LayoutCache,
     ) => {
         const relative = pixel - indent;
         if (relative < 0) return -1;

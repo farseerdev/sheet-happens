@@ -15,7 +15,7 @@ export const useAutoSizeColumn = (
     cellStyle: CellPropertyFunction<Style>,
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
-    canvasWidth: number
+    canvasWidth: number,
 ) => {
     const context = useMemo(() => document.createElement('canvas').getContext('2d'), []);
 
@@ -73,7 +73,7 @@ export const useAutoSizeColumn = (
 
             return Math.ceil(Math.min(canvasWidth, maxWidth));
         },
-        [context, displayData, cellStyle, columnHeaders, columnHeaderStyle]
+        [context, displayData, cellStyle, columnHeaders, columnHeaderStyle],
     );
 
     return getAutoSizeWidth;

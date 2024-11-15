@@ -9,7 +9,7 @@ export type PropTypes = string | number | boolean | Style | CellContentType;
 export type CellPropertyStyledFunction<T extends PropTypes> = (x: number, y: number, style: Required<Style>) => T;
 export type RowOrColumnPropertyStyledFunction<T extends PropTypes> = (
     rowOrColIndex: number,
-    style: Required<Style>
+    style: Required<Style>,
 ) => T;
 
 export type CellPropertyFunction<T extends PropTypes> = (x: number, y: number) => T;

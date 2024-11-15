@@ -8,7 +8,7 @@ export const useScroll = (
     maxScroll: XY,
     cellLayout: CellLayout,
     onOffsetChange?: (offset: XY) => void,
-    onMaxScrollChange?: (maxScroll: XY) => void
+    onMaxScrollChange?: (maxScroll: XY) => void,
 ) => {
     return useCallback(
         (e: UIEvent) => {
@@ -35,7 +35,7 @@ export const useScroll = (
                 onMaxScrollChange?.(mulXY(maxScroll, [growX, growY]));
             }
         },
-        [cellLayout, onOffsetChange, onMaxScrollChange]
+        [cellLayout, onOffsetChange, onMaxScrollChange],
     );
 };
 
@@ -71,16 +71,12 @@ export const getViewExtent = (
     view: XY,
     offset: XY,
     freeze: XY,
-    cellLayout: CellLayout
+    cellLayout: CellLayout,
 ): {
     edge: XY;
     viewport: XY;
 } => {
-    const {
-        cellToAbsolute,
-        getIndentX,
-        getIndentY,
-    } = cellLayout;
+    const { cellToAbsolute, getIndentX, getIndentY } = cellLayout;
 
     const [x, y] = offset;
     const [w, h] = view;
@@ -106,7 +102,7 @@ export const scrollToCell = (
     offset: XY,
     maxScroll: XY,
     cellLayout: CellLayout,
-    callback: (offset: XY, maxScroll: XY) => void
+    callback: (offset: XY, maxScroll: XY) => void,
 ) => {
     const [x, y] = cell;
     const [w, h] = view;

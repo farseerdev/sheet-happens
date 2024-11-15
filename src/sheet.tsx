@@ -107,7 +107,7 @@ export type SheetProps = {
         x: number,
         y: number,
         props: SheetInputProps,
-        commitEditingCell?: (value?: string | number | null) => void
+        commitEditingCell?: (value?: string | number | null) => void,
     ) => ReactElement | undefined;
 
     renderInside?: (props: SheetRenderProps) => React.ReactNode;
@@ -126,7 +126,7 @@ export type SheetProps = {
     onPaste?: (
         selection: Rectangle,
         cells: string[][],
-        payload: ClipboardPayload<any>
+        payload: ClipboardPayload<any>,
     ) => boolean | null | undefined | Promise<boolean | null | undefined>;
 };
 
@@ -169,9 +169,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
     const columnHeaders = useMemo(() => createRowOrColumnStyledProp(props.columnHeaders, null), [props.columnHeaders]);
-    const columnHeaderStyle = useMemo(() => createRowOrColumnProp(props.columnHeaderStyle, {}), [
-        props.columnHeaderStyle,
-    ]);
+    const columnHeaderStyle = useMemo(
+        () => createRowOrColumnProp(props.columnHeaderStyle, {}),
+        [props.columnHeaderStyle],
+    );
 
     const canSizeColumn = useMemo(() => createRowOrColumnProp(props.canSizeColumn, true), [props.canSizeColumn]);
     const canSizeRow = useMemo(() => createRowOrColumnProp(props.canSizeRow, true), [props.canSizeRow]);
@@ -199,14 +200,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             props.columnGroupKeys
                 ? new Set(mapSelectionColumns(selection)((x: number) => columnGroupKeys(x)).filter((x) => x != null))
                 : null,
-        [props.columnGroupKeys, columnGroupKeys, selection]
+        [props.columnGroupKeys, columnGroupKeys, selection],
     );
     const selectedRowGroups = useMemo(
         () =>
             props.rowGroupKeys
                 ? new Set(mapSelectionRows(selection)((y: number) => rowGroupKeys(y)).filter((x) => x != null))
                 : null,
-        [props.rowGroupKeys, rowGroupKeys, selection]
+        [props.rowGroupKeys, rowGroupKeys, selection],
     );
 
     const [maxScrollX, maxScrollY] = maxScroll;
@@ -239,9 +240,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 [rowHeaderWidth, columnHeaderHeight],
                 dataOffset,
                 columnLayout,
-                rowLayout
+                rowLayout,
             ),
-        [freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight, dataOffset, columnLayout, rowLayout]
+        [freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight, dataOffset, columnLayout, rowLayout],
     );
 
     // Build range of visible cells
@@ -250,7 +251,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         () => getVisibleCells([canvasWidth, canvasHeight]),
         // Need to invalidate view if cached layout version changed
         // eslint-disable-next-line
-        [getVisibleCells, canvasWidth, canvasHeight, getVersion()]
+        [getVisibleCells, canvasWidth, canvasHeight, getVersion()],
     );
 
     // Notify of viewport change
@@ -279,7 +280,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             (dataOffset: XY, maxScroll: XY) => {
                 setDataOffset(dataOffset);
                 setMaxScroll(maxScroll);
-            }
+            },
         );
     };
 
@@ -364,7 +365,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         changeSelection,
         props.onChange,
         props.onCopy,
-        props.onPaste
+        props.onPaste,
     );
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
@@ -375,7 +376,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         cellStyle,
         columnHeaders,
         columnHeaderStyle,
-        canvasWidth
+        canvasWidth,
     );
 
     const { mouseHandlers, knobPosition } = useMouse(
@@ -422,7 +423,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onCellHeightChange,
         props.onRightClick,
         props.dontCommitEditOnSelectionChange,
-        props.dontChangeSelectionOnOrderChange
+        props.dontChangeSelectionOnOrderChange,
     );
 
     const { onInputKeyDown, onGridKeyDown, onGridFocus, onGridBlur } = useKeyboard(
@@ -443,7 +444,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setFocused,
         onClipboardCopy,
 
-        props.onChange
+        props.onChange,
     );
 
     useLayoutEffect(() => {
@@ -484,7 +485,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 selectedColumnGroups,
                 selectedRowGroups,
 
-                dataOffset
+                dataOffset,
             );
         });
 
@@ -562,7 +563,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editCellX,
         editCellY,
         { ...inputProps, onChange: setEditValue } as SheetInputProps,
-        commitEditingCell
+        commitEditingCell,
     );
 
     let overlayDivClassName = styles.sheetscroll;
@@ -588,21 +589,15 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         overlayDivClassName = '';
     }
 
-    const renderedInside = useMemo(() => props.renderInside?.({ visibleCells, cellLayout, selection, editMode }), [
-        props.renderInside,
-        visibleCells,
-        cellLayout,
-        selection,
-        editMode,
-    ]);
+    const renderedInside = useMemo(
+        () => props.renderInside?.({ visibleCells, cellLayout, selection, editMode }),
+        [props.renderInside, visibleCells, cellLayout, selection, editMode],
+    );
 
-    const renderedOutside = useMemo(() => props.renderOutside?.({ visibleCells, cellLayout, selection, editMode }), [
-        props.renderOutside,
-        visibleCells,
-        cellLayout,
-        selection,
-        editMode,
-    ]);
+    const renderedOutside = useMemo(
+        () => props.renderOutside?.({ visibleCells, cellLayout, selection, editMode }),
+        [props.renderOutside, visibleCells, cellLayout, selection, editMode],
+    );
 
     // External component API
     useImperativeHandle(
@@ -612,7 +607,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             ...clipboardApi,
             startEditingCell,
         }),
-        [cellLayout, clipboardApi, startEditingCell]
+        [cellLayout, clipboardApi, startEditingCell],
     );
 
     return (

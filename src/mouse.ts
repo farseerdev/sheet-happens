@@ -81,7 +81,7 @@ export const useMouse = (
     onRightClick?: (e: SheetMouseEvent) => void,
 
     dontCommitEditOnSelectionChange?: boolean,
-    dontChangeSelectionOnOrderChange?: boolean
+    dontChangeSelectionOnOrderChange?: boolean,
 ) => {
     const [hitTarget, setHitTarget] = useState<Clickable | null>(null);
 
@@ -180,7 +180,7 @@ export const useMouse = (
 
             return null;
         },
-        [hitmapRef]
+        [hitmapRef],
     );
 
     const onPointerLeave = useCallback(() => {
@@ -248,10 +248,10 @@ export const useMouse = (
                                         ...selectedColumns,
                                         ...(selectedColumnGroups
                                             ? columns.filter((index) =>
-                                                  selectedColumnGroups.has(columnGroupKeys(index))
+                                                  selectedColumnGroups.has(columnGroupKeys(index)),
                                               )
                                             : []),
-                                    ]).values()
+                                    ]).values(),
                                 );
                                 indices.sort((a, b) => a - b);
 
@@ -266,7 +266,7 @@ export const useMouse = (
                                         clickSelection,
                                         columnGroupKeys,
                                         selectedColumnGroups,
-                                        0
+                                        0,
                                     );
 
                                     // Extend to whole selection if it's part of the same 'chunk'
@@ -350,7 +350,7 @@ export const useMouse = (
                                                   .map((_, i) => i)
                                                   .filter((index) => selectedRowGroups.has(rowGroupKeys(index)))
                                             : []),
-                                    ]).values()
+                                    ]).values(),
                                 );
                                 indices.sort((a, b) => a - b);
 
@@ -365,7 +365,7 @@ export const useMouse = (
                                         clickSelection,
                                         rowGroupKeys,
                                         selectedRowGroups,
-                                        1
+                                        1,
                                     );
 
                                     // Extend to whole selection if it's part of the same 'chunk'
@@ -479,7 +479,7 @@ export const useMouse = (
             rowGroupKeys,
             selectedColumnGroups,
             selectedRowGroups,
-        ]
+        ],
     );
 
     const onPointerUp = useCallback(
@@ -578,7 +578,7 @@ export const useMouse = (
             onColumnOrderChange,
             onRowOrderChange,
             dontChangeSelectionOnOrderChange,
-        ]
+        ],
     );
 
     const onPointerMove = useCallback(
@@ -721,14 +721,13 @@ export const useMouse = (
                 if (onCellWidthChange) {
                     const { size, anchor, scroll, indices } = columnResize;
                     const [currentScroll] = getScrollPosition(e);
-                    const newWidth = Math.round(Math.max(
-                        size + x - anchor + scroll - currentScroll,
-                        SIZES.minimumWidth * indices.length
-                    ));
+                    const newWidth = Math.round(
+                        Math.max(size + x - anchor + scroll - currentScroll, SIZES.minimumWidth * indices.length),
+                    );
                     onInvalidateColumn?.(indices[0] - 1);
                     onCellWidthChange(
                         indices,
-                        indices.map((_) => Math.round(newWidth / indices.length))
+                        indices.map((_) => Math.round(newWidth / indices.length)),
                     );
                 }
                 return;
@@ -738,14 +737,13 @@ export const useMouse = (
                 if (onCellHeightChange) {
                     const { size, anchor, scroll, indices } = rowResize;
                     const [, currentScroll] = getScrollPosition(e);
-                    const newHeight = Math.round(Math.max(
-                        size + y - anchor + scroll - currentScroll,
-                        SIZES.minimumHeight * indices.length
-                    ));
+                    const newHeight = Math.round(
+                        Math.max(size + y - anchor + scroll - currentScroll, SIZES.minimumHeight * indices.length),
+                    );
                     onInvalidateRow?.(indices[0] - 1);
                     onCellHeightChange(
                         indices,
-                        indices.map((_) => newHeight / indices.length)
+                        indices.map((_) => newHeight / indices.length),
                     );
                 }
                 return;
@@ -764,7 +762,7 @@ export const useMouse = (
                             [-1, anchorY],
                             [-1, Math.max(0, headY)],
                         ],
-                        false
+                        false,
                     );
                 } else if (draggingColumnSelection) {
                     onSelectionChange?.(
@@ -772,7 +770,7 @@ export const useMouse = (
                             [anchorX, -1],
                             [Math.max(0, headX), -1],
                         ],
-                        false
+                        false,
                     );
                 } else {
                     onSelectionChange?.([maxXY(anchor, ORIGIN), maxXY(head, ORIGIN)], false);
@@ -827,7 +825,7 @@ export const useMouse = (
                             : [
                                   [cellX, -1],
                                   [cellX, -1],
-                              ]
+                              ],
                     );
                 }
                 if (rowDrag) {
@@ -846,7 +844,7 @@ export const useMouse = (
                             : [
                                   [-1, cellY],
                                   [-1, cellY],
-                              ]
+                              ],
                     );
                 }
             }
@@ -866,7 +864,7 @@ export const useMouse = (
             onInvalidateColumn,
             columnGroupKeys,
             rowGroupKeys,
-        ]
+        ],
     );
 
     const onClick = useCallback(
@@ -890,7 +888,7 @@ export const useMouse = (
                 obj.onClick?.(e);
             }
         },
-        [getMousePosition, getMouseHit]
+        [getMousePosition, getMouseHit],
     );
 
     const onDoubleClick = useCallback(
@@ -936,7 +934,7 @@ export const useMouse = (
                 }
                 onCellWidthChange(
                     autosized,
-                    autosized.map((column) => getAutoSizeWidth(column))
+                    autosized.map((column) => getAutoSizeWidth(column)),
                 );
                 if (autosized.length) return;
             }
@@ -961,7 +959,7 @@ export const useMouse = (
             getAutoSizeWidth,
             visibleCells,
             canSizeColumn,
-        ]
+        ],
     );
 
     const onContextMenu = useCallback(
@@ -996,7 +994,7 @@ export const useMouse = (
             };
             onRightClick?.(event);
         },
-        [getMousePosition, onSelectionChange, onPointerMove, onRightClick]
+        [getMousePosition, onSelectionChange, onPointerMove, onRightClick],
     );
 
     const mouseHandlers = {
@@ -1017,7 +1015,7 @@ const parseKnobOperation = (
     selection: Rectangle,
     sourceData: CellPropertyFunction<string | number | null>,
     editData: CellPropertyFunction<string>,
-    cellReadOnly: CellPropertyFunction<boolean | null>
+    cellReadOnly: CellPropertyFunction<boolean | null>,
 ): Change[] => {
     const [[kx1, ky1], [kx2, ky2]] = normalizeSelection(knobArea);
     const [[sx1, sy1], [sx2, sy2]] = normalizeSelection(selection);

@@ -18,7 +18,7 @@ import { addXY, subXY, maxXY, getDirectionStep } from './coordinate';
 // Inject row/column props from an array, function, constant or default value
 export const createRowOrColumnProp = <T extends PropTypes>(
     rowColProp: RowOrColumnProperty<T> | undefined,
-    defaultValue: T
+    defaultValue: T,
 ): RowOrColumnPropertyFunction<T> => {
     if (Array.isArray(rowColProp)) {
         return (rowOrColIndex: number) => {
@@ -40,7 +40,7 @@ export const createRowOrColumnProp = <T extends PropTypes>(
 // Inject cell props from a nested array, function, constant or default value
 export const createCellProp = <T extends PropTypes>(
     cellProp: CellProperty<T> | undefined,
-    defaultValue: T
+    defaultValue: T,
 ): CellPropertyFunction<T> => {
     if (Array.isArray(cellProp)) {
         return (x: number, y: number) => {
@@ -66,7 +66,7 @@ export const createCellProp = <T extends PropTypes>(
 // Inject row/column props from an array, function, constant or default value
 export const createRowOrColumnStyledProp = <T extends PropTypes>(
     rowColProp: RowOrColumnPropertyStyled<T> | undefined,
-    defaultValue: T
+    defaultValue: T,
 ): RowOrColumnPropertyStyledFunction<T> => {
     if (Array.isArray(rowColProp)) {
         return (rowOrColIndex: number) => {
@@ -88,7 +88,7 @@ export const createRowOrColumnStyledProp = <T extends PropTypes>(
 // Inject cell props from a nested array, function, constant or default value
 export const createCellStyledProp = <T extends PropTypes>(
     cellProp: CellPropertyStyled<T> | undefined,
-    defaultValue: T
+    defaultValue: T,
 ): CellPropertyStyledFunction<T> => {
     if (Array.isArray(cellProp)) {
         return (x: number, y: number) => {
@@ -167,7 +167,7 @@ export const findApproxMaxEditDataIndex = (editData: CellPropertyFunction<string
 export const findInDisplayData = (
     displayData: CellPropertyStyledFunction<CellContentType>,
     start: XY,
-    direction: Direction
+    direction: Direction,
 ): XY => {
     const step = getDirectionStep(direction);
 
