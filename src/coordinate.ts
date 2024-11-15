@@ -41,13 +41,13 @@ export const forSelectionRows = (selection: Rectangle) => (callback: (i: number)
     forRange(top, bottom, callback);
 };
 
-const forToMap = <A extends Array<any>>(forLoop: (callback: (...args: A) => void) => void) => <B>(
-    map: (...args: A) => B
-) => {
-    const out: B[] = [];
-    forLoop((...args: A) => out.push(map(...args)));
-    return out;
-};
+const forToMap =
+    <A extends Array<any>>(forLoop: (callback: (...args: A) => void) => void) =>
+    <B>(map: (...args: A) => B) => {
+        const out: B[] = [];
+        forLoop((...args: A) => out.push(map(...args)));
+        return out;
+    };
 
 export const mapSelectionColumns = (selection: Rectangle) => forToMap(forSelectionColumns(selection));
 export const mapSelectionRows = (selection: Rectangle) => forToMap(forSelectionRows(selection));

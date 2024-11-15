@@ -55,7 +55,7 @@ export const renderSheet = (
     selectedColumnGroups: Set<string | number | null> | null,
     selectedRowGroups: Set<string | number | null> | null,
 
-    dataOffset: XY
+    dataOffset: XY,
 ): Clickable[] => {
     const { canvas } = context;
     const { width, height } = canvas;
@@ -200,17 +200,19 @@ export const renderSheet = (
             const style = isSelfSelected
                 ? HEADER_SELECTED_STYLE
                 : isGroupSelected
-                ? HEADER_GROUP_SELECTED_STYLE
-                : isActive
-                ? HEADER_ACTIVE_STYLE
-                : NO_STYLE;
+                  ? HEADER_GROUP_SELECTED_STYLE
+                  : isActive
+                    ? HEADER_ACTIVE_STYLE
+                    : NO_STYLE;
 
             const resolvedStyle = { ...DEFAULT_COLUMN_HEADER_STYLE, ...style };
 
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
-            clickables.push(...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top, pixelRatio));
+            clickables.push(
+                ...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top, pixelRatio),
+            );
         }
     }
 
@@ -242,7 +244,9 @@ export const renderSheet = (
 
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            clickables.push(...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight, pixelRatio));
+            clickables.push(
+                ...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight, pixelRatio),
+            );
         }
     }
 
@@ -370,7 +374,9 @@ export const renderSheet = (
             };
             const cellContent = displayData(x, y, style);
             if (cellContent !== null && cellContent !== undefined) {
-                clickables.push(...renderCell(context, cellContent, style, left, top, right - left, bottom - top, pixelRatio));
+                clickables.push(
+                    ...renderCell(context, cellContent, style, left, top, right - left, bottom - top, pixelRatio),
+                );
             }
         }
     }
@@ -500,7 +506,7 @@ const resolveFrozenSelection = (
 
     freeze: XY,
     indent: XY,
-    offset: XY
+    offset: XY,
 ) => {
     const { cellToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
 

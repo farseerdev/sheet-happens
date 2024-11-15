@@ -33,7 +33,7 @@ export const useKeyboard = (
     onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
     onFocusChange?: (focus: boolean) => void,
     onClipboardCopy?: (cut: boolean) => void,
-    onChange?: (changes: Change[]) => void
+    onChange?: (changes: Change[]) => void,
 ) => {
     const onInputKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -140,8 +140,8 @@ export const useKeyboard = (
                     ? isRowSelection(selection)
                         ? [-1, 0]
                         : isColumnSelection(selection)
-                        ? [0, -1]
-                        : NEG_NEG
+                          ? [0, -1]
+                          : NEG_NEG
                     : ORIGIN;
                 head = maxXY(addXY(head, step), limit);
             }

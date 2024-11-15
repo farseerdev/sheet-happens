@@ -7,7 +7,7 @@ const scanGroup = (
     keys: RowOrColumnPropertyFunction<string | number | null>,
     index: number,
     direction: number,
-    matchKeys: Set<string | number | null>
+    matchKeys: Set<string | number | null>,
 ) => {
     let i = 1;
     const limit = direction > 0 ? LIMIT : Math.min(LIMIT, index + 1);
@@ -23,7 +23,7 @@ export const expandSelectionToRowOrColumnGroups = (
     selection: Rectangle,
     groupKeys: RowOrColumnPropertyFunction<string | number | null>,
     matchKeys: Set<string | number | null> | null,
-    coordinate: number // 0/1 for X/Y
+    coordinate: number, // 0/1 for X/Y
 ) => {
     if (!matchKeys) return selection;
 
@@ -45,7 +45,7 @@ export const expandSelectionToRowOrColumnGroups = (
 
 export const isBoundaryInsideGroup = (
     index: number,
-    groupKeys: RowOrColumnPropertyFunction<string | number | null>
+    groupKeys: RowOrColumnPropertyFunction<string | number | null>,
 ) => {
     const before = groupKeys(index - 1);
     const after = groupKeys(index);

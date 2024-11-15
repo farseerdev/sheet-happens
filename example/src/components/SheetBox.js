@@ -44,8 +44,8 @@ export const DEFAULT_CELL_HEIGHT = 22;
 export function useWidthHeightControl(
     initialWidths = [],
     initialHeights = [],
-    getColumnOrder = (i: number) => i,
-    getRowOrder = (i: number) => i
+    getColumnOrder = (i) => i,
+    getRowOrder = (i) => i,
 ) {
     const [cellWidth, setCellWidth] = useState(initialWidths);
     const [cellHeight, setCellHeight] = useState(initialHeights);
@@ -82,8 +82,8 @@ export function useWidthHeightControl(
         });
     };
 
-    const cw = (x: number) => cellWidth[getColumnOrder(x)] ?? DEFAULT_CELL_WIDTH;
-    const ch = (y: number) => cellHeight[getRowOrder(y)] ?? DEFAULT_CELL_HEIGHT;
+    const cw = (x) => cellWidth[getColumnOrder(x)] ?? DEFAULT_CELL_WIDTH;
+    const ch = (y) => cellHeight[getRowOrder(y)] ?? DEFAULT_CELL_HEIGHT;
 
     return { onCellWidthChange, onCellHeightChange, cellWidth: cw, cellHeight: ch };
 }
@@ -92,10 +92,10 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
     const [columnOrder, setColumnOrder] = useState(initialColumns);
     const [rowOrder, setRowOrder] = useState(initialRows);
 
-    const getColumnOrder = (x: number) => columnOrder[x] ?? x;
-    const getRowOrder = (y: number) => rowOrder[y] ?? y;
+    const getColumnOrder = (x) => columnOrder[x] ?? x;
+    const getRowOrder = (y) => rowOrder[y] ?? y;
 
-    const onColumnOrderChange = (indices: number[], order: number) => {
+    const onColumnOrderChange = (indices, order) => {
         const co = [...columnOrder];
 
         // Extend column order to cover operation
@@ -111,7 +111,7 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
         setColumnOrder(co);
     };
 
-    const onRowOrderChange = (indices: number[], order: number) => {
+    const onRowOrderChange = (indices, order) => {
         const ro = [...rowOrder];
 
         // Extend row order to cover operation
@@ -139,7 +139,7 @@ export function SheetBoxHeader() {
         [],
         [],
         getColumnOrder,
-        getRowOrder
+        getRowOrder,
     );
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
@@ -212,7 +212,7 @@ export function SheetBoxBasic() {
         [],
         [],
         getColumnOrder,
-        getRowOrder
+        getRowOrder,
     );
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
@@ -540,7 +540,7 @@ export function SheetBoxRender() {
         ) : null;
 
         return (
-            <div onPointerDown={(e: any) => e.stopPropagation()}>
+            <div onPointerDown={(e) => e.stopPropagation()}>
                 {note}
                 {marker}
             </div>
@@ -582,7 +582,7 @@ export function SheetBoxGrouped() {
         [],
         [],
         getColumnOrder,
-        getRowOrder
+        getRowOrder,
     );
 
     const groupKeys = [1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8];
