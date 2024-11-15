@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Sheet from 'sheet-happens';
+import { svgToImage } from 'sheet-happens';
 import 'sheet-happens/dist/index.css';
 
 const initialDataBig = [];
@@ -13,14 +14,14 @@ for (let row = 0; row < 1000; row++) {
 
 const initialDataBasic = [
     ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 'Lorem ipsum dolor sit amet', 5, 6],
+    [1, 2, 3, 'consectetur adipisicing elit', 5, 6],
+    [1, 2, 3, 'sed do eiusmod tempor incididunt', 5, 6],
+    [1, 2, 3, '4', 5, 6],
+    [1, 2, 3, '4', 5, 6],
+    [1, 2, 3, '4', 5, 6],
+    [1, 2, 3, '4', 5, 6],
+    [1, 2, 3, '4', 5, 6],
 ];
 
 const initialDataFormatting = [];
@@ -32,11 +33,23 @@ for (let row = 0; row < 1000; row++) {
     initialDataFormatting.push(r);
 }
 
-const triangleDown = new Image();
-triangleDown.src =
-    'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiDQoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBvdmVyZmxvdz0idmlzaWJsZSIgPg0KPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAwLDAgNTAsMTAwIiBzdHlsZT0iZmlsbDojOTk5OTk5OyIvPg0KPC9zdmc+DQo=';
-triangleDown.width = 10;
-triangleDown.height = 10;
+const triangleDownImageSrc = 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiDQoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBvdmVyZmxvdz0idmlzaWJsZSIgPg0KPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAwLDAgNTAsMTAwIiBzdHlsZT0iZmlsbDojOTk5OTk5OyIvPg0KPC9zdmc+DQo=';
+
+const checkedSVG = svgToImage(
+    <svg
+        fillRule="evenodd"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        width="16"
+        height="16"
+    >
+        <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M5 2C3.34315 2 2 3.34315 2 5V11C2 12.6569 3.34315 14 5 14H11C12.6569 14 14 12.6569 14 11V5C14 3.34315 12.6569 2 11 2H5ZM11.2071 7.20711C11.5976 6.81658 11.5976 6.18342 11.2071 5.79289C10.8165 5.40237 10.1834 5.40237 9.79285 5.79289L7.24133 8.34441L6.20706 7.31014C5.81654 6.91962 5.18338 6.91962 4.79285 7.31014C4.40233 7.70066 4.40233 8.33383 4.79285 8.72435L6.53422 10.4657L7.24133 11.1728L7.94844 10.4657L11.2071 7.20711Z"
+        />
+    </svg>
+);
 
 export const DEFAULT_CELL_WIDTH = 100;
 export const DEFAULT_CELL_HEIGHT = 22;
@@ -273,12 +286,6 @@ export function SheetBoxBasic() {
     );
 }
 
-const faCheck = new Image();
-faCheck.src =
-    'data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJjaGVjay1jaXJjbGUiIGNsYXNzPSJzdmctaW5saW5lLS1mYSBmYS1jaGVjay1jaXJjbGUgZmEtdy0xNiIgcm9sZT0iaW1nIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjMGFkNjZiIiBkPSJNNTA0IDI1NmMwIDEzNi45NjctMTExLjAzMyAyNDgtMjQ4IDI0OFM4IDM5Mi45NjcgOCAyNTYgMTE5LjAzMyA4IDI1NiA4czI0OCAxMTEuMDMzIDI0OCAyNDh6TTIyNy4zMTQgMzg3LjMxNGwxODQtMTg0YzYuMjQ4LTYuMjQ4IDYuMjQ4LTE2LjM3OSAwLTIyLjYyN2wtMjIuNjI3LTIyLjYyN2MtNi4yNDgtNi4yNDktMTYuMzc5LTYuMjQ5LTIyLjYyOCAwTDIxNiAzMDguMTE4bC03MC4wNTktNzAuMDU5Yy02LjI0OC02LjI0OC0xNi4zNzktNi4yNDgtMjIuNjI4IDBsLTIyLjYyNyAyMi42MjdjLTYuMjQ4IDYuMjQ4LTYuMjQ4IDE2LjM3OSAwIDIyLjYyN2wxMDQgMTA0YzYuMjQ5IDYuMjQ5IDE2LjM3OSA2LjI0OSAyMi42MjguMDAxeiI+PC9wYXRoPjwvc3ZnPg==';
-faCheck.width = 16;
-faCheck.height = 16;
-
 export function SheetBoxStyle() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
@@ -290,18 +297,25 @@ export function SheetBoxStyle() {
             return {
                 items: [
                     {
-                        content: 'A',
-                        x: 0,
-                        y: 0,
-                        horizontalAlign: 'center',
-                    },
-                    {
-                        content: triangleDown,
-                        x: 0,
-                        y: -6,
+                        display: 'space',
                         width: 12,
                         height: 12,
-                        horizontalAlign: 'right',
+                    },
+                    {
+                        display: 'inline',
+                        text: 'A',
+
+                        textAlign: 'center',
+                        flexGrow: 1,
+                        flexShrink: 0,
+                    },
+                    {
+                        display: 'icon',
+                        src: triangleDownImageSrc,
+
+                        width: 12,
+                        height: 12,
+
                         onClick: () => {
                             console.log('click');
                         },
@@ -312,21 +326,20 @@ export function SheetBoxStyle() {
             return null;
         }
     };
-    const colors = ['#f00', '#0f0', '#00f', '#000'];
+    const colors = ['#000', '#d02', '#290', '#24f'];
     const alignment = ['left', 'right', 'center'];
     const weight = ['normal', 'bold', 'lighter'];
-    const marginRight = [0, 0, 0, 0, 20];
     const cellStyle = (x, y) => {
         if (x === 0 || y === 0) {
             return {
+                color: colors[y % 4],
                 fillColor: '#6DA2FB22',
-                marginRight: 10,
+                marginRight: 5,
             };
         }
         return {
             color: colors[y % 4],
-            textAlign: alignment[x % 3],
-            marginRight: marginRight[x % 5],
+            textAlign: (x === 3 && y < 4) ? alignment[(y - 1) % 3] : alignment[x % 3],
             weight: weight[y % 3],
         };
     };
@@ -345,21 +358,25 @@ export function SheetBoxStyle() {
             return {
                 items: [
                     {
-                        content: faCheck,
-                        x: 0,
-                        y: -8,
+                        display: 'inline',
+                        text: data?.[y]?.[x],
+
+                        textAlign: 'left',
+                        flexGrow: 1,
+                    },
+                    {
+                        display: 'icon',
+                        image: checkedSVG,
+
                         width: 16,
                         height: 16,
-                        horizontalAlign: 'right',
+
+                        flexShrink: 0,
+                        flexAlignSelf: 'start',
+
                         onClick: () => {
                             incrementCell(x, y);
                         },
-                    },
-                    {
-                        content: data?.[y]?.[x],
-                        x: 0,
-                        y: 0,
-                        horizontalAlign: 'left',
                     },
                 ],
             };

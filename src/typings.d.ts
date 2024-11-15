@@ -15,3 +15,20 @@ declare module '*.svg' {
     export default svgUrl;
     export { svgComponent as ReactComponent };
 }
+
+declare module 'linebreak' {
+    export class Break {
+        constructor(position: number, required?: boolean | undefined);
+        string: string | undefined;
+        props: Record<string, any> | undefined;
+        position: number;
+        required: boolean;
+    }
+
+    export class LineBreak {
+        constructor(s: string);
+        nextBreak(): Break | null;
+    }
+
+    export default LineBreak;
+}

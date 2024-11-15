@@ -14,6 +14,7 @@ import useResizeObserver from 'use-resize-observer';
 import {
     XY,
     Rectangle,
+    CellContentRender,
     CellLayout,
     CellProperty,
     CellPropertyStyled,
@@ -22,7 +23,6 @@ import {
     RowOrColumnPropertyStyled,
     RowOrColumnProperty,
     Selection,
-    Clickable,
     Change,
     SheetPointerEvent,
     InternalSheetStyle,
@@ -45,19 +45,20 @@ import {
 import {
     normalizeSelection,
     validateSelection,
-    isSameSelection,
+    isSameRectangle,
     mapSelectionColumns,
     mapSelectionRows,
     addXY,
 } from './coordinate';
+import { useImageRenderer } from './image';
 import { useMouse } from './mouse';
 import { useKeyboard } from './keyboard';
 import { useScroll, scrollToCell, clipDataOffset, updateScrollPosition } from './scroll';
-import { useAutoSizeColumn } from './autosize';
+import { useAutoSizeColumn, useAutoSizeRow } from './autosize';
 import { useClipboardAPI } from './clipboard';
 import { makeLayoutCache, makeCellLayout } from './layout';
 import { createCellProp, createCellStyledProp, createRowOrColumnProp, createRowOrColumnStyledProp } from './props';
-import { renderSheet } from './render';
+import { renderSheet, getDpiNudge } from './render';
 import { resolveSheetStyle } from './style';
 
 export type SheetInputProps = {
@@ -286,7 +287,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     // Set selection with scrolling
     const changeSelection = (newSelection: Rectangle, scrollTo = true, toHead = false) => {
-        if (!isSameSelection(selection, newSelection)) {
+        if (!isSameRectangle(selection, newSelection)) {
             setRawSelection(newSelection);
         }
 
@@ -352,7 +353,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [maxRows, maxColumns]);
 
     // Output from rendered layout is used to drive events on user content
-    const hitmapRef = useRef<Clickable[]>(NO_CLICKABLES);
+    const hitmapRef = useRef<CellContentRender[]>(NO_CLICKABLES);
 
     // Detect focus on canvas
     const isFocused = focused || editMode;
@@ -379,6 +380,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         canvasWidth,
     );
 
+    const getAutoSizeHeight = useAutoSizeRow(visibleCells.columns, displayData, cellStyle, cellWidth, canvasHeight);
+
     const { mouseHandlers, knobPosition } = useMouse(
         hitmapRef,
         selection,
@@ -403,6 +406,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         selectedRowGroups,
 
         getAutoSizeWidth,
+        getAutoSizeHeight,
 
         startEditingCell,
         commitEditingCell,
@@ -447,6 +451,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onChange,
     );
 
+    const imageRenderer = useImageRenderer();
+
     useLayoutEffect(() => {
         const { current: canvas } = canvasRef;
         if (!canvas) {
@@ -461,6 +467,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         const animationFrameId = window.requestAnimationFrame(() => {
             hitmapRef.current = renderSheet(
                 context,
+                imageRenderer,
 
                 cellLayout,
                 visibleCells,
@@ -523,14 +530,22 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     let editTextPosition = ORIGIN;
     let editTextWidth = 0;
     let editTextHeight = 0;
-    let editTextTextAlign: 'right' | 'left' | 'center' = 'right';
+    let editTextAlign: 'right' | 'left' | 'center' = 'right';
+    let editTextLineHeight = '';
+    let editTextMargin = '';
     if (editMode) {
-        const style = cellStyle(...editCell);
+        const style = { ...DEFAULT_CELL_STYLE, ...cellStyle(...editCell) };
         editTextPosition = cellToPixel(editCell);
         editTextPosition = addXY(editTextPosition, ONE_ONE);
         editTextWidth = cellWidth(editCellX) - 3;
         editTextHeight = cellHeight(editCellY) - 3;
-        editTextTextAlign = style.textAlign || DEFAULT_CELL_STYLE.textAlign || 'left';
+        editTextAlign = style.textAlign;
+        editTextLineHeight = `${style.lineHeight}px`;
+
+        // Deduct border + apply high-dpi nudge to line up with render
+        const yNudge = getDpiNudge();
+        editTextMargin = `${style.marginTop - 1 + yNudge}px ${style.marginRight - 2}px ${style.marginBottom - 2}px ${style.marginLeft - 1}px`;
+
         const editKey = editKeys(...editCell);
         if (editKey !== lastEditKey) {
             setLastEditKey('');
@@ -547,15 +562,17 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             position: 'absolute',
             left: textX,
             top: textY,
-            padding: '0px 4px',
+            padding: editTextMargin,
             width: editTextWidth,
             height: editTextHeight,
             outline: 'none',
             border: 'none',
-            textAlign: editTextTextAlign,
+            textAlign: editTextAlign,
+            lineHeight: editTextLineHeight,
             color: 'black',
             fontSize: DEFAULT_CELL_STYLE.fontSize,
             fontFamily: 'sans-serif',
+            resize: 'none',
         } as InputStyle,
     };
 
@@ -674,9 +691,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 (input !== undefined ? (
                     input
                 ) : (
-                    <input
+                    <textarea
                         {...inputProps}
-                        type="text"
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => setEditValue(e.target.value)}
                     />

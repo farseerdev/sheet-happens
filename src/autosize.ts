@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { DEFAULT_COLUMN_HEADER_STYLE, DEFAULT_CELL_STYLE, SIZES } from './constants';
+import { wrapText } from './text';
 import {
     RowOrColumnPropertyFunction,
     RowOrColumnPropertyStyledFunction,
@@ -24,33 +25,27 @@ export const useAutoSizeColumn = (
             if (!context) return 0;
 
             const getWidth = (cellContent: Exclude<CellContentType, null>, style: Required<Style>) => {
-                context.font = style.weight + ' ' + style.fontSize + 'px ' + style.fontFamily;
+                context.font = style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
 
                 const inlineMargin = style.marginLeft + style.marginRight;
                 if (typeof cellContent === 'string' || typeof cellContent === 'number') {
                     const { width } = context.measureText(cellContent.toString());
                     return width + inlineMargin;
                 } else if (typeof cellContent === 'object') {
-                    let maxWidth = 0;
-                    let extraWidth = 0;
+                    let totalWidth = inlineMargin;
 
-                    for (const obj of cellContent.items) {
-                        let width = 0;
-                        if (typeof obj.content === 'string' || typeof obj.content === 'number') {
-                            const { width: w } = context.measureText(obj.content.toString());
-                            width = obj.x + w + inlineMargin;
-                        } else if (obj.width) {
-                            width = obj.width;
-                        }
+                    for (const item of cellContent.items) {
+                        if (item.absolute) continue;
 
-                        if (obj.horizontalAlign === 'right') {
-                            extraWidth += style.textAlign === 'right' ? width * 2 : width;
-                        } else {
-                            maxWidth = Math.max(maxWidth, width);
+                        if (item.width != null) {
+                            totalWidth += item.width;
+                        } else if (item.display === 'inline' && item.text != null) {
+                            const { width } = context.measureText(item.text.toString());
+                            totalWidth += width;
                         }
                     }
 
-                    return maxWidth + extraWidth;
+                    return totalWidth;
                 }
                 return 0;
             };
@@ -77,4 +72,75 @@ export const useAutoSizeColumn = (
     );
 
     return getAutoSizeWidth;
+};
+
+export const useAutoSizeRow = (
+    columns: number[],
+    displayData: CellPropertyStyledFunction<CellContentType>,
+    cellStyle: CellPropertyFunction<Style>,
+    cellWidth: RowOrColumnPropertyFunction<number>,
+    canvasHeight: number,
+) => {
+    const context = useMemo(() => document.createElement('canvas').getContext('2d'), []);
+
+    const getAutoSizeHeight = useCallback(
+        (y: number) => {
+            if (!context) return 0;
+
+            const measureTextHeight = (text: string, style: Required<Style>, columnWidth: number) => {
+                let maxY = 0;
+                const measureY = (_t: string, _x: number, y: number) => {
+                    maxY = y + style.lineHeight;
+                };
+                wrapText(context, text, style, undefined, 0, 0, columnWidth, canvasHeight, measureY);
+                return maxY;
+            };
+
+            const getHeight = (
+                cellContent: Exclude<CellContentType, null>,
+                style: Required<Style>,
+                columnWidth: number,
+            ) => {
+                context.font = style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
+
+                const verticalMargin = style.marginTop + style.marginBottom;
+                if (typeof cellContent === 'string' || typeof cellContent === 'number') {
+                    const height = measureTextHeight(cellContent.toString(), style, columnWidth);
+                    return height + verticalMargin;
+                } else if (typeof cellContent === 'object') {
+                    let maxHeight = 0;
+
+                    for (const item of cellContent.items) {
+                        if (item.absolute) continue;
+
+                        if (item.height != null) {
+                            maxHeight = Math.max(maxHeight, item.height);
+                        } else if (item.display === 'inline' && item.text != null) {
+                            const height = measureTextHeight(item.text.toString(), style, columnWidth);
+                            maxHeight = Math.max(maxHeight, height);
+                        }
+                    }
+
+                    return maxHeight + verticalMargin;
+                }
+                return 0;
+            };
+
+            let maxHeight = SIZES.minimumHeight;
+
+            for (const x of columns) {
+                const style = { ...DEFAULT_CELL_STYLE, ...cellStyle(x, y) };
+                const cellContent = displayData(x, y, style);
+                if (cellContent != null) {
+                    const columnWidth = cellWidth(x) - style.marginLeft - style.marginRight;
+                    maxHeight = Math.max(maxHeight, getHeight(cellContent, style, columnWidth));
+                }
+            }
+
+            return Math.ceil(Math.min(canvasHeight, maxHeight));
+        },
+        [context, displayData, cellStyle, cellWidth],
+    );
+
+    return getAutoSizeHeight;
 };

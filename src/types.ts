@@ -25,20 +25,75 @@ export type RowOrColumnProperty<T extends PropTypes> = T | T[] | RowOrColumnProp
 // Content
 ////////////////////////////////////////////////////////////////////////////////
 
-export type CellContentType = null | number | string | CellContent;
-export type CellContent = {
+export type CellContentType = null | number | string | CellContentContainer;
+
+export type CellContentContainer = {
+    inspect?: boolean;
+
+    flexAlign?: Anchor;
+    flexJustify?: Justify;
+    flexGap?: number;
+
     items: CellContentItem[];
 };
 
-export type CellContentItem = {
-    content: HTMLImageElement | string | number;
-    x: number;
-    y: number;
+export type CellContentDisplay =
+    | {
+          display: 'space';
+      }
+    | {
+          display: 'inline';
+          text: string | number | null;
+      }
+    | {
+          display: 'image' | 'icon';
+          image: HTMLImageElement;
+      }
+    | {
+          display: 'image' | 'icon';
+          src: string;
+      };
+
+export type CellContentItem = CellContentDisplay & {
+    color?: string;
+    textAlign?: Align;
+
+    flexGrow?: number;
+    flexShrink?: number;
+    flexAlignSelf?: Anchor;
+
+    absolute?: boolean;
+    left?: number;
+    top?: number;
+    right?: number;
+    bottom?: number;
+
     width?: number;
     height?: number;
-    horizontalAlign?: 'left' | 'right' | 'center';
+
+    marginLeft?: number;
+    marginRight?: number;
+    marginTop?: number;
+    marginBottom?: number;
+
     onClick?: (e: MouseEvent) => void;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Rich cell layout
+////////////////////////////////////////////////////////////////////////////////
+
+export type CellContentRender = {
+    box: Rectangle;
+    item: CellContentItem;
+};
+
+export type ImageRenderer = (
+    context: CanvasRenderingContext2D,
+    content: CellContentItem,
+    style: Required<Style>,
+    box: Rectangle,
+) => void;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Selections
@@ -48,6 +103,10 @@ export type XY = [number, number];
 export type Rectangle = [XY, XY];
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
+
+export type Align = 'left' | 'center' | 'right';
+export type Anchor = 'start' | 'center' | 'end';
+export type Justify = 'start' | 'center' | 'end' | 'justify' | 'between' | 'evenly';
 
 export type LayoutCache = {
     getSize: (i: number) => number;
@@ -93,11 +152,6 @@ export type VisibleLayout = {
 export type Selection = {
     span: Rectangle;
     color: string;
-};
-
-export type Clickable = {
-    rect: Rectangle;
-    obj: CellContentItem;
 };
 
 export type Resizable = {
@@ -166,10 +220,13 @@ export type Style = {
     color?: string;
     fontSize?: number;
     fontFamily?: string;
-    textAlign?: 'right' | 'left' | 'center';
-    marginRight?: number;
+    fontWeight?: string;
+    lineHeight?: number;
+    textAlign?: Align;
+    marginTop?: number;
+    marginBottom?: number;
     marginLeft?: number;
-    weight?: string;
+    marginRight?: number;
     fillColor?: string;
     backgroundColor?: string;
 };
