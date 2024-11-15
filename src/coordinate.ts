@@ -21,10 +21,16 @@ export const getDirectionStep = (direction: string): XY => {
 
 export const isSameXY = (a: XY, b: XY) => a[0] === b[0] && a[1] === b[1];
 
-export const isSameSelection = (a: Rectangle, b: Rectangle) => {
+export const isSameRectangle = (a: Rectangle, b: Rectangle) => {
     const [a1, a2] = a;
     const [b1, b2] = b;
     return isSameXY(a1, b1) && isSameXY(a2, b2);
+};
+
+export const isPointInsideRectangle = (rectangle: Rectangle, point: XY) => {
+    const [[left, top], [right, bottom]] = rectangle;
+    const [x, y] = point;
+    return x >= left && x < right && y >= top && y < bottom;
 };
 
 export const forRange = (min: number, max: number, callback: (i: number) => void) => {

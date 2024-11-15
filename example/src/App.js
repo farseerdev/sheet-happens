@@ -57,6 +57,7 @@ const App = () => {
                     </p>
                 </div>
             </Wrap>
+
             <Wrap>
                 <div className="box">
                     <SheetBoxStyle />
@@ -69,6 +70,7 @@ const App = () => {
                     </p>
                 </div>
             </Wrap>
+
             <Wrap>
                 <div className="box">
                     <SheetBoxFormatting />
@@ -135,7 +137,6 @@ const App = () => {
             <TitleSeparator title="Documentation" id="documentation" />
             <Wrap>
                 <div className="box full-width">
-                    {/* sourceData displayData */}
                     <h3>Displaying data</h3>
                     <p>
                         If you have some data you want to display, you send it via <Emphased text="sourceData" /> and{' '}
@@ -167,7 +168,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box">
-                    {/*editData onChange readOnly */}
                     <h3>Editing data</h3>
                     <p>
                         Same as the previous two, prop <Emphased text="editData" /> can recieve either array of arrays
@@ -197,7 +197,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box full-width">
-                    {/* columnHeaders */}
                     <h3>Column headers</h3>
                     <p>
                         By default, sheet has excel-like headers (A, B, C, ...) but you can send yours via{' '}
@@ -210,7 +209,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box">
-                    {/* cellStyle cellWidth cellHeight onCellWidthChange onCellHeightChange */}
                     <h3>Cell style and width/height</h3>
                     <p>
                         Use prop <Emphased text="cellStyle" /> and <Emphased text="columnHeaderStyle" /> for customizing
@@ -239,7 +237,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box full-width">
-                    {/* onSelectionChanged */}
                     <h3>Selection</h3>
                     <p>
                         You can send a function to the <Emphased text="onSelectionChanged" /> prop. It will be called on
@@ -252,7 +249,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box full-width">
-                    {/* onRightClick */}
                     <h3>Right click handler</h3>
                     <p>
                         If you send a function to <Emphased text="onRightClick" /> prop, it will be called on right
@@ -265,7 +261,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box full-width">
-                    {/* freezeColumns freezeRows */}
                     <h3>Sticky columns/rows</h3>
                     <p>
                         Send a number to <Emphased text="freezeColumns" /> and/or <Emphased text="freezeRows" /> to make
@@ -278,7 +273,6 @@ const App = () => {
 
             <Wrap>
                 <div className="box full-width">
-                    {/* inputComponent */}
                     <h3>Custom input</h3>
                     <p>
                         By default edit mode turns the cell into a text edit component. But you can send your custom

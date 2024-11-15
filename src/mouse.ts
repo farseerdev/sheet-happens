@@ -1,8 +1,8 @@
 import {
+    CellContentRender,
     CellLayout,
     CellPropertyFunction,
     Change,
-    Clickable,
     Rectangle,
     RowOrColumnPropertyFunction,
     SheetMouseEvent,
@@ -19,7 +19,9 @@ import {
     isRowSelection,
     isCellSelection,
     isMaybeRowSelection,
+    isPointInsideRectangle,
     isPointInsideSelection,
+    isSameRectangle,
     addXY,
     subXY,
     maxXY,
@@ -37,7 +39,7 @@ type DragOp = {
 };
 
 export const useMouse = (
-    hitmapRef: RefObject<Clickable[]>,
+    hitmapRef: RefObject<CellContentRender[]>,
     selection: Rectangle,
     knobArea: Rectangle | null,
     editMode: boolean,
@@ -60,6 +62,7 @@ export const useMouse = (
     selectedRowGroups: Set<string | number | null> | null,
 
     getAutoSizeWidth: (column: number) => number,
+    getAutoSizeHeight: (row: number) => number,
 
     onEdit?: (cell: XY) => void,
     onCommit?: () => void,
@@ -83,12 +86,12 @@ export const useMouse = (
     dontCommitEditOnSelectionChange?: boolean,
     dontChangeSelectionOnOrderChange?: boolean,
 ) => {
-    const [hitTarget, setHitTarget] = useState<Clickable | null>(null);
-
     const [columnResize, setColumnResize] = useState<DragOp | null>(null);
     const [rowResize, setRowResize] = useState<DragOp | null>(null);
     const [columnDrag, setColumnDrag] = useState<DragOp | null>(null);
     const [rowDrag, setRowDrag] = useState<DragOp | null>(null);
+
+    const [hitTestDown, setHitTestDown] = useState<CellContentRender | null>(null);
 
     const [draggingKnob, setDraggingKnob] = useState(false);
     const [draggingSelection, setDraggingSelection] = useState(false);
@@ -122,7 +125,6 @@ export const useMouse = (
         sourceData,
         cellLayout,
         visibleCells,
-        hitTarget,
 
         knobPosition,
         columnResize,
@@ -172,8 +174,8 @@ export const useMouse = (
             if (!hitmap) return null;
 
             for (const object of hitmap) {
-                const { rect } = object;
-                if (isPointInsideSelection(rect, xy)) {
+                const { box } = object;
+                if (isPointInsideRectangle(box, xy)) {
                     return object;
                 }
             }
@@ -207,14 +209,10 @@ export const useMouse = (
             const xy = getMousePosition(e);
             if (!xy) return;
 
-            const [x, y] = xy;
             const hitTarget = getMouseHit(xy);
-            if (hitTarget) {
-                setHitTarget(hitTarget);
-                // Update hitTarget in ref in case there is no re-render between pointerDown and pointerUp
-                ref.current.hitTarget = hitTarget;
-                return;
-            }
+            setHitTestDown(hitTarget);
+
+            const [x, y] = xy;
 
             const normalized = normalizeSelection(selection);
             const [[minX, minY], [maxX, maxY]] = normalized;
@@ -617,9 +615,7 @@ export const useMouse = (
             if (!xy) return;
 
             const hitTarget = getMouseHit(xy);
-            if (hitTarget) {
-                window.document.body.style.cursor = 'pointer';
-            } else if (columnDrag || rowDrag) {
+            if (columnDrag || rowDrag) {
                 window.document.body.style.cursor = 'grabbing';
             } else if (columnResize) {
                 window.document.body.style.cursor = 'col-resize';
@@ -629,6 +625,8 @@ export const useMouse = (
                 e.preventDefault();
             } else if (draggingRowSelection || draggingColumnSelection) {
                 e.preventDefault();
+            } else if (hitTarget) {
+                window.document.body.style.cursor = 'pointer';
             }
 
             const { columns, rows } = visibleCells;
@@ -869,26 +867,21 @@ export const useMouse = (
 
     const onClick = useCallback(
         (e: MouseEvent) => {
-            const {
-                current: { hitTarget },
-            } = ref;
-            if (!hitTarget) return;
-
             const xy = getMousePosition(e);
             if (!xy) return;
 
-            setHitTarget(null);
+            const mouseHit = getMouseHit(xy);
 
-            // Check hit target rect to see if it is the same as pointerDown
-            // (object identity might have changed due to react re-render)
-            const previousRect = JSON.stringify(hitTarget.rect);
-            const currentRect = JSON.stringify(getMouseHit(xy)?.rect);
-            if (previousRect === currentRect) {
-                const { obj } = hitTarget;
-                obj.onClick?.(e);
+            // Verify if same object was clicked down and up to avoid false clicks due to drags
+            if (hitTestDown && mouseHit) {
+                if (isSameRectangle(hitTestDown.box, mouseHit.box)) {
+                    mouseHit?.item?.onClick?.(e);
+                }
             }
+
+            setHitTestDown(null);
         },
-        [getMousePosition, getMouseHit],
+        [getMousePosition, getMouseHit, hitTestDown],
     );
 
     const onDoubleClick = useCallback(
@@ -896,7 +889,7 @@ export const useMouse = (
             const {
                 current: {
                     selection,
-                    cellLayout: { pixelToCell, columnToPixel, getIndentY },
+                    cellLayout: { pixelToCell, columnToPixel, rowToPixel, getIndentX, getIndentY },
                 },
             } = ref;
 
@@ -906,8 +899,9 @@ export const useMouse = (
             const xy = getMousePosition(e);
             if (!xy) return;
 
-            // Double click column divider to autosize
             const [x, y] = xy;
+
+            // Double click column divider to autosize
             const indentY = getIndentY();
             const { columns } = visibleCells;
             if (onCellWidthChange && y < indentY) {
@@ -935,6 +929,38 @@ export const useMouse = (
                 onCellWidthChange(
                     autosized,
                     autosized.map((column) => getAutoSizeWidth(column)),
+                );
+                if (autosized.length) return;
+            }
+
+            // Double click row divider to autosize
+            const indentX = getIndentX();
+            const { rows } = visibleCells;
+            if (onCellHeightChange && x < indentX) {
+                const autosized = [];
+
+                for (const index of rows) {
+                    const edge = rowToPixel(index, 1);
+
+                    if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
+                        const [[, minY], [, maxY]] = normalizeSelection(selection);
+
+                        // Autosize entire selection if double-clicking a right edge
+                        const indices =
+                            isRowSelection(selection) && index >= minY && index <= maxY
+                                ? mapSelectionRows(selection)((i) => i)
+                                : [index];
+
+                        autosized.push(...indices);
+                    }
+                }
+
+                for (const row of autosized) {
+                    onInvalidateRow?.(row - 1);
+                }
+                onCellHeightChange(
+                    autosized,
+                    autosized.map((row) => getAutoSizeHeight(row)),
                 );
                 if (autosized.length) return;
             }

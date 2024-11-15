@@ -1,20 +1,22 @@
 import {
+    CellContentRender,
     CellLayout,
     CellPropertyFunction,
     CellPropertyStyledFunction,
     RowOrColumnPropertyFunction,
     RowOrColumnPropertyStyledFunction,
+    ImageRenderer,
     InternalSheetStyle,
     Rectangle,
     Selection,
-    Clickable,
     Style,
     CellContentType,
     VisibleLayout,
     XY,
 } from './types';
-import { applyAlignment } from './style';
+import { resolveCellFlexLayout, resolveCellAbsoluteLayout } from './cell';
 import { normalizeSelection, isEmptySelection, isColumnSelection, isRowSelection } from './coordinate';
+import { wrapText } from './text';
 import { isInRange, isInRangeLeft, isInRangeCenter } from './util';
 import {
     COLORS,
@@ -30,6 +32,7 @@ import {
 
 export const renderSheet = (
     context: CanvasRenderingContext2D,
+    imageRenderer: ImageRenderer,
     cellLayout: CellLayout,
     visibleCells: VisibleLayout,
 
@@ -56,7 +59,7 @@ export const renderSheet = (
     selectedRowGroups: Set<string | number | null> | null,
 
     dataOffset: XY,
-): Clickable[] => {
+): CellContentRender[] => {
     const { canvas } = context;
     const { width, height } = canvas;
     const {
@@ -74,12 +77,12 @@ export const renderSheet = (
     const { columns, rows } = visibleCells;
     const { columnToPixel, rowToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
 
-    const clickables: Clickable[] = [];
+    const allClickables: CellContentRender[] = [];
 
     const freeze: XY = [freezeColumns, freezeRows];
     const indent: XY = [rowHeaderWidth, columnHeaderHeight];
 
-    const pixelRatio = resizeCanvas(canvas);
+    resizeCanvas(canvas);
     context.clearRect(0, 0, width, height);
     context.fillStyle = 'white';
     context.fillRect(0, 0, width, height);
@@ -210,16 +213,23 @@ export const renderSheet = (
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
-            clickables.push(
-                ...renderCell(context, content, resolvedStyle, 0, top, rowHeaderWidth, bottom - top, pixelRatio),
+            const clickables = renderCell(
+                context,
+                imageRenderer,
+                content,
+                resolvedStyle,
+                0,
+                top,
+                rowHeaderWidth,
+                bottom - top,
             );
+            if (clickables) allClickables.push(...clickables);
         }
     }
 
     // Column header text
     if (!hideColumnHeaders) {
         context.textBaseline = 'middle';
-        context.textAlign = 'center';
 
         for (const column of columns) {
             // Column selection mode
@@ -244,9 +254,17 @@ export const renderSheet = (
 
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            clickables.push(
-                ...renderCell(context, content, style, left, 0, right - left, columnHeaderHeight, pixelRatio),
+            const clickables = renderCell(
+                context,
+                imageRenderer,
+                content,
+                style,
+                left,
+                0,
+                right - left,
+                columnHeaderHeight,
             );
+            if (clickables) allClickables.push(...clickables);
         }
     }
 
@@ -374,43 +392,54 @@ export const renderSheet = (
             };
             const cellContent = displayData(x, y, style);
             if (cellContent !== null && cellContent !== undefined) {
-                clickables.push(
-                    ...renderCell(context, cellContent, style, left, top, right - left, bottom - top, pixelRatio),
+                const clickables = renderCell(
+                    context,
+                    imageRenderer,
+                    cellContent,
+                    style,
+                    left,
+                    top,
+                    right - left,
+                    bottom - top,
                 );
+                if (clickables) allClickables.push(...clickables);
             }
         }
     }
 
-    return clickables;
+    return allClickables;
 };
 
 export const renderCell = (
     context: CanvasRenderingContext2D,
+    imageRenderer: ImageRenderer,
     cellContent: CellContentType,
     style: Required<Style>,
     xCoord: number,
     yCoord: number,
     cellWidth: number,
     cellHeight: number,
-    pixelRatio: number,
-): Clickable[] => {
-    const clickables: Clickable[] = [];
-
+): CellContentRender[] | null => {
     if (cellContent === null) {
-        return clickables;
+        return null;
     }
 
+    const fillText = context.fillText.bind(context);
+    const fontString = style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
+
+    context.font = fontString;
     context.fillStyle = style.color;
-    context.font = style.weight + ' ' + style.fontSize + 'px ' + style.fontFamily;
-    context.textAlign = style.textAlign;
+
+    // Apply cell margins
+    const { marginTop, marginBottom, marginLeft, marginRight, lineHeight } = style;
+
+    const innerX = Math.round(xCoord + marginLeft);
+    const innerY = Math.round(yCoord + marginTop);
+    const innerWidth = Math.round(cellWidth - marginRight - marginLeft);
+    const innerHeight = Math.round(cellHeight - marginTop - marginBottom);
 
     // Snap to device-pixels for better alignment
-    const yy = Math.round((yCoord + cellHeight * 0.5) * pixelRatio) / pixelRatio;
-
-    context.save();
-    context.beginPath();
-    context.rect(xCoord, yCoord, cellWidth, cellHeight);
-    context.clip();
+    const middleY = roundDpi(yCoord + marginTop + lineHeight / 2);
 
     if (style.backgroundColor !== '') {
         context.fillStyle = style.backgroundColor;
@@ -419,56 +448,70 @@ export const renderCell = (
     }
 
     if (typeof cellContent === 'string' || typeof cellContent === 'number') {
-        const xx = applyAlignment(xCoord, cellWidth, style, 0);
-        const text = '' + cellContent;
-        context.fillText(text, xx, yy);
+        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+            wrapText(context, cellContent, style, undefined, innerX, middleY, innerWidth, innerHeight, fillText);
+        });
+        return null;
     } else if (typeof cellContent === 'object') {
-        for (const obj of cellContent.items) {
-            let x = 0;
-            let y = 0;
-            let w = 0;
-            let h = 0;
+        const renderedFlex = resolveCellFlexLayout(context, cellContent, innerX, innerY, innerWidth, innerHeight);
+        const renderedAbsolute = resolveCellAbsoluteLayout(cellContent, innerX, innerY, innerWidth, innerHeight);
+        const rendered = [...renderedFlex, ...renderedAbsolute];
 
-            if (obj.content instanceof HTMLImageElement) {
-                w = obj.width || cellWidth;
-                h = obj.height || cellHeight;
+        for (const render of rendered) {
+            const { box, item } = render;
 
-                const finalX = applyAlignment(xCoord, cellWidth, style, w, obj.horizontalAlign);
-                x = finalX + obj.x;
-                y = yy + obj.y;
+            const [[left, top], [right, bottom]] = box;
 
-                context.drawImage(obj.content, x, y, w, h);
-            } else if (typeof obj.content === 'string' || typeof obj.content === 'number') {
-                if (obj.horizontalAlign) {
-                    context.textAlign = obj.horizontalAlign;
+            const width = right - left;
+            const height = bottom - top;
+
+            if (cellContent.inspect) {
+                context.strokeStyle = '#ff00ff';
+                context.strokeRect(left, top, width, height);
+            }
+
+            clipToBox(context, left, top, width, height, () => {
+                if (item.display === 'inline') {
+                    const { text } = item;
+                    if (text != null) {
+                        wrapText(
+                            context,
+                            text,
+                            style,
+                            item.textAlign,
+                            left,
+                            roundDpi(top + lineHeight / 2),
+                            width,
+                            height,
+                            fillText,
+                        );
+                    }
                 }
-                const finalX = applyAlignment(xCoord, cellWidth, style, 0, obj.horizontalAlign);
-                const text = '' + obj.content;
-
-                const left = finalX + obj.x;
-                const top = yy + obj.y;
-                context.fillText(text, left, top);
-
-                const measure = context.measureText(text);
-                x = left - measure.actualBoundingBoxLeft;
-                y = top - measure.actualBoundingBoxAscent;
-                w = left + measure.actualBoundingBoxRight - x;
-                h = top + measure.actualBoundingBoxDescent - y;
-            }
-            if (obj.onClick) {
-                clickables.push({
-                    rect: [
-                        [x, y],
-                        [x + w, y + h],
-                    ],
-                    obj,
-                });
-            }
+                if (item.display === 'image' || item.display === 'icon') {
+                    imageRenderer(context, item, style, box);
+                }
+            });
         }
-    }
-    context.restore();
 
-    return clickables;
+        return rendered.filter(({ item }) => item?.onClick);
+    }
+    return null;
+};
+
+const clipToBox = (
+    context: CanvasRenderingContext2D,
+    xCoord: number,
+    yCoord: number,
+    cellWidth: number,
+    cellHeight: number,
+    callback: () => void,
+) => {
+    context.save();
+    context.beginPath();
+    context.rect(xCoord, yCoord, cellWidth, cellHeight);
+    context.clip();
+    callback();
+    context.restore();
 };
 
 // Resolve selection into a consistent rectangle, without dealing with frozen rows/columns
@@ -611,7 +654,6 @@ const resizeCanvas = (canvas: HTMLCanvasElement) => {
             context.scale(ratio, ratio);
         }
     }
-    return ratio;
 };
 
 const excelHeaderString = (num: number) => {
@@ -635,4 +677,16 @@ const halfShadowGradient = (gradient: CanvasGradient, rgb: string, opacity: numb
         const f = i / 16;
         gradient.addColorStop(f, rgb + hex(adjust(opacity * ease(f) * 0.5) * 255));
     }
+};
+
+// Move down half a logical pixel on high-dpi
+export const getDpiNudge = () => {
+    const { devicePixelRatio } = window;
+    return (devicePixelRatio - 1) / devicePixelRatio;
+};
+
+// Round to device pixels instead of logical pixels, and nudge downwards on high-dpi for baseline alignment
+export const roundDpi = (y: number) => {
+    const { devicePixelRatio } = window;
+    return Math.round((y + getDpiNudge()) * devicePixelRatio) / devicePixelRatio;
 };

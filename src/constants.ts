@@ -1,4 +1,4 @@
-import { XY, Rectangle, Selection, Clickable, Direction, Style } from './types';
+import { CellContentRender, XY, Rectangle, Selection, Direction, Style } from './types';
 
 export const INITIAL_MAX_SCROLL: XY = [2000, 1000];
 
@@ -9,7 +9,7 @@ export const NEG_NEG: XY = [-1, -1];
 export const NO_CELL: XY = [-1, -1];
 export const NO_SELECTION: Rectangle = [NO_CELL, NO_CELL];
 export const NO_SELECTIONS: Selection[] = [];
-export const NO_CLICKABLES: Clickable[] = [];
+export const NO_CLICKABLES: CellContentRender[] = [];
 export const NO_STYLE = {};
 
 export const MAX_SEARCHABLE_INDEX = 100000;
@@ -54,11 +54,14 @@ export const SIZES = {
 export const DEFAULT_CELL_STYLE: Required<Style> = {
     textAlign: 'left',
     fontSize: 12,
-    marginRight: 5,
+    lineHeight: 16,
+    marginTop: 3,
+    marginBottom: 3,
     marginLeft: 5,
+    marginRight: 5,
     color: '#000',
     fontFamily: 'sans-serif',
-    weight: '',
+    fontWeight: '',
     fillColor: '',
     backgroundColor: '',
 };
@@ -66,11 +69,14 @@ export const DEFAULT_CELL_STYLE: Required<Style> = {
 export const DEFAULT_COLUMN_HEADER_STYLE: Required<Style> = {
     textAlign: 'center',
     fontSize: 12,
+    lineHeight: 16,
+    marginTop: 3,
+    marginBottom: 3,
     marginRight: 5,
     marginLeft: 5,
     color: '#000',
     fontFamily: 'sans-serif',
-    weight: '',
+    fontWeight: '',
     fillColor: '',
     backgroundColor: '',
 };
