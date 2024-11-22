@@ -34,7 +34,8 @@ export const useAutoSizeColumn = (
                 } else if (typeof cellContent === 'object') {
                     let totalWidth = inlineMargin;
 
-                    for (const item of cellContent.items) {
+                    const { flexGap = 0, items } = cellContent;
+                    for (const item of items) {
                         if (item.absolute) continue;
 
                         if (item.width != null) {
@@ -43,7 +44,9 @@ export const useAutoSizeColumn = (
                             const { width } = context.measureText(item.text.toString());
                             totalWidth += width;
                         }
+                        totalWidth += flexGap;
                     }
+                    totalWidth -= flexGap;
 
                     return totalWidth;
                 }
