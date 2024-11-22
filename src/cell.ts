@@ -72,8 +72,10 @@ export const resolveCellFlexLayout = (
         x += width + marginLeft + marginRight + flexGap;
     });
 
+    // Horizontal slack: leave space for n-1 gaps, without last extra
+    let slackX = cellWidth - x + flexGap;
+
     // Flex horizontally
-    let slackX = cellWidth - x - flexGap;
     if (slackX > 0 && growRow(slackX, grows, sizes)) slackX = 0;
     if (slackX < 0 && shrinkRow(slackX, shrinks, sizes)) slackX = 0;
 
@@ -108,7 +110,7 @@ export const resolveCellFlexLayout = (
         const slackSelfY = maxHeight - height - marginY;
         const offsetSelfY = getAlignmentAnchor(flexAlignSelf) * slackSelfY;
 
-        const x = Math.round(cellLeft + marginLeft + leftCursor + combinedGapX * i);
+        const x = Math.round(cellLeft + marginLeft + leftCursor);
         const y = Math.round(cellTop + marginTop + offsetY + offsetSelfY);
         leftCursor += combinedGapX + marginX + sizes[i];
 
@@ -194,10 +196,11 @@ export const growRow = (slack: number, grow: number[], sizes: number[]) => {
     for (let i = 0; i < n; ++i) if (grow[i] > 0) weight += grow[i];
 
     if (weight > 0) {
-        for (let i = 0; i < n; ++i)
+        for (let i = 0; i < n; ++i) {
             if (grow[i] > 0) {
                 sizes[i] += (slack * grow[i]) / weight;
             }
+        }
         return true;
     }
     return false;

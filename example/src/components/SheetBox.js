@@ -282,6 +282,8 @@ export function SheetBoxStyle() {
     const columnHeaders = (index) => {
         if (index === 0) {
             return {
+                inspect: true,
+                flexGap: 2,
                 items: [
                     {
                         display: 'space',

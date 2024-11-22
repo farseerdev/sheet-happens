@@ -447,41 +447,44 @@ export const renderCell = (
         const renderedAbsolute = resolveCellAbsoluteLayout(cellContent, innerX, innerY, innerWidth, innerHeight);
         const rendered = [...renderedFlex, ...renderedAbsolute];
 
-        for (const render of rendered) {
-            const { box, item } = render;
+        clipToBox(context, innerX, innerY, innerWidth, innerHeight, () => {
+            for (const render of rendered) {
+                const { box, item } = render;
 
-            const [[left, top], [right, bottom]] = box;
+                const [[left, top], [right, bottom]] = box;
 
-            const width = right - left;
-            const height = bottom - top;
+                const width = right - left;
+                const height = bottom - top;
 
-            if (cellContent.inspect) {
-                context.strokeStyle = '#ff00ff';
-                context.strokeRect(left, top, width, height);
-            }
+                if (cellContent.inspect) {
+                    context.lineWidth = 1;
+                    context.strokeStyle = '#ff00ff';
+                    context.strokeRect(left + 0.5, top + 0.5, width - 0.5, height - 0.5);
+                }
 
-            clipToBox(context, left, top, width, height, () => {
-                if (item.display === 'inline') {
-                    const { text } = item;
-                    if (text != null) {
-                        wrapText(
-                            context,
-                            text,
-                            style,
-                            item.textAlign,
-                            left,
-                            roundDpi(top + lineHeight / 2),
-                            width,
-                            height,
-                            fillText,
-                        );
+                clipToBox(context, left, top, width, height, () => {
+                    if (item.display === 'inline') {
+                        const { text } = item;
+                        if (text != null) {
+                            wrapText(
+                                context,
+                                text,
+                                style,
+                                item.textAlign,
+                                left,
+                                roundDpi(top + lineHeight / 2),
+                                width,
+                                height,
+                                fillText,
+                            );
+                        }
                     }
-                }
-                if (item.display === 'image' || item.display === 'icon') {
-                    imageRenderer(context, item, style, box);
-                }
-            });
-        }
+                    if (item.display === 'image' || item.display === 'icon') {
+                        imageRenderer(context, item, style, box);
+                    }
+                });
+            }
+        });
 
         return rendered.filter(({ item }) => item?.onClick);
     }
