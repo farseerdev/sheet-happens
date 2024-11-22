@@ -1,6 +1,6 @@
 import { UIEvent, useCallback } from 'react';
 import { XY, CellLayout } from './types';
-import { isSameXY, maxXY, mulXY } from './coordinate';
+import { isSameXY, maxXY, mulXY, subXY } from './coordinate';
 import { ONE_ONE } from './constants';
 
 export const useScroll = (
@@ -18,7 +18,7 @@ export const useScroll = (
             const { absoluteToCell, cellToAbsolute } = cellLayout;
 
             // Zero scroll position is considered in the center of the top/left cell
-            const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
+            const [nudgeX, nudgeY] = subXY(cellToAbsolute([0, 0], [0.5, 0.5]), cellToAbsolute([0, 0]));
 
             const xy: XY = [e.target.scrollLeft + nudgeX, e.target.scrollTop + nudgeY];
 
@@ -76,14 +76,14 @@ export const getViewExtent = (
     edge: XY;
     viewport: XY;
 } => {
-    const { cellToAbsolute, getIndentX, getIndentY } = cellLayout;
+    const { cellToAbsolute } = cellLayout;
 
     const [x, y] = offset;
     const [w, h] = view;
     const [frozenX, frozenY] = cellToAbsolute(freeze);
 
-    const scrollW = w - frozenX - getIndentX();
-    const scrollH = h - frozenY - getIndentY();
+    const scrollW = w - frozenX;
+    const scrollH = h - frozenY;
 
     const leftEdge = x + freeze[0];
     const topEdge = y + freeze[1];
@@ -110,7 +110,10 @@ export const scrollToCell = (
 
     const { cellToAbsolute, cellToPixel, columnToPixel, rowToPixel } = cellLayout;
 
-    const [frozenX, frozenY] = cellToAbsolute(freeze);
+    const origin = cellToAbsolute([0, 0]);
+    const frozen = cellToAbsolute(freeze);
+    const [frozenX, frozenY] = frozen;
+
     const [left, top] = cellToPixel(cell);
     const [right, bottom] = cellToPixel(cell, ONE_ONE);
 
@@ -138,7 +141,8 @@ export const scrollToCell = (
     const newOffset: XY = [newX >= 0 ? newX : offsetX, newY >= 0 ? newY : offsetY];
 
     if (!isSameXY(newOffset, offset)) {
-        const scroll = cellToAbsolute(newOffset);
+        const scroll = subXY(cellToAbsolute(newOffset), origin);
+
         callback(newOffset, maxXY(maxScroll, scroll));
 
         setTimeout(() => {
@@ -151,7 +155,7 @@ export const updateScrollPosition = (element: HTMLDivElement, dataOffset: XY, ce
     const { cellToAbsolute } = cellLayout;
 
     const scroll = cellToAbsolute(dataOffset);
-    const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
+    const [nudgeX, nudgeY] = subXY(cellToAbsolute([0, 0], [0.5, 0.5]), cellToAbsolute([0, 0]));
 
     const [scrollX, scrollY] = scroll;
     element.scrollLeft = scrollX - nudgeX;

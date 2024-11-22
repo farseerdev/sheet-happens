@@ -78,6 +78,8 @@ export const useAutoSizeRow = (
     columns: number[],
     displayData: CellPropertyStyledFunction<CellContentType>,
     cellStyle: CellPropertyFunction<Style>,
+    columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
+    columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     cellWidth: RowOrColumnPropertyFunction<number>,
     canvasHeight: number,
 ) => {
@@ -126,11 +128,16 @@ export const useAutoSizeRow = (
                 return 0;
             };
 
+            const isHeader = y === -1;
             let maxHeight = SIZES.minimumHeight;
 
             for (const x of columns) {
-                const style = { ...DEFAULT_CELL_STYLE, ...cellStyle(x, y) };
-                const cellContent = displayData(x, y, style);
+                const style = isHeader
+                    ? { ...DEFAULT_COLUMN_HEADER_STYLE, ...columnHeaderStyle(x) }
+                    : { ...DEFAULT_CELL_STYLE, ...cellStyle(x, y) };
+
+                const cellContent = isHeader ? columnHeaders(x, style) : displayData(x, y, style);
+
                 if (cellContent != null) {
                     const columnWidth = cellWidth(x) - style.marginLeft - style.marginRight;
                     maxHeight = Math.max(maxHeight, getHeight(cellContent, style, columnWidth));

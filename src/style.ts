@@ -9,8 +9,6 @@ export const resolveSheetStyle = (sheetStyle?: SheetStyle): InternalSheetStyle =
         hideRowHeaders: sheetStyle?.hideRowHeaders || false,
         hideGridlines: sheetStyle?.hideGridlines || false,
         hideScrollBars: sheetStyle?.hideScrollBars || false,
-        columnHeaderHeight: sheetStyle?.hideColumnHeaders ? 1 : SIZES.headerHeight,
-        rowHeaderWidth: sheetStyle?.hideRowHeaders ? 1 : SIZES.headerWidth,
         shadowBlur: sheetStyle?.shadowBlur ?? SIZES.shadowBlur,
         shadowOpacity: sheetStyle?.shadowOpacity ?? SIZES.shadowOpacity,
         shadowColor: sheetStyle?.shadowColor ?? COLORS.shadowColor,

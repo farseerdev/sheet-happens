@@ -66,8 +66,6 @@ export const renderSheet = (
         hideGridlines,
         hideRowHeaders,
         hideColumnHeaders,
-        rowHeaderWidth,
-        columnHeaderHeight,
         freezeColumns,
         freezeRows,
         shadowBlur,
@@ -78,9 +76,10 @@ export const renderSheet = (
     const { columnToPixel, rowToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
 
     const allClickables: CellContentRender[] = [];
-
     const freeze: XY = [freezeColumns, freezeRows];
-    const indent: XY = [rowHeaderWidth, columnHeaderHeight];
+
+    const indentX = columnToAbsolute(0);
+    const indentY = rowToAbsolute(0);
 
     resizeCanvas(canvas);
     context.clearRect(0, 0, width, height);
@@ -109,7 +108,7 @@ export const renderSheet = (
     const columnSelectionActive = isColumnSelection(selection);
 
     // Get selection range
-    const [selected, hideKnob] = resolveFrozenSelection(selection, cellLayout, freeze, indent, dataOffset);
+    const [selected, hideKnob] = resolveFrozenSelection(selection, cellLayout, freeze, dataOffset);
 
     // Selection fill
     if (selectionActive) {
@@ -121,26 +120,26 @@ export const renderSheet = (
     if (!hideRowHeaders) {
         // Row header background
         context.fillStyle = COLORS.headerBackground;
-        context.fillRect(0, 0, rowHeaderWidth, context.canvas.height);
+        context.fillRect(0, 0, indentX, context.canvas.height);
 
         // Row header selection shadow
         if (selectionActive && !columnSelectionActive) {
             const [[, top], [, bottom]] = selected;
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(0, top, rowHeaderWidth, bottom - top);
+            context.fillRect(0, top, indentX, bottom - top);
         }
     }
 
     if (!hideColumnHeaders) {
         // Column header background
         context.fillStyle = COLORS.headerBackground;
-        context.fillRect(0, 0, context.canvas.width, columnHeaderHeight);
+        context.fillRect(0, 0, context.canvas.width, indentY);
 
         // Column header selection shadow
         if (selectionActive && !rowSelectionActive) {
             const [[left], [right]] = selected;
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(left, 0, right - left, columnHeaderHeight);
+            context.fillRect(left, 0, right - left, indentY);
         }
     }
 
@@ -148,8 +147,8 @@ export const renderSheet = (
     context.strokeStyle = COLORS.gridLine;
     context.lineWidth = 1;
 
-    const gridRight = hideGridlines ? rowHeaderWidth : context.canvas.width;
-    const gridBottom = hideGridlines ? columnHeaderHeight : context.canvas.height;
+    const gridRight = hideGridlines ? indentX : context.canvas.width;
+    const gridBottom = hideGridlines ? indentY : context.canvas.height;
 
     const drawGridLineX = (x: number, height: number) => {
         context.beginPath();
@@ -165,8 +164,8 @@ export const renderSheet = (
         context.stroke();
     };
 
-    drawGridLineX(rowHeaderWidth, context.canvas.height);
-    drawGridLineY(columnHeaderHeight, context.canvas.width);
+    drawGridLineX(indentX, context.canvas.height);
+    drawGridLineY(indentY, context.canvas.width);
 
     for (const column of columns) {
         const right = columnToPixel(column, 1);
@@ -220,7 +219,7 @@ export const renderSheet = (
                 resolvedStyle,
                 0,
                 top,
-                rowHeaderWidth,
+                indentX,
                 bottom - top,
             );
             if (clickables) allClickables.push(...clickables);
@@ -254,16 +253,7 @@ export const renderSheet = (
 
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            const clickables = renderCell(
-                context,
-                imageRenderer,
-                content,
-                style,
-                left,
-                0,
-                right - left,
-                columnHeaderHeight,
-            );
+            const clickables = renderCell(context, imageRenderer, content, style, left, 0, right - left, indentY);
             if (clickables) allClickables.push(...clickables);
         }
     }
@@ -284,7 +274,7 @@ export const renderSheet = (
         const selection = secondarySelection.span;
         if (isEmptySelection(selection)) continue;
 
-        const [selected] = resolveFrozenSelection(selection, cellLayout, freeze, indent, dataOffset);
+        const [selected] = resolveFrozenSelection(selection, cellLayout, freeze, dataOffset);
         const [[left, top], [right, bottom]] = selected;
 
         context.strokeStyle = secondarySelection.color;
@@ -361,14 +351,14 @@ export const renderSheet = (
     const hasColumnShadow = freezeColumns > 0 && scrollX > 0;
     if (hasRowShadow || hasColumnShadow) {
         if (hasRowShadow) {
-            const h = columnHeaderHeight + rowToAbsolute(freezeRows);
+            const h = rowToAbsolute(freezeRows);
             const gradient = context.createLinearGradient(0, h, 0, h + shadowBlur);
             halfShadowGradient(gradient, shadowColor, shadowOpacity);
             context.fillStyle = gradient;
             context.fillRect(0, h, width, shadowBlur);
         }
         if (hasColumnShadow) {
-            const w = rowHeaderWidth + columnToAbsolute(freezeColumns);
+            const w = columnToAbsolute(freezeColumns);
             const gradient = context.createLinearGradient(w, 0, w + shadowBlur, 0);
             halfShadowGradient(gradient, shadowColor, shadowOpacity);
             context.fillStyle = gradient;
@@ -548,7 +538,6 @@ const resolveFrozenSelection = (
     cellLayout: CellLayout,
 
     freeze: XY,
-    indent: XY,
     offset: XY,
 ) => {
     const { cellToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
@@ -557,7 +546,6 @@ const resolveFrozenSelection = (
     const columnSelectionActive = isColumnSelection(selection);
 
     const [freezeX, freezeY] = freeze;
-    const [indentX, indentY] = indent;
     const [offsetX, offsetY] = offset;
 
     // Get selection range
@@ -569,6 +557,10 @@ const resolveFrozenSelection = (
     let [left, top] = cellToPixel(min);
     let [right, bottom] = cellToPixel(max, ONE_ONE);
 
+    // Get fixed indent
+    const indentX = columnToAbsolute(0);
+    const indentY = rowToAbsolute(0);
+
     // Get frozen edge
     const frozenX = columnToAbsolute(freezeX);
     const frozenY = rowToAbsolute(freezeY);
@@ -577,14 +569,14 @@ const resolveFrozenSelection = (
 
     // If the selection crosses the frozen edge, it needs to always cover the entire frozen area.
     if (isInRangeCenter(freezeX, minX, maxX + 1)) {
-        const edge = indentX + frozenX;
+        const edge = frozenX;
         if (right <= edge) {
             right = edge;
             hideKnob = true;
         }
     }
     if (isInRangeCenter(freezeY, minY, maxY + 1)) {
-        const edge = indentY + frozenY;
+        const edge = frozenY;
         if (bottom <= edge) {
             bottom = edge;
             hideKnob = true;

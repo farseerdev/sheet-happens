@@ -293,7 +293,7 @@ export const useMouse = (
 
                 // Resize columns
                 if (onCellWidthChange) {
-                    for (const index of columns) {
+                    for (const index of [-1, ...columns]) {
                         const edge = columnToPixel(index, 1);
 
                         if (Math.abs(edge - x) < SIZES.resizeZone && canSizeColumn(index)) {
@@ -392,7 +392,7 @@ export const useMouse = (
 
                 // Resize rows
                 if (onCellHeightChange) {
-                    for (const index of rows) {
+                    for (const index of [-1, ...rows]) {
                         const edge = rowToPixel(index, 1);
 
                         if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
@@ -494,7 +494,7 @@ export const useMouse = (
 
                     draggingKnob,
 
-                    cellLayout: { pixelToColumn, pixelToRow, getIndentX, getIndentY },
+                    cellLayout: { pixelToColumn, pixelToRow },
                 },
             } = ref;
 
@@ -518,8 +518,8 @@ export const useMouse = (
                 const [x, y] = xy;
                 const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
-                const cellX = pixelToColumn(Math.max(x, getIndentX()), 0.5);
-                const cellY = pixelToRow(Math.max(y, getIndentY()), 0.5);
+                const cellX = pixelToColumn(x, 0.5);
+                const cellY = pixelToRow(y, 0.5);
 
                 if (columnDrag) {
                     const { indices } = columnDrag;
@@ -662,7 +662,7 @@ export const useMouse = (
                         }
                     }
                     if (onCellWidthChange) {
-                        for (const index of columns) {
+                        for (const index of [-1, ...columns]) {
                             const edge = columnToPixel(index, 1);
                             if (Math.abs(edge - x) < SIZES.resizeZone && canSizeColumn(index)) {
                                 window.document.body.style.cursor = 'col-resize';
@@ -696,7 +696,7 @@ export const useMouse = (
                         }
                     }
                     if (onCellHeightChange) {
-                        for (const index of rows) {
+                        for (const index of [-1, ...rows]) {
                             const edge = rowToPixel(index, 1);
                             if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
                                 window.document.body.style.cursor = 'row-resize';
@@ -808,7 +808,7 @@ export const useMouse = (
             if (columnDrag || rowDrag) {
                 const [x, y] = xy;
                 if (columnDrag) {
-                    const cellX = pixelToColumn(Math.max(x, getIndentX()), 0.5);
+                    const cellX = Math.max(0, pixelToColumn(x, 0.5));
                     const insideSelection = cellX >= minX && cellX <= maxX + 1;
                     const insideGroup = isBoundaryInsideGroup(cellX, columnGroupKeys);
 
@@ -827,7 +827,7 @@ export const useMouse = (
                     );
                 }
                 if (rowDrag) {
-                    const cellY = pixelToRow(Math.max(y, getIndentY()), 0.5);
+                    const cellY = Math.max(0, pixelToRow(y, 0.5));
                     const insideSelection = cellY >= minY && cellY <= maxY + 1;
                     const insideGroup = isBoundaryInsideGroup(cellY, rowGroupKeys);
 
@@ -939,8 +939,8 @@ export const useMouse = (
             if (onCellHeightChange && x < indentX) {
                 const autosized = [];
 
-                for (const index of rows) {
-                    const edge = rowToPixel(index, 1);
+                for (const index of [-1, ...rows]) {
+                    const edge = index < 0 ? rowToPixel(0) : rowToPixel(index, 1);
 
                     if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
                         const [[, minY], [, maxY]] = normalizeSelection(selection);
