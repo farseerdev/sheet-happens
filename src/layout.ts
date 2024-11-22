@@ -14,18 +14,16 @@ const INITIAL_SIZE = 256;
 // Note that adjacent column indices are not necessarily adjacent, i.e. end of [i] != start of [i + 1].
 export const makeCellLayout = (
     freeze: XY,
-    indent: XY,
     offset: XY,
 
     columns: LayoutCache,
     rows: LayoutCache,
 ): CellLayout => {
     const [freezeX, freezeY] = freeze;
-    const [indentX, indentY] = indent;
     const [offsetX, offsetY] = offset;
 
-    const getIndentX = () => indentX;
-    const getIndentY = () => indentY;
+    const getIndentX = () => columns.getStart(0);
+    const getIndentY = () => rows.getStart(0);
 
     // Origin for cell, frozen or relative
     const getBaseOriginFor = (index: number, freeze: number, offset: number) => {
@@ -37,9 +35,9 @@ export const makeCellLayout = (
         const base = getBaseOriginFor(column, freezeX, offsetX);
         const relative = columns.getStart(column) - columns.getStart(base);
         const adjust = column < freezeX ? 0 : columns.getStart(freezeX) - columns.getStart(0);
-        const size = column < 0 ? indentX : columns.getSize(column);
+        const size = columns.getSize(column);
 
-        return column < 0 ? 0 : indentX + relative + adjust + anchor * size;
+        return getIndentX() + relative + adjust + anchor * size;
     };
 
     // Get visible pixel y of cell
@@ -47,9 +45,9 @@ export const makeCellLayout = (
         const base = getBaseOriginFor(row, freezeY, offsetY);
         const relative = rows.getStart(row) - rows.getStart(base);
         const adjust = row < freezeY ? 0 : rows.getStart(freezeY) - rows.getStart(0);
-        const size = row < 0 ? indentY : rows.getSize(row);
+        const size = rows.getSize(row);
 
-        return row < 0 ? 0 : indentY + relative + adjust + anchor * size;
+        return getIndentY() + relative + adjust + anchor * size;
     };
 
     // Get visible pixel position of cell, offset with anchor [0..1, 0..1]
@@ -83,22 +81,17 @@ export const makeCellLayout = (
     };
 
     // Lookup pixel X or Y in cell layout
-    const pixelToIndex = (
-        pixel: number,
-        anchor: number,
-        indent: number,
-        freeze: number,
-        offset: number,
-        layout: LayoutCache,
-    ) => {
-        const relative = pixel - indent;
-        if (relative < 0) return -1;
-
+    const pixelToIndex = (pixel: number, anchor: number, freeze: number, offset: number, layout: LayoutCache) => {
         const { getStart, lookupIndex } = layout;
+
+        const indent = getStart(0);
+        if (pixel < indent) return -1;
+
         const frozen = getStart(freeze);
-        if (relative < frozen) {
-            return lookupIndex(relative, anchor);
+        if (pixel < frozen) {
+            return lookupIndex(pixel, anchor);
         } else {
+            const relative = pixel - indent;
             const base = getStart(offset + freeze);
             const adjust = getStart(freeze) - getStart(0);
             return lookupIndex(base + relative - adjust, anchor);
@@ -107,9 +100,8 @@ export const makeCellLayout = (
 
     // Lookup pixel X or Y in cell layout (helpers)
     const pixelToColumn = (pixelX: number, anchorX: number = 0) =>
-        pixelToIndex(pixelX, anchorX, indentX, freezeX, offsetX, columns);
-    const pixelToRow = (pixelY: number, anchorY: number = 0) =>
-        pixelToIndex(pixelY, anchorY, indentY, freezeY, offsetY, rows);
+        pixelToIndex(pixelX, anchorX, freezeX, offsetX, columns);
+    const pixelToRow = (pixelY: number, anchorY: number = 0) => pixelToIndex(pixelY, anchorY, freezeY, offsetY, rows);
 
     // Lookup pixel XY in cell layout
     const pixelToCell = (pixel: XY, anchor: XY = ORIGIN): XY => {
@@ -138,7 +130,7 @@ export const makeCellLayout = (
     };
 
     // Get visible range of columns or rows
-    const getVisibleIndices = (view: number, indent: number, freeze: number, offset: number, layout: LayoutCache) => {
+    const getVisibleIndices = (view: number, freeze: number, offset: number, layout: LayoutCache) => {
         const indices = [...seq(freeze)];
 
         const { getStart, getEnd } = layout;
@@ -146,7 +138,7 @@ export const makeCellLayout = (
         const frozen = getEnd(freeze - 1);
         const notFrozen = getStart(offset + freeze);
 
-        const relative = view - indent - frozen;
+        const relative = view - frozen;
         for (let i = offset + freeze; getStart(i) - notFrozen <= relative; ++i) {
             indices.push(i);
         }
@@ -158,8 +150,8 @@ export const makeCellLayout = (
     const getVisibleCells = (view: XY): VisibleLayout => {
         const [viewX, viewY] = view;
         return {
-            columns: getVisibleIndices(viewX, indentX, freezeX, offsetX, columns),
-            rows: getVisibleIndices(viewY, indentY, freezeY, offsetY, rows),
+            columns: getVisibleIndices(viewX, freezeX, offsetX, columns),
+            rows: getVisibleIndices(viewY, freezeY, offsetY, rows),
         };
     };
 
@@ -196,7 +188,7 @@ export const makeCellLayout = (
 // Can do reverse lookup back to index with binary search, once warmed up.
 //
 // - caches sizer(i), each is only called once
-// - offset[0] = 0
+// - offset[0] = sizer(-1)
 // - adds up offset[i] = sizer(0) + sizer(1) + ... + sizer(i - 1)
 // - cache can be truncated during resizing ops at split
 // - to replace sizer function, cache must be destroyed
@@ -205,11 +197,11 @@ export const makeLayoutCache = (sizer: (index: number) => number): LayoutCache =
     const sizes = makeIntMap(INITIAL_SIZE);
 
     let version = 0;
-    offsets.set(0, 0);
+    offsets.set(0, sizer(-1));
 
     // Cache size lookup directly
     const getSize = (i: number): number => {
-        if (i < 0) return 0;
+        if (i < 0) return sizer(i);
         if (sizes.has(i)) return sizes.get(i)!;
 
         const size = sizer(i) || 0;
@@ -222,7 +214,7 @@ export const makeLayoutCache = (sizer: (index: number) => number): LayoutCache =
         if (i < 0) return 0;
         if (offsets.has(i)) return offsets.get(i)!;
 
-        let j = offsets.tail() || 0;
+        let j = offsets.tail() || -1;
 
         // Use a while loop to avoid stack overflow
         while (j < i) {

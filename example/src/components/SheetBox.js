@@ -33,30 +33,27 @@ for (let row = 0; row < 1000; row++) {
     initialDataFormatting.push(r);
 }
 
-const triangleDownImageSrc = 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiDQoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBvdmVyZmxvdz0idmlzaWJsZSIgPg0KPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAwLDAgNTAsMTAwIiBzdHlsZT0iZmlsbDojOTk5OTk5OyIvPg0KPC9zdmc+DQo=';
+const triangleDownImageSrc =
+    'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiDQoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBvdmVyZmxvdz0idmlzaWJsZSIgPg0KPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAwLDAgNTAsMTAwIiBzdHlsZT0iZmlsbDojOTk5OTk5OyIvPg0KPC9zdmc+DQo=';
 
 const checkedSVG = svgToImage(
-    <svg
-        fillRule="evenodd"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 16 16"
-        width="16"
-        height="16"
-    >
+    <svg fillRule="evenodd" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
         <path
             fillRule="evenodd"
             clipRule="evenodd"
             d="M5 2C3.34315 2 2 3.34315 2 5V11C2 12.6569 3.34315 14 5 14H11C12.6569 14 14 12.6569 14 11V5C14 3.34315 12.6569 2 11 2H5ZM11.2071 7.20711C11.5976 6.81658 11.5976 6.18342 11.2071 5.79289C10.8165 5.40237 10.1834 5.40237 9.79285 5.79289L7.24133 8.34441L6.20706 7.31014C5.81654 6.91962 5.18338 6.91962 4.79285 7.31014C4.40233 7.70066 4.40233 8.33383 4.79285 8.72435L6.53422 10.4657L7.24133 11.1728L7.94844 10.4657L11.2071 7.20711Z"
         />
-    </svg>
+    </svg>,
 );
+
+export const DEFAULT_HEADER_WIDTH = 50;
 
 export const DEFAULT_CELL_WIDTH = 100;
 export const DEFAULT_CELL_HEIGHT = 22;
 
 export function useWidthHeightControl(
-    initialWidths = [],
-    initialHeights = [],
+    initialWidths = {},
+    initialHeights = {},
     getColumnOrder = (i) => i,
     getRowOrder = (i) => i,
 ) {
@@ -65,15 +62,10 @@ export function useWidthHeightControl(
 
     const onCellWidthChange = (indices, newWidths) => {
         setCellWidth((cellWidth) => {
-            const cw = [...cellWidth];
+            const cw = { ...cellWidth };
             for (const [i, order] of indices.entries()) {
                 const idx = getColumnOrder(order);
-                if (idx > cw.length) {
-                    for (let i = cw.length; i <= idx; i++) {
-                        cw.push(DEFAULT_CELL_WIDTH);
-                    }
-                }
-                cw[idx] = newWidths[i];
+                cw[idx] = newWidths[i] ?? DEFAULT_CELL_WIDTH;
             }
             return cw;
         });
@@ -81,21 +73,16 @@ export function useWidthHeightControl(
 
     const onCellHeightChange = (indices, newHeights) => {
         setCellHeight((cellHeight) => {
-            const ch = [...cellHeight];
+            const ch = { ...cellHeight };
             for (const [i, order] of indices.entries()) {
                 const idx = getRowOrder(order);
-                if (idx > ch.length) {
-                    for (let i = ch.length; i <= idx; i++) {
-                        ch.push(DEFAULT_CELL_HEIGHT);
-                    }
-                }
-                ch[idx] = newHeights[i];
+                ch[idx] = newHeights[i] ?? DEFAULT_CELL_HEIGHT;
             }
             return ch;
         });
     };
 
-    const cw = (x) => cellWidth[getColumnOrder(x)] ?? DEFAULT_CELL_WIDTH;
+    const cw = (x) => cellWidth[getColumnOrder(x)] ?? (x < 0 ? DEFAULT_HEADER_WIDTH : DEFAULT_CELL_WIDTH);
     const ch = (y) => cellHeight[getRowOrder(y)] ?? DEFAULT_CELL_HEIGHT;
 
     return { onCellWidthChange, onCellHeightChange, cellWidth: cw, cellHeight: ch };
@@ -316,6 +303,10 @@ export function SheetBoxStyle() {
                         width: 12,
                         height: 12,
 
+                        flexShrink: 0,
+                        flexAlignSelf: 'start',
+                        marginTop: 2,
+
                         onClick: () => {
                             console.log('click');
                         },
@@ -339,7 +330,7 @@ export function SheetBoxStyle() {
         }
         return {
             color: colors[y % 4],
-            textAlign: (x === 3 && y < 4) ? alignment[(y - 1) % 3] : alignment[x % 3],
+            textAlign: x === 3 && y < 4 ? alignment[(y - 1) % 3] : alignment[x % 3],
             weight: weight[y % 3],
         };
     };
@@ -767,7 +758,7 @@ export function SheetBoxVeryBigData() {
     };
 
     const columnHeaders = (index) => {
-        return '' + index;
+        return index ? '' + index : 'Long header with wrapping';
     };
 
     return (

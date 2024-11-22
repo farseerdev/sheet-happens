@@ -233,17 +233,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     }, [shouldCacheLayout, layoutVersion, cellWidth, cellHeight]);
 
     // Virtual layout for indented/scrolled/frozen grid
-    const { freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight } = sheetStyle;
+    const { freezeColumns, freezeRows } = sheetStyle;
     const cellLayout = useMemo(
-        () =>
-            makeCellLayout(
-                [freezeColumns, freezeRows],
-                [rowHeaderWidth, columnHeaderHeight],
-                dataOffset,
-                columnLayout,
-                rowLayout,
-            ),
-        [freezeColumns, freezeRows, rowHeaderWidth, columnHeaderHeight, dataOffset, columnLayout, rowLayout],
+        () => makeCellLayout([freezeColumns, freezeRows], dataOffset, columnLayout, rowLayout),
+        [freezeColumns, freezeRows, dataOffset, columnLayout, rowLayout],
     );
 
     // Build range of visible cells
@@ -380,7 +373,15 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         canvasWidth,
     );
 
-    const getAutoSizeHeight = useAutoSizeRow(visibleCells.columns, displayData, cellStyle, cellWidth, canvasHeight);
+    const getAutoSizeHeight = useAutoSizeRow(
+        visibleCells.columns,
+        displayData,
+        cellStyle,
+        columnHeaders,
+        columnHeaderStyle,
+        cellWidth,
+        canvasHeight,
+    );
 
     const { mouseHandlers, knobPosition } = useMouse(
         hitmapRef,

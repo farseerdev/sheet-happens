@@ -244,7 +244,4 @@ export type SheetStyle = {
     shadowOpacity?: number;
 };
 
-export type InternalSheetStyle = Required<SheetStyle> & {
-    columnHeaderHeight: number;
-    rowHeaderWidth: number;
-};
+export type InternalSheetStyle = Required<SheetStyle>;
