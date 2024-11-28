@@ -1,9 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { DEFAULT_COLUMN_HEADER_STYLE, DEFAULT_CELL_STYLE, SIZES } from './constants';
+import { resolveCellFlexLayout } from './cell';
 import { wrapText } from './text';
 import {
     RowOrColumnPropertyFunction,
     RowOrColumnPropertyStyledFunction,
+    CellLayout,
     CellPropertyFunction,
     CellPropertyStyledFunction,
     CellContentType,
@@ -13,16 +15,20 @@ import {
 export const useAutoSizeColumn = (
     rows: number[],
     displayData: CellPropertyStyledFunction<CellContentType>,
+    cellLayout: CellLayout,
     cellStyle: CellPropertyFunction<Style>,
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     canvasWidth: number,
+    frozenColumns: number,
 ) => {
     const context = useMemo(() => document.createElement('canvas').getContext('2d'), []);
 
     const getAutoSizeWidth = useCallback(
         (x: number) => {
             if (!context) return 0;
+
+            const viewWidth = canvasWidth - cellLayout.columnToAbsolute(x < frozenColumns ? 0 : frozenColumns);
 
             const getWidth = (cellContent: Exclude<CellContentType, null>, style: Required<Style>) => {
                 context.font = style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
@@ -69,9 +75,19 @@ export const useAutoSizeColumn = (
                 }
             }
 
-            return Math.ceil(Math.min(canvasWidth, maxWidth));
+            return Math.ceil(Math.min(viewWidth, maxWidth));
         },
-        [context, displayData, cellStyle, columnHeaders, columnHeaderStyle],
+        [
+            context,
+            rows,
+            displayData,
+            cellLayout,
+            cellStyle,
+            columnHeaders,
+            columnHeaderStyle,
+            canvasWidth,
+            frozenColumns,
+        ],
     );
 
     return getAutoSizeWidth;
@@ -80,11 +96,13 @@ export const useAutoSizeColumn = (
 export const useAutoSizeRow = (
     columns: number[],
     displayData: CellPropertyStyledFunction<CellContentType>,
+    cellLayout: CellLayout,
     cellStyle: CellPropertyFunction<Style>,
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
     cellWidth: RowOrColumnPropertyFunction<number>,
     canvasHeight: number,
+    frozenRows: number,
 ) => {
     const context = useMemo(() => document.createElement('canvas').getContext('2d'), []);
 
@@ -92,12 +110,14 @@ export const useAutoSizeRow = (
         (y: number) => {
             if (!context) return 0;
 
+            const viewHeight = canvasHeight - cellLayout.rowToAbsolute(y < frozenRows ? 0 : frozenRows);
+
             const measureTextHeight = (text: string, style: Required<Style>, columnWidth: number) => {
                 let maxY = 0;
                 const measureY = (_t: string, _x: number, y: number) => {
                     maxY = y + style.lineHeight;
                 };
-                wrapText(context, text, style, undefined, 0, 0, columnWidth, canvasHeight, measureY);
+                wrapText(context, text, style, undefined, 0, 0, columnWidth, viewHeight, measureY);
                 return maxY;
             };
 
@@ -115,13 +135,14 @@ export const useAutoSizeRow = (
                 } else if (typeof cellContent === 'object') {
                     let maxHeight = 0;
 
-                    for (const item of cellContent.items) {
-                        if (item.absolute) continue;
+                    const flexLayout = resolveCellFlexLayout(context, cellContent, 0, 0, columnWidth, 0);
 
+                    for (const { box, item } of flexLayout) {
                         if (item.height != null) {
                             maxHeight = Math.max(maxHeight, item.height);
                         } else if (item.display === 'inline' && item.text != null) {
-                            const height = measureTextHeight(item.text.toString(), style, columnWidth);
+                            const [[left], [right]] = box;
+                            const height = measureTextHeight(item.text.toString(), style, right - left);
                             maxHeight = Math.max(maxHeight, height);
                         }
                     }
@@ -147,9 +168,20 @@ export const useAutoSizeRow = (
                 }
             }
 
-            return Math.ceil(Math.min(canvasHeight, maxHeight));
+            return Math.ceil(Math.min(viewHeight, maxHeight));
         },
-        [context, displayData, cellStyle, cellWidth],
+        [
+            context,
+            columns,
+            displayData,
+            cellLayout,
+            cellStyle,
+            columnHeaders,
+            columnHeaderStyle,
+            cellWidth,
+            canvasHeight,
+            frozenRows,
+        ],
     );
 
     return getAutoSizeHeight;

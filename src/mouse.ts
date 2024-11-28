@@ -518,8 +518,8 @@ export const useMouse = (
                 const [x, y] = xy;
                 const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
-                const cellX = pixelToColumn(x, 0.5);
-                const cellY = pixelToRow(y, 0.5);
+                const cellX = Math.max(0, pixelToColumn(x, 0.5));
+                const cellY = Math.max(0, pixelToRow(y, 0.5));
 
                 if (columnDrag) {
                     const { indices } = columnDrag;

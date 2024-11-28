@@ -447,8 +447,8 @@ export const renderCell = (
         const renderedAbsolute = resolveCellAbsoluteLayout(cellContent, innerX, innerY, innerWidth, innerHeight);
         const rendered = [...renderedFlex, ...renderedAbsolute];
 
-        clipToBox(context, innerX, innerY, innerWidth, innerHeight, () => {
-            for (const render of rendered) {
+        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+            for (const [i, render] of rendered.entries()) {
                 const { box, item } = render;
 
                 const [[left, top], [right, bottom]] = box;
@@ -462,7 +462,11 @@ export const renderCell = (
                     context.strokeRect(left + 0.5, top + 0.5, width - 0.5, height - 0.5);
                 }
 
-                clipToBox(context, left, top, width, height, () => {
+                const clipLeft = i > 0 ? left : xCoord;
+                const clipRight = i < rendered.length ? right : yCoord + cellWidth;
+                const clipWidth = clipRight - clipLeft;
+
+                clipToBox(context, clipLeft, yCoord, clipWidth, cellHeight, () => {
                     if (item.display === 'inline') {
                         const { text } = item;
                         if (text != null) {
