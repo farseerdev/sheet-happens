@@ -367,20 +367,24 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const getAutoSizeWidth = useAutoSizeColumn(
         visibleCells.rows,
         displayData,
+        cellLayout,
         cellStyle,
         columnHeaders,
         columnHeaderStyle,
         canvasWidth,
+        freezeColumns,
     );
 
     const getAutoSizeHeight = useAutoSizeRow(
         visibleCells.columns,
         displayData,
+        cellLayout,
         cellStyle,
         columnHeaders,
         columnHeaderStyle,
         cellWidth,
         canvasHeight,
+        freezeRows,
     );
 
     const { mouseHandlers, knobPosition } = useMouse(
@@ -534,6 +538,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     let editTextAlign: 'right' | 'left' | 'center' = 'right';
     let editTextLineHeight = '';
     let editTextMargin = '';
+    let editTextFontSize = DEFAULT_CELL_STYLE.fontSize;
+    let editTextFontFamily = DEFAULT_CELL_STYLE.fontFamily;
+    let editTextFontWeight = DEFAULT_CELL_STYLE.fontWeight;
     if (editMode) {
         const style = { ...DEFAULT_CELL_STYLE, ...cellStyle(...editCell) };
         editTextPosition = cellToPixel(editCell);
@@ -542,6 +549,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editTextHeight = cellHeight(editCellY) - 3;
         editTextAlign = style.textAlign;
         editTextLineHeight = `${style.lineHeight}px`;
+        editTextFontSize = style.fontSize;
+        editTextFontFamily = style.fontFamily;
+        editTextFontWeight = style.fontWeight;
 
         // Deduct border + apply high-dpi nudge to line up with render
         const yNudge = getDpiNudge();
@@ -571,8 +581,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             textAlign: editTextAlign,
             lineHeight: editTextLineHeight,
             color: 'black',
-            fontSize: DEFAULT_CELL_STYLE.fontSize,
-            fontFamily: 'sans-serif',
+            fontSize: editTextFontSize,
+            fontFamily: editTextFontFamily,
+            fontWeight: editTextFontWeight,
             resize: 'none',
         } as InputStyle,
     };
