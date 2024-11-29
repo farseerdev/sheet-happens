@@ -577,6 +577,7 @@ export const useMouse = (
             setColumnDrag(null);
             setRowResize(null);
             setRowDrag(null);
+            setAutoScroll(null);
         },
         [
             getMousePosition,
@@ -1049,7 +1050,6 @@ export const useMouse = (
         [getMousePosition, onSelectionChange, onPointerMove, onRightClick],
     );
 
-    console.log({ autoScroll });
     useLayoutEffect(() => {
         if (!autoScroll) return;
 
