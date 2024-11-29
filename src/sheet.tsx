@@ -388,6 +388,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     );
 
     const { mouseHandlers, knobPosition } = useMouse(
+        overlayRef,
+        dataOffset,
+
         hitmapRef,
         selection,
         knobArea,
