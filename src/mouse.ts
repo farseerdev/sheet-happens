@@ -1,3 +1,4 @@
+import { MouseEvent, PointerEvent, RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
     CellContentRender,
     CellLayout,
@@ -10,7 +11,6 @@ import {
     VisibleLayout,
     XY,
 } from './types';
-import { MouseEvent, PointerEvent, RefObject, useCallback, useMemo, useRef, useState } from 'react';
 import {
     normalizeSelection,
     mapSelectionColumns,
@@ -32,13 +32,16 @@ import { findApproxMaxEditDataIndex } from './props';
 import { isInRange, seq } from './util';
 
 type DragOp = {
-    anchor: number;
-    scroll: number;
+    anchor: XY;
+    offset: XY;
     size: number;
     indices: number[];
 };
 
 export const useMouse = (
+    elementRef: RefObject<HTMLDivElement>,
+    dataOffset: XY,
+
     hitmapRef: RefObject<CellContentRender[]>,
     selection: Rectangle,
     knobArea: Rectangle | null,
@@ -92,6 +95,7 @@ export const useMouse = (
     const [rowDrag, setRowDrag] = useState<DragOp | null>(null);
 
     const [hitTestDown, setHitTestDown] = useState<CellContentRender | null>(null);
+    const [autoScroll, setAutoScroll] = useState<XY | null>(null);
 
     const [draggingKnob, setDraggingKnob] = useState(false);
     const [draggingSelection, setDraggingSelection] = useState(false);
@@ -119,6 +123,8 @@ export const useMouse = (
     // Pass pointer/dragging state into handlers via ref so they don't need to rebind during resizes/drags
     const refState = {
         selection,
+        dataOffset,
+
         knobArea,
         editMode,
         editData,
@@ -141,7 +147,7 @@ export const useMouse = (
     ref.current = refState;
 
     // Hit-testing for rendered objects
-    const getMousePosition = useCallback((e: PointerEvent<any> | MouseEvent<any>) => {
+    const getMousePosition = useCallback((e: PointerEvent<any> | MouseEvent<any>, strict?: boolean) => {
         if (!e.target || !(e.target instanceof Element)) {
             return null;
         }
@@ -150,23 +156,33 @@ export const useMouse = (
         const xy: XY = [e.clientX - rect.left, e.clientY - rect.top];
 
         // Ignore clicks on scrollbar
-        if (xy[0] > e.target.clientWidth || xy[1] > e.target.clientHeight) {
+        if (strict && (xy[0] > e.target.clientWidth || xy[1] > e.target.clientHeight)) {
             return null;
         }
 
         return xy;
     }, []);
 
-    const getScrollPosition = useCallback((e: PointerEvent<any> | MouseEvent<any>) => {
-        if (!e.target || !(e.target instanceof Element)) {
-            return [0, 0];
-        }
+    // Check if mouse is out of bounds and in what direction
+    const getMouseOutOfBounds = useCallback(
+        (e: PointerEvent<any> | MouseEvent<any>, allowX: boolean, allowY: boolean) => {
+            if (!e.target || !(e.target instanceof Element)) {
+                return null;
+            }
 
-        const { scrollLeft, scrollTop } = e.target as any;
-        const xy: XY = [scrollLeft, scrollTop];
+            const rect = e.target.getBoundingClientRect();
+            const xy: XY = [e.clientX - rect.left, e.clientY - rect.top];
 
-        return xy;
-    }, []);
+            const indentX = cellLayout.getIndentX();
+            const indentY = cellLayout.getIndentY();
+
+            const xSign = allowX ? (xy[0] < indentX ? -1 : xy[0] > e.target.clientWidth ? 1 : 0) : 0;
+            const ySign = allowY ? (xy[1] < indentY ? -1 : xy[1] > e.target.clientHeight ? 1 : 0) : 0;
+
+            return xSign || ySign ? ([xSign, ySign] as XY) : null;
+        },
+        [cellLayout],
+    );
 
     const getMouseHit = useCallback(
         (xy: XY) => {
@@ -194,6 +210,7 @@ export const useMouse = (
             const {
                 current: {
                     selection,
+                    dataOffset,
                     cellLayout: { columnToPixel, rowToPixel, pixelToCell, getIndentX, getIndentY },
                     visibleCells: { columns, rows },
                     knobPosition,
@@ -206,7 +223,7 @@ export const useMouse = (
 
             (e.target as Element)?.setPointerCapture?.(e.pointerId);
 
-            const xy = getMousePosition(e);
+            const xy = getMousePosition(e, true);
             if (!xy) return;
 
             const hitTarget = getMouseHit(xy);
@@ -275,11 +292,10 @@ export const useMouse = (
                                 }
 
                                 const size = columnToPixel(maxX, 1) - columnToPixel(minX);
-                                const [scroll] = getScrollPosition(e);
 
                                 setColumnDrag({
-                                    anchor: x,
-                                    scroll,
+                                    anchor: xy,
+                                    offset: dataOffset,
                                     size,
                                     indices,
                                 });
@@ -305,11 +321,10 @@ export const useMouse = (
                             const size = asGroup
                                 ? columnToPixel(maxX, 1) - columnToPixel(minX)
                                 : columnToPixel(index, 1) - columnToPixel(index);
-                            const [scroll] = getScrollPosition(e);
 
                             setColumnResize({
-                                anchor: x,
-                                scroll,
+                                anchor: xy,
+                                offset: dataOffset,
                                 size,
                                 indices,
                             });
@@ -374,11 +389,10 @@ export const useMouse = (
                                 }
 
                                 const size = rowToPixel(maxY, 1) - rowToPixel(minY);
-                                const [, scroll] = getScrollPosition(e);
 
                                 setRowDrag({
-                                    anchor: y,
-                                    scroll,
+                                    anchor: xy,
+                                    offset: dataOffset,
                                     size,
                                     indices,
                                 });
@@ -404,11 +418,10 @@ export const useMouse = (
                             const size = asGroup
                                 ? rowToPixel(maxY, 1) - rowToPixel(minY)
                                 : rowToPixel(index, 1) - rowToPixel(index);
-                            const [, scroll] = getScrollPosition(e);
 
                             setRowResize({
-                                anchor: y,
-                                scroll,
+                                anchor: xy,
+                                offset: dataOffset,
                                 size,
                                 indices,
                             });
@@ -459,7 +472,6 @@ export const useMouse = (
         },
         [
             getMousePosition,
-            getScrollPosition,
             getMouseHit,
             onColumnOrderChange,
             onRowOrderChange,
@@ -518,8 +530,8 @@ export const useMouse = (
                 const [x, y] = xy;
                 const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
-                const cellX = Math.max(0, pixelToColumn(x, 0.5));
-                const cellY = Math.max(0, pixelToRow(y, 0.5));
+                const cellX = pixelToColumn(x, 0.5);
+                const cellY = pixelToRow(y, 0.5);
 
                 if (columnDrag) {
                     const { indices } = columnDrag;
@@ -584,6 +596,7 @@ export const useMouse = (
             const {
                 current: {
                     selection,
+                    dataOffset,
                     visibleCells,
 
                     knobPosition,
@@ -598,6 +611,7 @@ export const useMouse = (
                     draggingRowSelection,
 
                     cellLayout: {
+                        cellToPixel,
                         columnToPixel,
                         rowToPixel,
                         pixelToCell,
@@ -611,10 +625,21 @@ export const useMouse = (
 
             window.document.body.style.cursor = 'auto';
 
+            const isDraggingX =
+                !!columnResize || !!columnDrag || draggingColumnSelection || draggingSelection || draggingKnob;
+
+            const isDraggingY = !!rowResize || !!rowDrag || draggingRowSelection || draggingSelection || draggingKnob;
+
+            const isDragging = isDraggingX || isDraggingY;
+
+            const outOfBounds = getMouseOutOfBounds(e, isDraggingX, isDraggingY);
+            if (isDragging) setAutoScroll(outOfBounds);
+
             const xy = getMousePosition(e);
             if (!xy) return;
 
             const hitTarget = getMouseHit(xy);
+
             if (columnDrag || rowDrag) {
                 window.document.body.style.cursor = 'grabbing';
             } else if (columnResize) {
@@ -633,8 +658,9 @@ export const useMouse = (
             const [x, y] = xy;
             const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
-            const isDragging =
-                columnResize || columnDrag || rowResize || rowDrag || draggingRowSelection || draggingColumnSelection;
+            const getDragScrollOffset = (startOffset: XY): XY => {
+                return subXY(cellToPixel(dataOffset), cellToPixel(startOffset));
+            };
 
             if (!isDragging) {
                 if (!hideColumnHeaders && y < getIndentY()) {
@@ -717,10 +743,10 @@ export const useMouse = (
 
             if (columnResize) {
                 if (onCellWidthChange) {
-                    const { size, anchor, scroll, indices } = columnResize;
-                    const [currentScroll] = getScrollPosition(e);
+                    const { size, anchor, offset, indices } = columnResize;
+                    const [scrollOffset] = getDragScrollOffset(offset);
                     const newWidth = Math.round(
-                        Math.max(size + x - anchor + scroll - currentScroll, SIZES.minimumWidth * indices.length),
+                        Math.max(size + x - anchor[0] + scrollOffset, SIZES.minimumWidth * indices.length),
                     );
                     onInvalidateColumn?.(indices[0] - 1);
                     onCellWidthChange(
@@ -733,10 +759,10 @@ export const useMouse = (
 
             if (rowResize) {
                 if (onCellHeightChange) {
-                    const { size, anchor, scroll, indices } = rowResize;
-                    const [, currentScroll] = getScrollPosition(e);
+                    const { size, anchor, offset, indices } = rowResize;
+                    const [, scrollOffset] = getDragScrollOffset(offset);
                     const newHeight = Math.round(
-                        Math.max(size + y - anchor + scroll - currentScroll, SIZES.minimumHeight * indices.length),
+                        Math.max(size + y - anchor[1] + scrollOffset, SIZES.minimumHeight * indices.length),
                     );
                     onInvalidateRow?.(indices[0] - 1);
                     onCellHeightChange(
@@ -749,7 +775,7 @@ export const useMouse = (
 
             if (draggingSelection) {
                 const [anchor] = selection;
-                const head = pixelToCell(xy);
+                const head = maxXY(dataOffset, pixelToCell(xy));
 
                 const [anchorX, anchorY] = anchor;
                 const [headX, headY] = head;
@@ -808,15 +834,15 @@ export const useMouse = (
             if (columnDrag || rowDrag) {
                 const [x, y] = xy;
                 if (columnDrag) {
-                    const cellX = Math.max(0, pixelToColumn(x, 0.5));
+                    const cellX = pixelToColumn(x, 0.5);
                     const insideSelection = cellX >= minX && cellX <= maxX + 1;
                     const insideGroup = isBoundaryInsideGroup(cellX, columnGroupKeys);
 
-                    const { anchor, scroll } = columnDrag;
-                    const shift = x - anchor;
-                    const [currentScroll] = getScrollPosition(e);
+                    const { anchor, offset } = columnDrag;
+                    const shift = x - anchor[0];
+                    const [scrollOffset] = getDragScrollOffset(offset);
 
-                    onDragOffsetChange?.([shift + currentScroll - scroll, 0]);
+                    onDragOffsetChange?.([shift + scrollOffset, 0]);
                     onDropTargetChange?.(
                         insideSelection || insideGroup
                             ? null
@@ -827,15 +853,15 @@ export const useMouse = (
                     );
                 }
                 if (rowDrag) {
-                    const cellY = Math.max(0, pixelToRow(y, 0.5));
+                    const cellY = pixelToRow(y, 0.5);
                     const insideSelection = cellY >= minY && cellY <= maxY + 1;
                     const insideGroup = isBoundaryInsideGroup(cellY, rowGroupKeys);
 
-                    const { anchor, scroll } = rowDrag;
-                    const shift = y - anchor;
-                    const [, currentScroll] = getScrollPosition(e);
+                    const { anchor, offset } = rowDrag;
+                    const shift = y - anchor[1];
+                    const [, scrollOffset] = getDragScrollOffset(offset);
 
-                    onDragOffsetChange?.([0, shift + currentScroll - scroll]);
+                    onDragOffsetChange?.([0, shift + scrollOffset]);
                     onDropTargetChange?.(
                         insideSelection || insideGroup
                             ? null
@@ -849,7 +875,7 @@ export const useMouse = (
         },
         [
             getMousePosition,
-            getScrollPosition,
+            getMouseOutOfBounds,
             getMouseHit,
             onCellWidthChange,
             onCellHeightChange,
@@ -1022,6 +1048,29 @@ export const useMouse = (
         },
         [getMousePosition, onSelectionChange, onPointerMove, onRightClick],
     );
+
+    console.log({ autoScroll });
+    useLayoutEffect(() => {
+        if (!autoScroll) return;
+
+        let running = true;
+        const loop = () => {
+            const { current: element } = elementRef;
+            if (!element) return;
+
+            const [x, y] = autoScroll;
+            element.scrollLeft += x;
+            element.scrollTop += y;
+
+            running && requestAnimationFrame(loop);
+        };
+
+        loop();
+
+        return () => {
+            running = false;
+        };
+    }, [elementRef, autoScroll]);
 
     const mouseHandlers = {
         onPointerLeave,
