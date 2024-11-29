@@ -1059,7 +1059,7 @@ export const useMouse = (
             if (!element) return;
 
             const [x, y] = autoScroll;
-            element.scrollLeft += x;
+            element.scrollLeft += x * 2;
             element.scrollTop += y;
 
             running && requestAnimationFrame(loop);
