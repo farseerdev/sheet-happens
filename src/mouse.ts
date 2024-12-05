@@ -1053,28 +1053,21 @@ export const useMouse = (
     useLayoutEffect(() => {
         if (!autoScroll) return;
 
-        let start: number | null = null;
-        let running = true;
-        const loop = (timestamp: number | null) => {
-            start = start ?? timestamp;
-
-            const elapsed = start && timestamp ? timestamp - start : 0;
-            const speed = Math.max(0.25, Math.min(4, elapsed / 120));
-
+        const loop = () => {
             const { current: element } = elementRef;
             if (!element) return;
 
             const [x, y] = autoScroll;
+            const speed = 4;
             element.scrollLeft += x * speed * 2;
             element.scrollTop += y * speed;
-
-            running && requestAnimationFrame(loop);
         };
 
-        loop(null);
+        const timer = setInterval(loop, 33);
+        loop();
 
         return () => {
-            running = false;
+            clearTimeout(timer);
         };
     }, [elementRef, autoScroll]);
 
