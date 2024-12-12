@@ -1067,7 +1067,7 @@ export const useMouse = (
         loop();
 
         return () => {
-            clearTimeout(timer);
+            clearInterval(timer);
         };
     }, [elementRef, autoScroll]);
 
