@@ -7,6 +7,8 @@ import {
     isMaybeColumnSelection,
     isEmptySelection,
     addXY,
+    subXY,
+    mulXY,
     forSelectionRows,
     forSelectionColumns,
 } from './coordinate';
@@ -109,7 +111,7 @@ export const useClipboardAPI = <T = any>(
     const pasteIntoSelection = useCallback(
         async (selection: Rectangle, table: ClipboardTable) => {
             const { rows, payload } = table;
-            const [min] = normalizeSelection(selection);
+            const [min, max] = normalizeSelection(selection);
             const [minX, minY] = min;
 
             const left = Math.max(0, minX);
@@ -118,16 +120,26 @@ export const useClipboardAPI = <T = any>(
             const width = rows.reduce((a, b) => Math.max(a, b.length), 0);
             const height = rows.length;
 
-            const newSelection: Rectangle = [min, addXY(min, [width - 1, height - 1])];
+            const selectionSize = mulXY(addXY(subXY(max, min), [1, 1]), [1 / width, 1 / height]);
+            const repeatX = Math.max(1, Math.floor(selectionSize[0]));
+            const repeatY = Math.max(1, Math.floor(selectionSize[1]));
+
+            const newSelection: Rectangle = [min, addXY(min, [width * repeatX - 1, height * repeatY - 1])];
 
             const shouldPaste = await onPaste?.(newSelection, rows, payload);
             if (shouldPaste !== false) {
                 const changes = rows
                     .flatMap((row, j) =>
-                        row.map((value, i) => {
-                            const x = left + i;
-                            const y = top + j;
-                            return !cellReadOnly?.(x, y) ? { x, y, value } : null;
+                        row.flatMap((value, i) => {
+                            const cells: Change[] = [];
+                            for (let rx = 0; rx < repeatX; ++rx) {
+                                for (let ry = 0; ry < repeatY; ++ry) {
+                                    const x = left + i + rx * width;
+                                    const y = top + j + ry * height;
+                                    if (!cellReadOnly?.(x, y)) cells.push({ x, y, value });
+                                }
+                            }
+                            return cells;
                         }),
                     )
                     .filter((change) => !!change) as Change[];
