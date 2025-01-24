@@ -79,7 +79,7 @@ export const useClipboardTable = () => {
     const canPaste = useCallback(
         // Peek may not be available, allow paste attempt.
         () => !!(peek == null || peek.rows?.length),
-        [peek],
+        [peek]
     );
 
     return {
@@ -103,8 +103,8 @@ export const useClipboardAPI = <T = any>(
     onPaste?: (
         selection: Rectangle,
         rows: string[][],
-        payload?: ClipboardPayload<T>,
-    ) => boolean | null | undefined | Promise<boolean | null | undefined>,
+        payload?: ClipboardPayload<T>
+    ) => boolean | null | undefined | Promise<boolean | null | undefined>
 ) => {
     const { canPaste, copyTable, pasteTable } = useClipboardTable();
 
@@ -140,7 +140,7 @@ export const useClipboardAPI = <T = any>(
                                 }
                             }
                             return cells;
-                        }),
+                        })
                     )
                     .filter((change) => !!change) as Change[];
 
@@ -148,7 +148,7 @@ export const useClipboardAPI = <T = any>(
                 onSelectionChange?.(newSelection);
             }
         },
-        [onChange, onSelectionChange, cellReadOnly],
+        [onChange, onSelectionChange, cellReadOnly]
     );
 
     // Imperative API
@@ -172,7 +172,7 @@ export const useClipboardAPI = <T = any>(
                 onChange?.(changes);
             }
         },
-        [onCopy, onChange, cellReadOnly],
+        [onCopy, onChange, cellReadOnly]
     );
 
     const pasteSelection = useCallback(
@@ -180,7 +180,7 @@ export const useClipboardAPI = <T = any>(
             const table = await pasteTable();
             if (table) pasteIntoSelection(selection, table);
         },
-        [pasteIntoSelection],
+        [pasteIntoSelection]
     );
 
     // Event handlers
@@ -213,7 +213,7 @@ export const useClipboardAPI = <T = any>(
             pasteSelection,
             canPasteSelection: canPaste,
         }),
-        [copySelection, pasteSelection, canPaste],
+        [copySelection, pasteSelection, canPaste]
     );
 
     return { clipboardApi, onClipboardCopy, onClipboardPaste };
@@ -336,7 +336,7 @@ const findTag = (element: any, tagName: string): any => {
 };
 
 const parsePastedHtml = (
-    html: string,
+    html: string
 ): {
     rows: string[][];
     payload: any;
@@ -375,8 +375,8 @@ const parsePastedHtml = (
                                 } else {
                                     str = td.textContent.trim();
                                 }
-                                str = str.replaceAll('\n', '');
-                                str = str.replaceAll(/\s\s+/g, ' ');
+                                str = str.replaceAll(/[\r\n\t ]+/g, ' ');
+                                str = str.replaceAll(' ', ' ');
 
                                 row.push(str);
                             }
