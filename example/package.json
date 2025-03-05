@@ -10,12 +10,13 @@
     "eject": "node ../node_modules/react-scripts/bin/react-scripts.js eject"
   },
   "dependencies": {
-    "eslint-config-react-app": "link:../node_modules/eslint-config-react-app",
-    "react": "link:../node_modules/react",
-    "react-dom": "link:../node_modules/react-dom",
-    "react-scripts": "link:../node_modules/react-scripts",
+    "eslint-config-react-app": "file:../node_modules/eslint-config-react-app",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "react": "file:../node_modules/react",
+    "react-dom": "file:../node_modules/react-dom",
+    "react-scripts": "file:../node_modules/react-scripts",
     "react-syntax-highlighter": "^15.4.3",
-    "sheet-happens": "link:.."
+    "sheet-happens": "file:.."
   },
   "eslintConfig": {
     "extends": "react-app"
