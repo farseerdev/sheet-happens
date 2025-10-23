@@ -376,6 +376,15 @@ const parsePastedHtml = (
         }
     }
 
+    const spanNode = findTag(div, 'SPAN');
+    if (spanNode) {
+        str = spanNode.textContent.trim();
+        str = str.replaceAll('\n', '');
+        str = str.replaceAll(/\s\s+/g, ' ');
+
+        rows.push([str]);
+    }
+
     return {
         rows,
         payload,
