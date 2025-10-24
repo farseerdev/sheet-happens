@@ -344,6 +344,8 @@ const parsePastedHtml = (
     }
 
     const tableNode = findTag(div, 'TABLE');
+    const spanNode = findTag(div, 'SPAN');
+
     if (tableNode) {
         for (const tableChild of tableNode.children) {
             if (tableChild.nodeName === 'TBODY') {
@@ -375,9 +377,7 @@ const parsePastedHtml = (
             }
         }
     }
-
-    const spanNode = findTag(div, 'SPAN');
-    if (spanNode) {
+    else if (spanNode) {
         str = spanNode.textContent.trim();
         str = str.replaceAll('\n', '');
         str = str.replaceAll(/\s\s+/g, ' ');
