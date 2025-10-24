@@ -1,6 +1,6 @@
 {
   "name": "sheet-happens",
-  "version": "0.0.55",
+  "version": "0.0.56",
   "description": "React Spreadsheet",
   "author": "Luka-M",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "test:lint": "eslint .",
     "test:unit": "cross-env CI=1 react-scripts test --env=jsdom",
     "test:watch": "react-scripts test --env=jsdom",
-    "predeploy": "cd example && yarn install && yarn run build",
+    "predeploy": "cd example && yarn install && DISABLE_ESLINT_PLUGIN=true yarn run build",
     "deploy": "gh-pages -d example/build"
   },
   "peerDependencies": {
