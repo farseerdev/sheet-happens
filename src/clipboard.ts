@@ -378,6 +378,8 @@ const parsePastedHtml = (
         }
     }
     else if (spanNode) {
+        let str: string = '';
+
         str = spanNode.textContent.trim();
         str = str.replaceAll('\n', '');
         str = str.replaceAll(/\s\s+/g, ' ');
