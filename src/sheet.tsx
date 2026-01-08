@@ -19,7 +19,7 @@ import {
     CellProperty,
     CellPropertyStyled,
     CellContentType,
-    ClipboardPayload,
+    ClipboardTable,
     RowOrColumnPropertyStyled,
     RowOrColumnProperty,
     Selection,
@@ -65,7 +65,7 @@ export type SheetInputProps = {
     value: string;
     autoFocus: boolean;
     onKeyDown: KeyboardEventHandler<HTMLElement>;
-    onChange: (value: string) => void;
+    onChange: (value: object | string | number | null) => void;
     style: InputStyle;
 };
 
@@ -89,7 +89,7 @@ export type SheetProps = {
     canOrderRow?: RowOrColumnProperty<boolean>;
     columnGroupKeys?: RowOrColumnProperty<string | number | null>;
     rowGroupKeys?: RowOrColumnProperty<string | number | null>;
-    sourceData?: CellProperty<string | number | null>;
+    sourceData?: CellProperty<object | string | number | null>;
     displayData?: CellPropertyStyled<CellContentType>;
     editData?: CellProperty<string>;
     editKeys?: CellProperty<string>;
@@ -108,7 +108,7 @@ export type SheetProps = {
         x: number,
         y: number,
         props: SheetInputProps,
-        commitEditingCell?: (value?: string | number | null) => void,
+        commitEditingCell: (value?: object | string | number | null) => void,
     ) => ReactElement | undefined;
 
     renderInside?: (props: SheetRenderProps) => React.ReactNode;
@@ -123,12 +123,12 @@ export type SheetProps = {
     onCellHeightChange?: (indices: number[], values: number[]) => void;
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
 
-    onCopy?: (selection: Rectangle, cells: string[][]) => ClipboardPayload<any> | null | undefined;
+    onCopy?: (selection: Rectangle, cut: boolean) => ClipboardTable<any> | null | undefined;
     onPaste?: (
         selection: Rectangle,
-        cells: string[][],
-        payload: ClipboardPayload<any>,
+        table: ClipboardTable<any>,
     ) => boolean | null | undefined | Promise<boolean | null | undefined>;
+    clipboardOrigin?: string;
 };
 
 export type SheetRef = CellLayout & {
@@ -162,7 +162,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setRawSelection(selectionProp);
     }
 
-    const [editValue, setEditValue] = useState<string | number>('');
+    const [editValue, setEditValue] = useState<string | null>('');
+    const [sourceValue, setSourceValue] = useState<object | string | number | null>(null);
     const [arrowKeyCommitMode, setArrowKeyCommitMode] = useState(false);
 
     const { width: canvasWidth = 3000, height: canvasHeight = 3000 } = useResizeObserver({ ref: overlayRef });
@@ -302,10 +303,22 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setFocused(true);
     };
 
-    const commitEditingCell = (value?: string) => {
+    const commitEditingCell = (value?: object | string | number | null) => {
         if (props.onChange) {
             const [cellX, cellY] = editCell;
-            props.onChange([{ x: cellX, y: cellY, value: value !== undefined ? value : editValue }]);
+
+            const hasData = !!input;
+            const v = hasData ? null : (value as string | number | null);
+            const d = hasData ? value : null;
+
+            props.onChange([
+                {
+                    x: cellX,
+                    y: cellY,
+                    value: value !== undefined ? v : editValue,
+                    data: value !== undefined ? d : sourceValue,
+                },
+            ]);
         }
         setEditCell(NO_CELL);
         setFocused(true);
@@ -317,13 +330,19 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             return;
         }
 
-        const editDataValue = editData(cellX, cellY);
-        let val = '';
-        if (editDataValue !== null && editDataValue !== undefined) {
-            val = editDataValue;
+        const hasData = !!props.inputComponent?.(cellX, cellY, { ...inputProps, onChange: () => {} }, () => {});
+
+        const editValue = editData(cellX, cellY) ?? '';
+        const sourceValue = sourceData(cellX, cellY) ?? null;
+
+        if (hasData) {
+            setEditValue(null);
+            setSourceValue(sourceValue);
+        } else {
+            setEditValue(editValue);
         }
+
         setEditCell(editCell);
-        setEditValue(val);
         setArrowKeyCommitMode(arrowKeyCommitMode);
         setLastEditKey(editKeys(...editCell));
     };
@@ -354,12 +373,14 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const { clipboardApi, onClipboardCopy } = useClipboardAPI(
         selection,
         editData,
+        sourceData,
         cellReadOnly,
         isFocused && !editMode,
         changeSelection,
         props.onChange,
         props.onCopy,
         props.onPaste,
+        props.clipboardOrigin ?? location.origin,
     );
 
     const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
@@ -569,7 +590,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const [textX, textY] = editTextPosition;
     const inputProps = {
-        value: editValue,
+        value: editValue ?? '',
         autoFocus: true,
         onKeyDown: onInputKeyDown,
         style: {
@@ -594,7 +615,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const input = props.inputComponent?.(
         editCellX,
         editCellY,
-        { ...inputProps, onChange: setEditValue } as SheetInputProps,
+        { ...inputProps, onChange: setSourceValue } as SheetInputProps,
         commitEditingCell,
     );
 

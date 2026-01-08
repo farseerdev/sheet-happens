@@ -165,11 +165,25 @@ export type Resizable = {
 // Clipboard
 ////////////////////////////////////////////////////////////////////////////////
 
+export type ClipboardRawTable<T extends ClipboardTableCells = ClipboardTableCells> = {
+    rows: string[][];
+    payload?: ClipboardPayload<T>;
+};
+
 export type ClipboardPayload<T> = {
-    cut: boolean;
-    data: T;
     origin: string;
-    version: number;
+    cut?: boolean;
+    data?: T;
+};
+
+export type ClipboardTable<T extends ClipboardTableCells = ClipboardTableCells> = {
+    rows: string[][];
+    cut?: boolean;
+    data?: T;
+};
+
+export type ClipboardTableCells = {
+    cells?: Record<string, Record<string, any>>;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,6 +194,7 @@ export type Change = {
     x: number;
     y: number;
     value: string | number | null;
+    data?: object | string | number | null;
     source?: { x: number; y: number };
 };
 
