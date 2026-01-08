@@ -47,7 +47,7 @@ export const useMouse = (
     knobArea: Rectangle | null,
     editMode: boolean,
     editData: CellPropertyFunction<string>,
-    sourceData: CellPropertyFunction<string | number | null>,
+    sourceData: CellPropertyFunction<object | string | number | null>,
     cellReadOnly: CellPropertyFunction<boolean | null>,
 
     canSizeColumn: RowOrColumnPropertyFunction<boolean | null>,
@@ -513,7 +513,7 @@ export const useMouse = (
             onFocusChange?.(true);
 
             if (knobArea && draggingKnob) {
-                const changes = parseKnobOperation(knobArea, selection, sourceData, editData, cellReadOnly);
+                const changes = parseKnobOperation(knobArea, selection, editData, sourceData, cellReadOnly);
 
                 onChange?.(changes);
                 onSelectionChange?.(knobArea, true, true);
@@ -1087,8 +1087,8 @@ export const useMouse = (
 const parseKnobOperation = (
     knobArea: Rectangle,
     selection: Rectangle,
-    sourceData: CellPropertyFunction<string | number | null>,
     editData: CellPropertyFunction<string>,
+    sourceData: CellPropertyFunction<object | string | number | null>,
     cellReadOnly: CellPropertyFunction<boolean | null>,
 ): Change[] => {
     const [[kx1, ky1], [kx2, ky2]] = normalizeSelection(knobArea);
@@ -1118,9 +1118,10 @@ const parseKnobOperation = (
         let srcY = sy1;
         for (let y = fy1; y <= fy2; y++) {
             for (let x = fx1; x <= fx2; x++) {
-                const value = sourceData(x, srcY);
+                const value = editData(x, srcY);
+                const data = sourceData(x, srcY);
                 if (!cellReadOnly(x, y)) {
-                    changes.push({ x: x, y: y, value: value, source: { x: x, y: srcY } });
+                    changes.push({ x: x, y: y, value, data, source: { x: x, y: srcY } });
                 }
             }
             srcY = srcY + 1;
@@ -1143,9 +1144,10 @@ const parseKnobOperation = (
         let srcX = sx1;
         for (let x = fx1; x <= fx2; x++) {
             for (let y = fy1; y <= fy2; y++) {
-                const value = sourceData(srcX, y);
+                const value = editData(srcX, y);
+                const data = sourceData(srcX, y);
                 if (!cellReadOnly(x, y)) {
-                    changes.push({ x: x, y: y, value: value, source: { x: srcX, y: y } });
+                    changes.push({ x: x, y: y, value, data, source: { x: srcX, y: y } });
                 }
             }
             srcX = srcX + 1;

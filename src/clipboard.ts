@@ -1,4 +1,12 @@
-import { ClipboardPayload, CellPropertyFunction, Change, Rectangle } from './types';
+import {
+    ClipboardPayload,
+    ClipboardRawTable,
+    ClipboardTable,
+    ClipboardTableCells,
+    CellPropertyFunction,
+    Change,
+    Rectangle,
+} from './types';
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { findApproxMaxEditDataIndex } from './props';
 import {
@@ -27,18 +35,13 @@ declare var ClipboardItem: {
     new (itemData: any): ClipboardItem;
 };
 
-export type ClipboardTable<T = any> = {
-    rows: string[][];
-    payload?: ClipboardPayload<T>;
-};
-
-const EMPTY_TABLE: ClipboardTable = { rows: [] };
+const EMPTY_TABLE: ClipboardTable<any> = { rows: [] };
 
 // Access clipboard as HTML table + JSON payload.
 // Provide peek access to clipboard if permission granted.
 // Ask permission on first copy.
-export const useClipboardTable = () => {
-    const [peek, setPeek] = useState<ClipboardTable | null>();
+export const useClipboardTable = <T extends ClipboardTableCells>(clipboardOrigin: string) => {
+    const [peek, setPeek] = useState<ClipboardTable<T> | null>();
 
     useLayoutEffect(() => {
         const softRefresh = async () => {
@@ -52,10 +55,9 @@ export const useClipboardTable = () => {
 
         const hardRefresh = async () => {
             try {
-                const items = await (navigator.clipboard as any).read();
-                const [item] = items;
-                if (item) {
-                    const peek = await parseClipboardTable(item);
+                const pasted = await pasteClipboardTable<T>();
+                if (pasted) {
+                    const peek = validateClipboardTable<T>(pasted, clipboardOrigin);
                     setPeek(peek);
                 } else {
                     setPeek(EMPTY_TABLE);
@@ -87,32 +89,40 @@ export const useClipboardTable = () => {
     return {
         peek,
         canPaste,
-        copyTable: copyClipboardTable,
-        pasteTable: pasteClipboardTable,
+        copyTable: ({ rows, ...rest }: ClipboardTable<T>) =>
+            copyClipboardTable(rows, { origin: clipboardOrigin, ...rest }),
+        pasteTable: async (): Promise<ClipboardTable<T> | null> => {
+            const pasted = await pasteClipboardTable<T>();
+            if (!pasted) return null;
+
+            return validateClipboardTable<T>(pasted, clipboardOrigin);
+        },
     };
 };
 
 // Sheet clipboard with payload-handler injected
-export const useClipboardAPI = <T = any>(
+export const useClipboardAPI = <T extends ClipboardTableCells = ClipboardTableCells>(
     selection: Rectangle,
     editData: CellPropertyFunction<string>,
+    sourceData: CellPropertyFunction<object | string | number | null>,
     cellReadOnly: CellPropertyFunction<boolean>,
     addListener: boolean,
 
     onSelectionChange?: (selection: Rectangle) => void,
     onChange?: (changes: Change[]) => void,
-    onCopy?: (selection: Rectangle, rows: string[][], cut: boolean) => ClipboardPayload<T> | null | undefined,
+    onCopy?: (selection: Rectangle, cut: boolean) => ClipboardTable<T> | null | undefined,
     onPaste?: (
         selection: Rectangle,
-        rows: string[][],
-        payload?: ClipboardPayload<T>,
+        table?: ClipboardTable<T>,
     ) => boolean | null | undefined | Promise<boolean | null | undefined>,
+    clipboardOrigin: string = '',
 ) => {
-    const { canPaste, copyTable, pasteTable } = useClipboardTable();
+    const { canPaste, copyTable, pasteTable } = useClipboardTable<T>(clipboardOrigin);
 
     const pasteIntoSelection = useCallback(
-        async (selection: Rectangle, table: ClipboardTable) => {
-            const { rows, payload } = table;
+        async (selection: Rectangle, table: ClipboardTable<T>) => {
+            const { rows, data } = table;
+
             const [min, max] = normalizeSelection(selection);
             const [minX, minY] = min;
 
@@ -128,7 +138,7 @@ export const useClipboardAPI = <T = any>(
 
             const newSelection: Rectangle = [min, addXY(min, [width * repeatX - 1, height * repeatY - 1])];
 
-            const shouldPaste = await onPaste?.(newSelection, rows, payload);
+            const shouldPaste = await onPaste?.(newSelection, table);
             if (shouldPaste !== false) {
                 const changes = rows
                     .flatMap((row, j) =>
@@ -138,7 +148,8 @@ export const useClipboardAPI = <T = any>(
                                 for (let ry = 0; ry < repeatY; ++ry) {
                                     const x = left + i + rx * width;
                                     const y = top + j + ry * height;
-                                    if (!cellReadOnly?.(x, y)) cells.push({ x, y, value });
+                                    const v = data?.cells?.[j]?.[i];
+                                    if (!cellReadOnly?.(x, y)) cells.push({ x, y, value, data: v });
                                 }
                             }
                             return cells;
@@ -156,17 +167,17 @@ export const useClipboardAPI = <T = any>(
     // Imperative API
     const copySelection = useCallback(
         async (selection: Rectangle, cut: boolean = false) => {
-            const rows = formatSelectionAsRows(selection, editData);
-            const payload = onCopy?.(selection, rows, cut);
+            const table =
+                onCopy?.(selection, cut) ??
+                (formatSelectionAsRows(selection, editData, sourceData) as ClipboardTable<T>);
+            copyTable(table);
 
-            copyTable(rows, payload);
-
-            if (payload?.cut ?? cut) {
+            if (table?.cut ?? cut) {
                 const changes: Change[] = [];
                 forSelectionRows(selection)((y: number) => {
                     forSelectionColumns(selection)((x: number) => {
                         if (!cellReadOnly?.(x, y)) {
-                            const change = { x, y, value: '' };
+                            const change = { x, y, value: '', data: null };
                             changes.push(change);
                         }
                     });
@@ -195,8 +206,11 @@ export const useClipboardAPI = <T = any>(
         e.preventDefault();
 
         const clipboardData = e.clipboardData || (window as any).clipboardData;
-        const table = await parseClipboardTable(clipboardData);
-        if (table) pasteIntoSelection(selection, table);
+        const parsed = await parseClipboardTable<T>(clipboardData);
+        if (parsed) {
+            const table = validateClipboardTable<T>(parsed, clipboardOrigin);
+            if (table) pasteIntoSelection(selection, table);
+        }
     };
 
     useLayoutEffect(() => {
@@ -221,6 +235,18 @@ export const useClipboardAPI = <T = any>(
     return { clipboardApi, onClipboardCopy, onClipboardPaste };
 };
 
+const validateClipboardTable = <T extends ClipboardTableCells>(
+    parsed: ClipboardRawTable<T>,
+    clipboardOrigin: string,
+): ClipboardTable<T> => {
+    const { rows, payload } = parsed;
+    if (!payload) return { rows };
+
+    const { origin, ...rest } = payload;
+    if (origin === clipboardOrigin) return { rows, ...rest };
+    return { rows };
+};
+
 const copyClipboardTable = async (rows: string[][], payload?: ClipboardPayload<any> | null) => {
     const text = formatRowsAsTSV(rows);
     const html = formatRowsAsHTML(rows, payload ?? undefined);
@@ -236,15 +262,17 @@ const copyClipboardTable = async (rows: string[][], payload?: ClipboardPayload<a
     document.dispatchEvent(event);
 };
 
-const pasteClipboardTable = async () => {
+const pasteClipboardTable = async <T extends ClipboardTableCells>(): Promise<ClipboardTable<T> | null> => {
     const items = await (navigator.clipboard as any).read();
     const [item] = items;
-    if (!item) return;
+    if (!item) return null;
 
-    return parseClipboardTable(item);
+    return await parseClipboardTable(item);
 };
 
-const parseClipboardTable = async (item: ClipboardItem | DataTransfer): Promise<ClipboardTable | null> => {
+const parseClipboardTable = async <T extends ClipboardTableCells>(
+    item: ClipboardItem | DataTransfer,
+): Promise<ClipboardRawTable<T> | null> => {
     // Work with both clipboard API (ClipboardItem) and onpaste event (DataTransfer)
     const has = (type: string) => {
         return item.types.includes(type);
@@ -295,10 +323,14 @@ const formatRowsAsHTML = (rows: string[][], payload?: ClipboardPayload<any>) => 
     return table;
 };
 
-const formatTextAsHTML = (s: string) => s.replace(/[&"'<>]/g, (i) => `&#${i.charCodeAt(0)};`);
+const formatTextAsHTML = (s: string) => s?.toString().replace(/[&"'<>]/g, (i) => `&#${i.charCodeAt(0)};`) ?? '';
 
-const formatSelectionAsRows = (selection: Rectangle, editData: CellPropertyFunction<string>) => {
-    if (isEmptySelection(selection)) return [];
+const formatSelectionAsRows = (
+    selection: Rectangle,
+    editData: CellPropertyFunction<string>,
+    sourceData: CellPropertyFunction<object | string | number | null>,
+): ClipboardTable => {
+    if (isEmptySelection(selection)) return { rows: [] };
 
     let [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
     if (isMaybeRowSelection(selection)) {
@@ -312,22 +344,25 @@ const formatSelectionAsRows = (selection: Rectangle, editData: CellPropertyFunct
         maxY = cellY;
     }
 
-    const rows: string[][] = [];
+    const texts: string[][] = [];
+    const datas: Record<string, Record<string, any>> = {};
 
     for (let y = minY; y <= maxY; y++) {
-        const row: string[] = [];
+        const textRow: string[] = [];
+        const dataRow: Record<string, any> = {};
 
         for (let x = minX; x <= maxX; x++) {
-            const value = editData(x, y);
-            if (value !== null && value !== undefined) {
-                row.push(value != null ? value : '');
-            }
+            const value = editData(x, y) ?? '';
+            const data = sourceData(x, y) ?? null;
+            dataRow[textRow.length] = data;
+            textRow.push(value);
         }
 
-        rows.push(row);
+        datas[texts.length] = dataRow;
+        texts.push(textRow);
     }
 
-    return rows;
+    return { rows: texts, data: { cells: datas } };
 };
 
 const findTag = (element: any, tagName: string): any => {
@@ -359,6 +394,7 @@ const parsePastedHtml = (
         const json = sheetNode.getAttribute('payload');
         try {
             payload = JSON.parse(json);
+            if (!payload || typeof payload !== 'object') payload = null;
         } catch (e) {}
     }
 
@@ -395,8 +431,7 @@ const parsePastedHtml = (
                 }
             }
         }
-    }
-    else if (spanNode) {
+    } else if (spanNode) {
         let str: string = '';
 
         str = spanNode.textContent.trim();
