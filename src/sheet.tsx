@@ -335,11 +335,16 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         const editValue = editData(cellX, cellY) ?? '';
         const sourceValue = sourceData(cellX, cellY) ?? null;
 
+        // `editValue` and `sourceValue` are a pair representing one edit; both must be
+        // (re)set on each start, otherwise the unset slot keeps its value from the
+        // previous edit and gets emitted by `commitEditingCell` as if it belonged to
+        // this one.
         if (hasData) {
             setEditValue(null);
             setSourceValue(sourceValue);
         } else {
             setEditValue(editValue);
+            setSourceValue(null);
         }
 
         setEditCell(editCell);
