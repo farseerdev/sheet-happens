@@ -9,8 +9,22 @@ build
 dist
 .rpt2_cache
 
+# caches
+.eslintcache
+*.tsbuildinfo
+
+# test/coverage output
+coverage
+
+# editor / IDE
+.vscode
+.idea
+*.swp
+*.swo
+
 # misc
 .DS_Store
+Thumbs.db
 .env
 .env.local
 .env.development.local
