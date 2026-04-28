@@ -836,7 +836,10 @@ export function SheetBoxCustomInput() {
             if (!newData[change.y]) {
                 newData[change.y] = [];
             }
-            newData[change.y][change.x] = change.value;
+            // Picker-driven changes carry the structured value in `data` and have `value: null`.
+            // Typed-text changes carry the typed string in `value` and have `data: null`.
+            // Prefer `data` when present, fall back to `value`.
+            newData[change.y][change.x] = change.data ?? change.value;
         }
         setData(newData);
     };
