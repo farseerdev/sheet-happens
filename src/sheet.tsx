@@ -330,7 +330,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             return;
         }
 
-        const hasData = !!props.inputComponent?.(cellX, cellY, { ...inputProps, onChange: () => {} }, () => {});
+        const hasCustomComponent = !!props.inputComponent?.(cellX, cellY, { ...inputProps, onChange: () => {} }, () => {});
 
         const editValue = editData(cellX, cellY) ?? '';
         const sourceValue = sourceData(cellX, cellY) ?? null;
@@ -339,7 +339,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         // (re)set on each start, otherwise the unset slot keeps its value from the
         // previous edit and gets emitted by `commitEditingCell` as if it belonged to
         // this one.
-        if (hasData) {
+        if (hasCustomComponent) {
             setEditValue(null);
             setSourceValue(sourceValue);
         } else {
