@@ -9,6 +9,7 @@ export const useScroll = (
     cellLayout: CellLayout,
     onOffsetChange?: (offset: XY) => void,
     onMaxScrollChange?: (maxScroll: XY) => void,
+    onScrollAction?: () => void,
 ) => {
     return useCallback(
         (e: UIEvent) => {
@@ -25,6 +26,7 @@ export const useScroll = (
             const cell = absoluteToCell(xy);
             if (!isSameXY(cell, offset)) {
                 onOffsetChange?.(cell);
+                onScrollAction?.();
             }
 
             const [x, y] = xy;

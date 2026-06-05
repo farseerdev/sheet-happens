@@ -122,6 +122,7 @@ export type SheetProps = {
     onCellWidthChange?: (indices: number[], values: number[]) => void;
     onCellHeightChange?: (indices: number[], values: number[]) => void;
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
+    onScrollAction?: () => void;
 
     onCopy?: (selection: Rectangle, cut: boolean) => ClipboardTable<any> | null | undefined;
     onPaste?: (
@@ -369,6 +370,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maxRows, maxColumns]);
 
+    // If selection prop changes, adjust scroll position
+    useLayoutEffect(() => {
+        scrollToSelection(selectionProp, true);
+    }, [selectionProp]);
+
     // Output from rendered layout is used to drive events on user content
     const hitmapRef = useRef<CellContentRender[]>(NO_CLICKABLES);
 
@@ -388,7 +394,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.clipboardOrigin ?? location.origin,
     );
 
-    const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll);
+    const onScroll = useScroll(dataOffset, maxScroll, cellLayout, setDataOffset, setMaxScroll, props.onScrollAction);
 
     const getAutoSizeWidth = useAutoSizeColumn(
         visibleCells.rows,
