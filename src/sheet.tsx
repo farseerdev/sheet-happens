@@ -430,6 +430,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editData,
         sourceData,
         cellReadOnly,
+        maxColumns,
+        maxRows,
 
         canSizeColumn,
         canSizeRow,
