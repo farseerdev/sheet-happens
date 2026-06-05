@@ -233,31 +233,6 @@ export const useMouse = (
 
             const [x, y] = xy;
 
-            // Corner click: a click on the row-header / column-header intersection
-            // selects the entire sheet, matching Excel / Google Sheets. Resolve this
-            // before any header-resize / header-drag logic so the small corner box
-            // is unambiguously "select all".
-            if (
-                !hideColumnHeaders &&
-                !hideRowHeaders &&
-                y < getIndentY() &&
-                x < getIndentX()
-            ) {
-                const lastCol = (Number.isFinite(maxColumns) ? maxColumns : MAX_SEARCHABLE_INDEX) - 1;
-                const lastRow = (Number.isFinite(maxRows) ? maxRows : MAX_SEARCHABLE_INDEX) - 1;
-                if (lastCol >= 0 && lastRow >= 0) {
-                    onSelectionChange?.(
-                        [
-                            [0, 0],
-                            [lastCol, lastRow],
-                        ],
-                        false,
-                        true,
-                    );
-                }
-                return;
-            }
-
             const normalized = normalizeSelection(selection);
             const [[minX, minY], [maxX, maxY]] = normalized;
 
@@ -456,6 +431,28 @@ export const useMouse = (
                         }
                     }
                 }
+            }
+
+            // Top-left corner click
+            if (
+                !hideColumnHeaders &&
+                !hideRowHeaders &&
+                y < getIndentY() &&
+                x < getIndentX()
+            ) {
+                const lastCol = (Number.isFinite(maxColumns) ? maxColumns : MAX_SEARCHABLE_INDEX) - 1;
+                const lastRow = (Number.isFinite(maxRows) ? maxRows : MAX_SEARCHABLE_INDEX) - 1;
+                if (lastCol >= 0 && lastRow >= 0) {
+                    onSelectionChange?.(
+                        [
+                            [0, 0],
+                            [lastCol, lastRow],
+                        ],
+                        false,
+                        true,
+                    );
+                }
+                return;
             }
 
             // Knob drag mode
