@@ -43,7 +43,6 @@ import {
     ONE_ONE,
 } from './constants';
 import {
-    normalizeSelection,
     validateSelection,
     isSameRectangle,
     mapSelectionColumns,
@@ -114,7 +113,7 @@ export type SheetProps = {
     renderInside?: (props: SheetRenderProps) => React.ReactNode;
     renderOutside?: (props: SheetRenderProps) => React.ReactNode;
 
-    onSelectionChanged?: (minX: number, minY: number, maxX: number, maxY: number) => void;
+    onSelectionChanged?: (anchorX: number, anchorY: number, headX: number, headY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
     onChange?: (changes: Array<Change>) => void;
     onColumnOrderChange?: (indices: number[], order: number) => void;
@@ -294,8 +293,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         }
 
         if (props.onSelectionChanged) {
-            const [[minX, minY], [maxX, maxY]] = normalizeSelection(validateSelection(newSelection));
-            props.onSelectionChanged(minX, minY, maxX, maxY);
+            const [[anchorX, anchorY], [headX, headY]] = validateSelection(newSelection);
+            props.onSelectionChanged(anchorX, anchorY, headX, headY);
         }
     };
 
