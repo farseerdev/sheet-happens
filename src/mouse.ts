@@ -1051,12 +1051,19 @@ export const useMouse = (
             if (!xy) return;
 
             const [x, y] = xy;
-            if (x <= getIndentX() || y <= getIndentY()) {
+            if (x <= getIndentX() && y <= getIndentY()) {
                 return;
             }
 
             // If click is not inside of selection, select the right clicked cell
             const cell = pixelToCell(xy);
+            if (!hideRowHeaders && x < getIndentX()) {
+                cell[0] = -1;
+            }
+            if (!hideColumnHeaders && y < getIndentY()) {
+                cell[1] = -1;
+            }
+
             if (!isPointInsideSelection(selection, cell)) {
                 onSelectionChange?.([cell, cell]);
             }
