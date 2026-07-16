@@ -17,6 +17,7 @@ import {
     SheetBoxBasic,
     SheetBoxRender,
     SheetBoxGrouped,
+    SheetBoxDropOn,
     SheetBoxFormatting,
     SheetBoxVeryBigData,
     SheetBoxCustomInput,
@@ -98,7 +99,16 @@ const App = () => {
                 </div>
                 <div className="box">
                     <h3>Grouped rows and columns</h3>
-                    <p>You can make rows act as a group for drag-and-drop operation.</p>
+                    <p>You can make rows/columns act as a group for drag-and-drop operation.</p>
+                </div>
+            </Wrap>
+            <Wrap>
+                <div className="box">
+                    <SheetBoxDropOn />
+                </div>
+                <div className="box">
+                    <h3>Drop on rows and columns</h3>
+                    <p>You can allow drag-and-drop operations to drop both on and between rows/columns.</p>
                 </div>
             </Wrap>
 
