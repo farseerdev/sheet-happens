@@ -48,6 +48,7 @@ export const renderSheet = (
     dragIndices: [number[] | null, number[] | null],
     dragOffset: XY | null,
     dropTarget: Rectangle | null,
+    dropOn: boolean,
 
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
@@ -198,10 +199,11 @@ export const renderSheet = (
 
             const isSelfSelected = rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInRowGroup;
+            const isDropSelected = dropOn && dropTarget && (row >= dropTarget[0][1] && row <= dropTarget[1][1]);
 
             const style = isSelfSelected
                 ? HEADER_SELECTED_STYLE
-                : isGroupSelected
+                : isGroupSelected || isDropSelected
                   ? HEADER_GROUP_SELECTED_STYLE
                   : isActive
                     ? HEADER_ACTIVE_STYLE
@@ -239,8 +241,11 @@ export const renderSheet = (
             const isInColumnGroup = groupKey != null && selectedColumnGroups?.has(groupKey);
 
             const isSelected = columnSelectionActive && !rowSelectionActive && (isActive || isInColumnGroup);
-            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
+            const isDropSelected = dropOn && dropTarget && (column >= dropTarget[0][0] && column <= dropTarget[1][0]);
+
+            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+
             const style = {
                 ...DEFAULT_COLUMN_HEADER_STYLE,
                 ...columnHeaderStyle(column),
@@ -330,7 +335,7 @@ export const renderSheet = (
     }
 
     // Drop target
-    if (dropTarget) {
+    if (dropTarget && !dropOn) {
         let [[left, top], [right, bottom]] = resolveSelection(dropTarget, cellLayout);
 
         context.strokeStyle = COLORS.dropTarget;

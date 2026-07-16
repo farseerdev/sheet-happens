@@ -74,7 +74,7 @@ export const useMouse = (
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
     onDragIndicesChange?: (indices: [number[] | null, number[] | null]) => void,
     onDragOffsetChange?: (dragOffset: XY | null) => void,
-    onDropTargetChange?: (selection: Rectangle | null) => void,
+    onDropTargetChange?: (selection: Rectangle | null, dropOn?: boolean) => void,
     onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
     onFocusChange?: (focus: boolean) => void,
 
@@ -84,6 +84,8 @@ export const useMouse = (
     onChange?: (changes: Change[]) => void,
     onColumnOrderChange?: (indices: number[], order: number) => void,
     onRowOrderChange?: (indices: number[], order: number) => void,
+    onColumnDrop?: (indices: number[], order: number) => void,
+    onRowDrop?: (indices: number[], order: number) => void,
     onCellWidthChange?: (indices: number[], values: number[]) => void,
     onCellHeightChange?: (indices: number[], values: number[]) => void,
     onRightClick?: (e: SheetMouseEvent) => void,
@@ -242,7 +244,7 @@ export const useMouse = (
             // Column header
             if (!hideColumnHeaders && y < getIndentY()) {
                 // Grab selected columns in column selection
-                if (onColumnOrderChange) {
+                if (onColumnOrderChange || onColumnDrop) {
                     // Trim off start/end so resize works there
                     const start = columnToPixel(minX) + SIZES.resizeZone;
                     const end = columnToPixel(maxX, 1) - SIZES.resizeZone;
@@ -338,7 +340,7 @@ export const useMouse = (
 
             if (!hideRowHeaders && x < getIndentX()) {
                 // Grab selected rows in row selection
-                if (onRowOrderChange) {
+                if (onRowOrderChange || onRowDrop) {
                     // Trim off start/end so resize works there
                     const start = rowToPixel(minY) + SIZES.resizeZone;
                     const end = rowToPixel(maxY, 1) - SIZES.resizeZone;
@@ -554,40 +556,73 @@ export const useMouse = (
                 const [x, y] = xy;
                 const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
-                const cellX = pixelToColumn(x, 0.5);
-                const cellY = pixelToRow(y, 0.5);
-
                 if (columnDrag) {
                     const { indices } = columnDrag;
 
-                    const insideSelection = cellX >= minX && cellX <= maxX + 1;
-                    const insideGroup = selectedColumnGroups?.has(columnGroupKeys(x));
-                    if (!insideSelection && !insideGroup) {
-                        const preceding = indices.filter((i) => i < cellX);
-                        const order = cellX - preceding.length;
+                    // On cell
+                    const startX = pixelToColumn(x, 0);
+
+                    // Between cells
+                    const midX = pixelToColumn(x, 0.5);
+
+                    // Active drop-on zone (25%-75%)
+                    const leftX = pixelToColumn(x, 0.25);
+                    const rightX = pixelToColumn(x, 0.75) - 1;
+
+                    // Avoid dropping between grouped rows
+                    const insideGroup = isBoundaryInsideGroup(midX, columnGroupKeys);
+
+                    // Resolve drop-on vs drop-between
+                    const dropOn = (onColumnDrop && (insideGroup || leftX === rightX)) || !onColumnOrderChange;
+                    const dropX = dropOn ? startX : midX;
+
+                    // Avoid dropping selection on selection
+                    const insideSelection = dropX >= minX && dropX <= maxX + +!dropOn;
+
+                    if (!insideSelection && (dropOn || !insideGroup)) {
+                        const preceding = indices.filter((i) => i < dropX);
+                        const order = dropX - preceding.length;
                         dontChangeSelectionOnOrderChange ||
                             onSelectionChange?.([
                                 [order, minY],
-                                [order + indices.length - 1, maxY],
+                                [order + (dropOn ? 0 : indices.length - 1), maxY],
                             ]);
-                        onColumnOrderChange?.(indices, order);
+                        (dropOn ? onColumnDrop : onColumnOrderChange)?.(indices, order);
                         onInvalidateColumn?.(Math.min(minX, order));
                     }
                 }
                 if (rowDrag) {
                     const { indices } = rowDrag;
 
-                    const insideSelection = cellY >= minY && cellY <= maxY + 1;
-                    const insideGroup = selectedRowGroups?.has(rowGroupKeys(y));
-                    if (!insideSelection && !insideGroup) {
-                        const preceding = indices.filter((i) => i < cellY);
-                        const order = cellY - preceding.length;
+                    // On cell
+                    const startY = pixelToRow(y, 0);
+
+                    // Between cells
+                    const midY = pixelToRow(y, 0.5);
+
+                    // Active drop-on zone (25%-75%)
+                    const topY = pixelToRow(y, 0.25);
+                    const bottomY = pixelToRow(y, 0.75) - 1;
+
+                    // Avoid dropping between grouped rows
+                    const insideGroup = isBoundaryInsideGroup(midY, rowGroupKeys);
+
+                    // Resolve drop-on vs drop-between
+                    const dropOn = (onRowDrop && (insideGroup || topY === bottomY)) || !onRowOrderChange;
+                    const dropY = dropOn ? startY : midY;
+
+                    // Avoid dropping selection on selection
+                    const insideSelection = dropY >= minY && dropY <= maxY + +!dropOn;
+
+                    if (!insideSelection && (dropOn || !insideGroup)) {
+                        const preceding = indices.filter((i) => i < dropY);
+                        const order = dropY - preceding.length;
                         dontChangeSelectionOnOrderChange ||
                             onSelectionChange?.([
                                 [minX, order],
-                                [maxX, order + indices.length - 1],
+                                [maxX, order + (dropOn ? 0 : indices.length - 1)],
                             ]);
-                        onRowOrderChange?.(indices, order);
+                        (dropOn ? onRowDrop : onRowOrderChange)?.(indices, order);
                         onInvalidateRow?.(Math.min(minY, order));
                     }
                 }
@@ -689,7 +724,7 @@ export const useMouse = (
 
             if (!isDragging) {
                 if (!hideColumnHeaders && y < getIndentY()) {
-                    if (onColumnOrderChange) {
+                    if (onColumnOrderChange || onColumnDrop) {
                         // Trim off start/end so resize works there
                         const start = columnToPixel(minX) + SIZES.resizeZone;
                         const end = columnToPixel(maxX, 1) - SIZES.resizeZone;
@@ -724,7 +759,7 @@ export const useMouse = (
                 }
 
                 if (!hideRowHeaders && x < getIndentX()) {
-                    if (onRowOrderChange) {
+                    if (onRowOrderChange || onRowDrop) {
                         // Trim off start/end so resize works there
                         const start = rowToPixel(minY) + SIZES.resizeZone;
                         const end = rowToPixel(maxY, 1) - SIZES.resizeZone;
@@ -858,42 +893,117 @@ export const useMouse = (
 
             if (columnDrag || rowDrag) {
                 const [x, y] = xy;
+                
                 if (columnDrag) {
-                    const cellX = pixelToColumn(x, 0.5);
-                    const insideSelection = cellX >= minX && cellX <= maxX + 1;
-                    const insideGroup = isBoundaryInsideGroup(cellX, columnGroupKeys);
+                    // Extend selection range to grouped columns
+                    const [[minX], [maxX]] = expandSelectionToRowOrColumnGroups(
+                        selection,
+                        columnGroupKeys,
+                        selectedColumnGroups,
+                        0,
+                    );
+                    
+                    // On cell
+                    const startX = pixelToColumn(x, 0);
 
+                    // Between cells
+                    const midX = pixelToColumn(x, 0.5);
+
+                    // Active drop-on zone (25%-75%)
+                    const leftX = pixelToColumn(x, 0.25);
+                    const rightX = pixelToColumn(x, 0.75) - 1;
+
+                    // Avoid dropping between grouped columns
+                    const insideGroup = isBoundaryInsideGroup(midX, columnGroupKeys);
+
+                    // Resolve drop-on vs drop-between
+                    const dropOn = (onColumnDrop && (insideGroup || leftX === rightX) && startX < maxColumns) || !onColumnOrderChange;
+                    const dropX = dropOn ? startX : midX;
+
+                    // Resolve pixel offset for drag shadow
                     const { anchor, offset } = columnDrag;
                     const shift = x - anchor[0];
                     const [scrollOffset] = getDragScrollOffset(offset);
 
+                    // Avoid dropping selection on selection
+                    const insideSelection = dropX >= minX && dropX <= maxX + +!dropOn;
+
+                    let dropSelection: Rectangle = [
+                        [dropX, -1],
+                        [dropX, -1],
+                    ];
+                    if (dropOn) {
+                        const dropOnColumnGroup = new Set([columnGroupKeys(dropX)]);
+                        dropSelection = expandSelectionToRowOrColumnGroups(
+                            dropSelection,
+                            columnGroupKeys,
+                            dropOnColumnGroup,
+                            0,
+                        );
+                    }
+                                                  
                     onDragOffsetChange?.([shift + scrollOffset, 0]);
                     onDropTargetChange?.(
-                        insideSelection || insideGroup
-                            ? null
-                            : [
-                                  [cellX, -1],
-                                  [cellX, -1],
-                              ],
+                        !insideSelection && (dropOn || !insideGroup)
+                            ? dropSelection
+                            : null,
+                        dropOn
                     );
                 }
                 if (rowDrag) {
-                    const cellY = pixelToRow(y, 0.5);
-                    const insideSelection = cellY >= minY && cellY <= maxY + 1;
-                    const insideGroup = isBoundaryInsideGroup(cellY, rowGroupKeys);
+                    // Extend selection range to grouped columns
+                    const [[, minY], [, maxY]] = expandSelectionToRowOrColumnGroups(
+                        selection,
+                        rowGroupKeys,
+                        selectedRowGroups,
+                        1,
+                    );
 
+                    // On cell
+                    const startY = pixelToRow(y, 0);
+
+                    // Between cells
+                    const midY = pixelToRow(y, 0.5);
+
+                    // Active drop-on zone (25%-75%)
+                    const topY = pixelToRow(y, 0.25);
+                    const bottomY = pixelToRow(y, 0.75) - 1;
+
+                    // Avoid dropping between grouped rows
+                    const insideGroup = isBoundaryInsideGroup(midY, rowGroupKeys);
+
+                    // Resolve drop-on vs drop-between
+                    const dropOn = (onRowDrop && (insideGroup || topY === bottomY) && startY < maxRows) || !onRowOrderChange;
+                    const dropY = dropOn ? startY : midY;
+
+                    // Resolve pixel offset for drag shadow
                     const { anchor, offset } = rowDrag;
                     const shift = y - anchor[1];
                     const [, scrollOffset] = getDragScrollOffset(offset);
 
+                    // Avoid dropping selection on selection
+                    const insideSelection = dropY >= minY && dropY <= maxY + +!dropOn;
+
+                    let dropSelection: Rectangle = [
+                        [-1, dropY],
+                        [-1, dropY],
+                    ];
+                    if (dropOn) {
+                        const dropOnRowGroup = new Set([rowGroupKeys(dropY)]);
+                        dropSelection = expandSelectionToRowOrColumnGroups(
+                            dropSelection,
+                            rowGroupKeys,
+                            dropOnRowGroup,
+                            1,
+                        );
+                    }
+
                     onDragOffsetChange?.([0, shift + scrollOffset]);
                     onDropTargetChange?.(
-                        insideSelection || insideGroup
-                            ? null
-                            : [
-                                  [-1, cellY],
-                                  [-1, cellY],
-                              ],
+                        !insideSelection && (dropOn || !insideGroup)
+                            ? dropSelection
+                            : null,
+                        dropOn,
                     );
                 }
             }
@@ -913,6 +1023,10 @@ export const useMouse = (
             onInvalidateColumn,
             columnGroupKeys,
             rowGroupKeys,
+            selectedColumnGroups,
+            selectedRowGroups,
+            maxColumns,
+            maxRows,
         ],
     );
 

@@ -676,6 +676,103 @@ export function SheetBoxGrouped() {
     );
 }
 
+export function SheetBoxDropOn() {
+    const [data, setData] = useState(initialDataBig);
+
+    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
+        [],
+        [],
+        getColumnOrder,
+        getRowOrder,
+    );
+    
+    const onColumnDrop = () => {};
+    const onRowDrop = () => {};
+
+    //const groupKeys = [1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8];
+    const groupKeys = data.map((_, i) => i);
+    const orderedGroupKeys = groupKeys.map((_, i) => groupKeys[getRowOrder(i)]);
+
+    const alternatingGroups = orderedGroupKeys
+        .map((key, i) => key !== orderedGroupKeys[i - 1])
+        .reduce((list, start) => {
+            const last = list.at(-1) ?? 1;
+            const bit = start ? 1 - last : last;
+            list.push(bit);
+            return list;
+        }, []);
+
+    const onSelectionChanged = (x1, y1, x2, y2) => {};
+    const onRightClick = () => {};
+    const columnHeaders = ['A', 'B', 'C'];
+    const cellStyle = (x, y) => {
+        return {
+            fillColor: ['#ffffff', '#e0e0e0'][alternatingGroups[y]],
+        };
+    };
+
+    const rowGroupKeys = (y) => {
+        return orderedGroupKeys[y];
+    };
+    const editData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const displayData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const sourceData = (x, y) => {
+        return data?.[getRowOrder(y)]?.[getColumnOrder(x)];
+    };
+    const editKeys = (x, y) => {
+        return `${x},${y}`;
+    };
+
+    const onChange = (changes) => {
+        const newData = [...data];
+        for (const change of changes) {
+            const cx = getColumnOrder(change.x);
+            const cy = getRowOrder(change.y);
+            if (!newData[cy]) {
+                newData[cy] = [];
+            }
+            newData[cy][cx] = change.value;
+        }
+        setData(newData);
+    };
+
+    const isReadOnly = (x, y) => {
+        return false;
+    };
+
+    return (
+        <div className="sheet-box">
+            <Sheet
+                onSelectionChanged={onSelectionChanged}
+                onRightClick={onRightClick}
+                columnHeaders={columnHeaders}
+                cellStyle={cellStyle}
+                editData={editData}
+                displayData={displayData}
+                sourceData={sourceData}
+                cellWidth={cellWidth}
+                cellHeight={cellHeight}
+                onChange={onChange}
+                readOnly={isReadOnly}
+                onCellWidthChange={onCellWidthChange}
+                onCellHeightChange={onCellHeightChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onRowOrderChange={onRowOrderChange}
+                onColumnDrop={onColumnDrop}
+                onRowDrop={onRowDrop}
+                rowGroupKeys={rowGroupKeys}
+                editKeys={editKeys}
+                cacheLayout
+            />
+        </div>
+    );
+}
+
 export function SheetBoxVeryBigData() {
     const [loadingStatus, setLoadingStatus] = useState('initial');
     const [data, setData] = useState([]);

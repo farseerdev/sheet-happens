@@ -118,6 +118,8 @@ export type SheetProps = {
     onChange?: (changes: Array<Change>) => void;
     onColumnOrderChange?: (indices: number[], order: number) => void;
     onRowOrderChange?: (indices: number[], order: number) => void;
+    onColumnDrop?: (indices: number[], order: number) => void;
+    onRowDrop?: (indices: number[], order: number) => void;
     onCellWidthChange?: (indices: number[], values: number[]) => void;
     onCellHeightChange?: (indices: number[], values: number[]) => void;
     onScrollChange?: (visibleRows: number[], visibleColumns: number[]) => void;
@@ -152,6 +154,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const [dragOffset, setDragOffset] = useState<XY | null>(null);
     const [dragIndices, setDragIndices] = useState<[number[] | null, number[] | null]>([null, null]);
     const [dropTarget, setDropTarget] = useState<Rectangle | null>(null);
+    const [dropOn, setDropOn] = useState<boolean>(false);
     const [editCell, setEditCell] = useState<XY>(NO_CELL);
 
     const [focused, setFocused] = useState(!!props.autoFocus);
@@ -277,6 +280,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 setMaxScroll(maxScroll);
             },
         );
+    };
+
+    const changeDropTarget = (newSelection: Rectangle | null, dropOn = false) => {
+        setDropTarget(newSelection);
+        setDropOn(dropOn);
     };
 
     // Set selection with scrolling
@@ -454,7 +462,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         setKnobArea,
         setDragIndices,
         setDragOffset,
-        setDropTarget,
+        changeDropTarget,
         changeSelection,
         setFocused,
 
@@ -464,6 +472,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         props.onChange,
         props.onColumnOrderChange,
         props.onRowOrderChange,
+        props.onColumnDrop,
+        props.onRowDrop,
         props.onCellWidthChange,
         props.onCellHeightChange,
         props.onRightClick,
@@ -523,6 +533,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 dragIndices,
                 dragOffset,
                 dropTarget,
+                dropOn,
 
                 columnHeaders,
                 columnHeaderStyle,
