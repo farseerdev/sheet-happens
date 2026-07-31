@@ -128,8 +128,8 @@ export const orientSelection = (normalized: Rectangle, to: Rectangle): Rectangle
     const [ax, ay] = anchor;
     const [hx, hy] = head;
 
-    const swapX = ((hx - ax) || 1) * ((right - left) || 1) < 0;
-    const swapY = ((hy - ay) || 1) * ((bottom - top) || 1) < 0;
+    const swapX = (hx - ax || 1) * (right - left || 1) < 0;
+    const swapY = (hy - ay || 1) * (bottom - top || 1) < 0;
 
     return [
         [swapX ? right : left, swapY ? bottom : top],

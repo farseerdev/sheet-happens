@@ -81,7 +81,7 @@ export const renderSheet = (
     } = sheetStyle;
     const { columns, rows } = visibleCells;
     const { columnToPixel, rowToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
-    
+
     const allClickables: CellContentRender[] = [];
     const freeze: XY = [freezeColumns, freezeRows];
 
@@ -224,7 +224,7 @@ export const renderSheet = (
 
             const isSelfSelected = rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInRowGroup;
-            const isDropSelected = dropOn && dropTarget && (row >= dropTarget[0][1] && row <= dropTarget[1][1]);
+            const isDropSelected = dropOn && dropTarget && row >= dropTarget[0][1] && row <= dropTarget[1][1];
 
             const style = isSelfSelected
                 ? HEADER_SELECTED_STYLE
@@ -271,10 +271,14 @@ export const renderSheet = (
 
             const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInColumnGroup;
-            const isDropSelected = dropOn && dropTarget && (column >= dropTarget[0][0] && column <= dropTarget[1][0]);
+            const isDropSelected = dropOn && dropTarget && column >= dropTarget[0][0] && column <= dropTarget[1][0];
 
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
-            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isGroupSelected || isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
+            const selectedStyle = isSelected
+                ? HEADER_SELECTED_STYLE
+                : isGroupSelected || isDropSelected
+                  ? HEADER_GROUP_SELECTED_STYLE
+                  : NO_STYLE;
 
             const style = {
                 ...DEFAULT_COLUMN_HEADER_STYLE,
@@ -291,7 +295,16 @@ export const renderSheet = (
 
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top);
+            const clickables = renderCell(
+                context,
+                imageRenderer,
+                content,
+                style,
+                left,
+                top,
+                right - left,
+                bottom - top,
+            );
             if (clickables) allClickables.push(...clickables);
         }
 
@@ -299,15 +312,16 @@ export const renderSheet = (
         for (let i = 0; i < maxColumnLevels; ++i) {
             const firstFrozen = columns[0];
             const firstNonFrozen = freezeColumns ? columns[freezeColumns] : null;
-            
+
             const renderColumnGroup = (start: number, partial: number = start) => {
                 const span = columnHeaderSpans(start, i);
                 if (span <= 1) return;
-                
+
                 const end = start + span - 1;
 
                 const isActive = isInRange(start, minX, maxX) && isInRange(end, minX, maxX);
-                const isSelected = columnSelectionActive && !rowSelectionActive && isActive && minY < (i - maxColumnLevels);
+                const isSelected =
+                    columnSelectionActive && !rowSelectionActive && isActive && minY < i - maxColumnLevels;
 
                 const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
                 const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
@@ -322,7 +336,7 @@ export const renderSheet = (
                 const left = columnToPixel(partial);
                 let right = columnToPixel(end, 1);
                 if (start < freezeColumns && end > freezeColumns) {
-                    right = Math.max(right, columnToPixel(freezeColumns - 1, 1))
+                    right = Math.max(right, columnToPixel(freezeColumns - 1, 1));
                 }
 
                 const top = rowToAbsolute(i - maxColumnLevels - 1);
@@ -333,7 +347,19 @@ export const renderSheet = (
                 const clipLeft = columnToPixel(start);
                 const clipWidth = right - clipLeft;
 
-                const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top, clipLeft, undefined, clipWidth);
+                const clickables = renderCell(
+                    context,
+                    imageRenderer,
+                    content,
+                    style,
+                    left,
+                    top,
+                    right - left,
+                    bottom - top,
+                    clipLeft,
+                    undefined,
+                    clipWidth,
+                );
                 if (clickables) allClickables.push(...clickables);
             };
 
@@ -347,7 +373,8 @@ export const renderSheet = (
 
             // Handle partial first cell(s)
             renderPartial(firstFrozen);
-            if (firstNonFrozen && firstFrozen + columnHeaderSpans(firstFrozen, i) < firstNonFrozen) renderPartial(firstNonFrozen);
+            if (firstNonFrozen && firstFrozen + columnHeaderSpans(firstFrozen, i) < firstNonFrozen)
+                renderPartial(firstNonFrozen);
 
             // Draw full cells
             for (const column of columns) {
@@ -509,7 +536,7 @@ export const renderCell = (
     yCoord: number,
     cellWidth: number,
     cellHeight: number,
-    
+
     xClip: number = xCoord,
     yClip: number = yCoord,
     clipWidth: number = cellWidth,

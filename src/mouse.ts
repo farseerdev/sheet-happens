@@ -255,7 +255,7 @@ export const useMouse = (
 
                     const selectionTop = rowToAbsolute(minY);
 
-                    if ((isInRange(x, start, end) || selectedColumnGroups) && (y >= selectionTop)) {
+                    if ((isInRange(x, start, end) || selectedColumnGroups) && y >= selectionTop) {
                         for (const index of columns) {
                             const start = columnToPixel(index, 0);
                             const end = columnToPixel(index, 1);
@@ -443,12 +443,7 @@ export const useMouse = (
             }
 
             // Top-left corner click
-            if (
-                !hideColumnHeaders &&
-                !hideRowHeaders &&
-                y < getIndentY() &&
-                x < getIndentX()
-            ) {
+            if (!hideColumnHeaders && !hideRowHeaders && y < getIndentY() && x < getIndentX()) {
                 const lastCol = (Number.isFinite(maxColumns) ? maxColumns : MAX_SEARCHABLE_INDEX) - 1;
                 const lastRow = (Number.isFinite(maxRows) ? maxRows : MAX_SEARCHABLE_INDEX) - 1;
                 if (lastCol >= 0 && lastRow >= 0) {
@@ -497,11 +492,7 @@ export const useMouse = (
                 setDraggingColumnSelection(true);
                 anchor[1] = head[1];
 
-                [anchor, head] = expandSelectionToColumnSpans(
-                    [anchor, head],
-                    columnHeaderSpans,
-                    maxColumnLevels,
-                );
+                [anchor, head] = expandSelectionToColumnSpans([anchor, head], columnHeaderSpans, maxColumnLevels);
             }
 
             setDraggingSelection(true);
@@ -743,7 +734,7 @@ export const useMouse = (
 
                         const selectionTop = rowToAbsolute(minY);
 
-                        if ((isInRange(x, start, end) || selectedColumnGroups) && (y >= selectionTop)) {
+                        if ((isInRange(x, start, end) || selectedColumnGroups) && y >= selectionTop) {
                             for (const index of columns) {
                                 const start = columnToPixel(index);
                                 const end = columnToPixel(index, 1);
@@ -912,7 +903,7 @@ export const useMouse = (
 
             if (columnDrag || rowDrag) {
                 const [x, y] = xy;
-                
+
                 if (columnDrag) {
                     // Extend selection range to grouped columns
                     const [[minX], [maxX]] = expandSelectionToRowOrColumnGroups(
@@ -921,7 +912,7 @@ export const useMouse = (
                         selectedColumnGroups,
                         0,
                     );
-                    
+
                     // On cell
                     const startX = pixelToColumn(x, 0);
 
@@ -933,13 +924,14 @@ export const useMouse = (
                     const rightX = pixelToColumn(x, 0.75) - 1;
 
                     // Avoid dropping between grouped columns
-                    const insideGroup = (
+                    const insideGroup =
                         isBoundaryInsideGroup(midX, columnGroupKeys) ||
-                        (minY < -1 && columnHeaderSpans(midX, maxColumnLevels + minY + 1) === 0)
-                    );
+                        (minY < -1 && columnHeaderSpans(midX, maxColumnLevels + minY + 1) === 0);
 
                     // Resolve drop-on vs drop-between
-                    const dropOn = (onColumnDrop && (insideGroup || leftX === rightX) && startX < maxColumns) || !onColumnOrderChange;
+                    const dropOn =
+                        (onColumnDrop && (insideGroup || leftX === rightX) && startX < maxColumns) ||
+                        !onColumnOrderChange;
                     const dropX = dropOn ? startX : midX;
 
                     // Resolve pixel offset for drag shadow
@@ -963,14 +955,9 @@ export const useMouse = (
                             0,
                         );
                     }
-                                                  
+
                     onDragOffsetChange?.([shift + scrollOffset, 0]);
-                    onDropTargetChange?.(
-                        !insideSelection && (dropOn || !insideGroup)
-                            ? dropSelection
-                            : null,
-                        dropOn
-                    );
+                    onDropTargetChange?.(!insideSelection && (dropOn || !insideGroup) ? dropSelection : null, dropOn);
                 }
                 if (rowDrag) {
                     // Extend selection range to grouped columns
@@ -995,7 +982,8 @@ export const useMouse = (
                     const insideGroup = isBoundaryInsideGroup(midY, rowGroupKeys);
 
                     // Resolve drop-on vs drop-between
-                    const dropOn = (onRowDrop && (insideGroup || topY === bottomY) && startY < maxRows) || !onRowOrderChange;
+                    const dropOn =
+                        (onRowDrop && (insideGroup || topY === bottomY) && startY < maxRows) || !onRowOrderChange;
                     const dropY = dropOn ? startY : midY;
 
                     // Resolve pixel offset for drag shadow
@@ -1021,12 +1009,7 @@ export const useMouse = (
                     }
 
                     onDragOffsetChange?.([0, shift + scrollOffset]);
-                    onDropTargetChange?.(
-                        !insideSelection && (dropOn || !insideGroup)
-                            ? dropSelection
-                            : null,
-                        dropOn,
-                    );
+                    onDropTargetChange?.(!insideSelection && (dropOn || !insideGroup) ? dropSelection : null, dropOn);
                 }
             }
         },

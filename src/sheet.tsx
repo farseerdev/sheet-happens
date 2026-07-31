@@ -42,13 +42,7 @@ import {
     ORIGIN,
     ONE_ONE,
 } from './constants';
-import {
-    validateSelection,
-    isSameRectangle,
-    mapSelectionColumns,
-    mapSelectionRows,
-    addXY,
-} from './coordinate';
+import { validateSelection, isSameRectangle, mapSelectionColumns, mapSelectionRows, addXY } from './coordinate';
 import { useImageRenderer } from './image';
 import { useMouse } from './mouse';
 import { useKeyboard } from './keyboard';
@@ -78,9 +72,9 @@ export type SheetRenderProps = {
 export type SheetProps = {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
-    columnHeaderSpans?: CellProperty<number>,
-    columnHeaderGroups?: CellPropertyStyled<CellContentType>,
-    columnHeaderGroupStyle?: CellProperty<Style>,
+    columnHeaderSpans?: CellProperty<number>;
+    columnHeaderGroups?: CellPropertyStyled<CellContentType>;
+    columnHeaderGroupStyle?: CellProperty<Style>;
     columnHeaders?: RowOrColumnPropertyStyled<CellContentType>;
     columnHeaderStyle?: RowOrColumnProperty<Style>;
     cellStyle?: CellProperty<Style>;
@@ -188,7 +182,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     );
 
     const columnHeaderSpans = useMemo(() => createCellProp(props.columnHeaderSpans, 1), [props.columnHeaderSpans]);
-    const columnHeaderGroups = useMemo(() => createCellStyledProp(props.columnHeaderGroups, null), [props.columnHeaderGroups]);
+    const columnHeaderGroups = useMemo(
+        () => createCellStyledProp(props.columnHeaderGroups, null),
+        [props.columnHeaderGroups],
+    );
     const columnHeaderGroupStyle = useMemo(
         () => createCellProp(props.columnHeaderGroupStyle, {}),
         [props.columnHeaderGroupStyle],
@@ -239,13 +236,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // Cached either per width/height pair, or permanently with invalidation on resize/reorder.
     const shouldCacheLayout = (props.cacheLayout ?? false) !== false;
     const layoutVersion = typeof props.cacheLayout === 'number' ? props.cacheLayout : 0;
-    const columnLayout = useMemo(
-        () => makeLayoutCache(cellWidth, 1),
-        [shouldCacheLayout ? layoutVersion : cellWidth]
-    );
+    const columnLayout = useMemo(() => makeLayoutCache(cellWidth, 1), [shouldCacheLayout ? layoutVersion : cellWidth]);
     const rowLayout = useMemo(
         () => makeLayoutCache(cellHeight, 1 + maxColumnLevels),
-        [shouldCacheLayout ? layoutVersion : cellHeight, maxColumnLevels]
+        [shouldCacheLayout ? layoutVersion : cellHeight, maxColumnLevels],
     );
     useMemo(() => {
         if (!shouldCacheLayout) return;
@@ -359,7 +353,12 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             return;
         }
 
-        const hasCustomComponent = !!props.inputComponent?.(cellX, cellY, { ...inputProps, onChange: () => {} }, () => {});
+        const hasCustomComponent = !!props.inputComponent?.(
+            cellX,
+            cellY,
+            { ...inputProps, onChange: () => {} },
+            () => {},
+        );
 
         const editValue = editData(cellX, cellY) ?? '';
         const sourceValue = sourceData(cellX, cellY) ?? null;
@@ -457,7 +456,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editData,
         sourceData,
         cellReadOnly,
-        
+
         maxColumnLevels,
         maxColumns,
         maxRows,
@@ -470,7 +469,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         cellLayout,
         visibleCells,
         sheetStyle,
-        
+
         columnHeaderSpans,
 
         columnGroupKeys,

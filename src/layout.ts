@@ -24,7 +24,7 @@ export const makeCellLayout = (
 
     const getIndentX = () => columns.getStart(0);
     const getIndentY = () => rows.getStart(0);
-    
+
     // Origin for cell, frozen or relative
     const getBaseOriginFor = (index: number, freeze: number, offset: number) => {
         return index < freeze ? 0 : offset + freeze;
@@ -193,7 +193,7 @@ export const makeCellLayout = (
 export const makeLayoutCache = (sizer: (index: number) => number, negative: number = 1): LayoutCache => {
     const offsets = makeIntMap(INITIAL_SIZE);
     const sizes = makeIntMap(INITIAL_SIZE);
-    
+
     let version = 0;
 
     // Cache size lookup directly

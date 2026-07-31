@@ -62,12 +62,12 @@ export const expandSelectionToColumnSpans = (
 
     const start = first[0];
     const end = second[0];
-    
+
     const row = maxColumnLevels + Math.min(first[1], second[1]) + 1;
 
     const startIndex = scanColumnSpan(spans, row, start, -1);
     const endIndex = scanColumnSpan(spans, row, end, 1);
-    
+
     const expanded: Rectangle = [first.slice() as XY, second.slice() as XY];
     expanded[0][0] = startIndex;
     expanded[1][0] = endIndex;
@@ -76,13 +76,8 @@ export const expandSelectionToColumnSpans = (
     return oriented;
 };
 
-const scanColumnSpan = (
-    spans: CellPropertyFunction<number>,
-    row: number,
-    column: number,
-    direction: number,
-) => {
-    let i = (direction > 0 ? 1 : 0);
+const scanColumnSpan = (spans: CellPropertyFunction<number>, row: number, column: number, direction: number) => {
+    let i = direction > 0 ? 1 : 0;
     const limit = direction > 0 ? LIMIT : Math.min(LIMIT, column + 1);
     for (; i < limit; i++) {
         const span = spans(column + i * direction, row);
