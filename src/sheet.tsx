@@ -16,7 +16,6 @@ import {
     Rectangle,
     CellContentRender,
     CellContentType,
-    CellGroupContentType,
     CellLayout,
     CellProperty,
     CellPropertyStyled,
@@ -79,7 +78,8 @@ export type SheetRenderProps = {
 export type SheetProps = {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
-    columnHeaderGroups?: CellPropertyStyled<CellGroupContentType | null>,
+    columnHeaderSpans?: CellProperty<number>,
+    columnHeaderGroups?: CellPropertyStyled<CellContentType>,
     columnHeaderGroupStyle?: CellProperty<Style>,
     columnHeaders?: RowOrColumnPropertyStyled<CellContentType>;
     columnHeaderStyle?: RowOrColumnProperty<Style>;
@@ -187,6 +187,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         [props.columnHeaderStyle],
     );
 
+    const columnHeaderSpans = useMemo(() => createCellProp(props.columnHeaderSpans, 1), [props.columnHeaderSpans]);
     const columnHeaderGroups = useMemo(() => createCellStyledProp(props.columnHeaderGroups, null), [props.columnHeaderGroups]);
     const columnHeaderGroupStyle = useMemo(
         () => createCellProp(props.columnHeaderGroupStyle, {}),
@@ -239,12 +240,12 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const shouldCacheLayout = (props.cacheLayout ?? false) !== false;
     const layoutVersion = typeof props.cacheLayout === 'number' ? props.cacheLayout : 0;
     const columnLayout = useMemo(
-        () => makeLayoutCache(cellWidth, 1 + maxColumnLevels),
-        [shouldCacheLayout ? layoutVersion : cellWidth, maxColumnLevels]
+        () => makeLayoutCache(cellWidth, 1),
+        [shouldCacheLayout ? layoutVersion : cellWidth]
     );
     const rowLayout = useMemo(
-        () => makeLayoutCache(cellHeight, 1),
-        [shouldCacheLayout ? layoutVersion : cellHeight]
+        () => makeLayoutCache(cellHeight, 1 + maxColumnLevels),
+        [shouldCacheLayout ? layoutVersion : cellHeight, maxColumnLevels]
     );
     useMemo(() => {
         if (!shouldCacheLayout) return;
@@ -556,6 +557,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 dropTarget,
                 dropOn,
 
+                columnHeaderSpans,
                 columnHeaderGroups,
                 columnHeaderGroupStyle,
                 columnHeaders,

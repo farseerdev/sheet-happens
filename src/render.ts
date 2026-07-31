@@ -1,7 +1,6 @@
 import {
     CellContentRender,
     CellContentType,
-    CellGroupContentType,
     CellLayout,
     CellPropertyFunction,
     CellPropertyStyledFunction,
@@ -51,7 +50,8 @@ export const renderSheet = (
     dropTarget: Rectangle | null,
     dropOn: boolean,
 
-    columnHeaderGroups: CellPropertyStyledFunction<CellGroupContentType | null>,
+    columnHeaderSpans: CellPropertyFunction<number>,
+    columnHeaderGroups: CellPropertyStyledFunction<CellContentType>,
     columnHeaderGroupStyle: CellPropertyFunction<Style>,
 
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
@@ -67,10 +67,6 @@ export const renderSheet = (
     dataOffset: XY,
     maxColumnLevels: number,
 ): CellContentRender[] => {
-    maxColumnLevels; // TODO
-    columnHeaderGroups; // TODO
-    columnHeaderGroupStyle; // TODO
-    
     const { canvas } = context;
     const { width, height } = canvas;
     const {
@@ -136,8 +132,10 @@ export const renderSheet = (
         // Row header selection shadow
         if (selectionActive && !columnSelectionActive) {
             const [[, top], [, bottom]] = selected;
+            const left = columnToAbsolute(-1);
+            const right = columnToAbsolute(0);
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(0, top, indentX, bottom - top);
+            context.fillRect(left, top, right - left, bottom - top);
         }
     }
 
@@ -149,8 +147,10 @@ export const renderSheet = (
         // Column header selection shadow
         if (selectionActive && !rowSelectionActive) {
             const [[left], [right]] = selected;
+            const top = rowToAbsolute(-1);
+            const bottom = rowToAbsolute(0);
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(left, 0, right - left, indentY);
+            context.fillRect(left, top, right - left, bottom - top);
         }
     }
 
@@ -161,16 +161,16 @@ export const renderSheet = (
     const gridRight = hideGridlines ? indentX : context.canvas.width;
     const gridBottom = hideGridlines ? indentY : context.canvas.height;
 
-    const drawGridLineX = (x: number, height: number) => {
+    const drawGridLineX = (x: number, height: number, y: number = 0) => {
         context.beginPath();
-        context.moveTo(x - 0.5, 0);
+        context.moveTo(x - 0.5, y);
         context.lineTo(x - 0.5, height);
         context.stroke();
     };
 
-    const drawGridLineY = (y: number, width: number) => {
+    const drawGridLineY = (y: number, width: number, x: number = 0) => {
         context.beginPath();
-        context.moveTo(0, y - 0.5);
+        context.moveTo(x, y - 0.5);
         context.lineTo(width, y - 0.5);
         context.stroke();
     };
@@ -179,8 +179,23 @@ export const renderSheet = (
     drawGridLineY(indentY, context.canvas.width);
 
     for (const column of columns) {
+        // Scan to find top of grid line
+        let y = 0;
+        for (let i = maxColumnLevels - 1; i >= 0; --i) {
+            const span = columnHeaderSpans(column + 1, i);
+            if (span === 0) {
+                y = rowToAbsolute(i - maxColumnLevels);
+                break;
+            }
+        }
+
         const right = columnToPixel(column, 1);
-        drawGridLineX(right, gridBottom);
+        drawGridLineX(right, gridBottom, y);
+    }
+
+    for (let i = 0; i < maxColumnLevels; ++i) {
+        const bottom = rowToAbsolute(i - maxColumnLevels, 1);
+        drawGridLineY(bottom, gridRight, indentX);
     }
 
     for (const row of rows) {
@@ -224,14 +239,17 @@ export const renderSheet = (
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
+            const left = columnToAbsolute(-1);
+            const right = columnToAbsolute(0);
+
             const clickables = renderCell(
                 context,
                 imageRenderer,
                 content,
                 resolvedStyle,
-                0,
+                left,
                 top,
-                indentX,
+                right - left,
                 bottom - top,
             );
             if (clickables) allClickables.push(...clickables);
@@ -242,6 +260,7 @@ export const renderSheet = (
     if (!hideColumnHeaders) {
         context.textBaseline = 'middle';
 
+        // Individual columns
         for (const column of columns) {
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
@@ -250,10 +269,11 @@ export const renderSheet = (
             const groupKey = columnGroupKeys(column);
             const isInColumnGroup = groupKey != null && selectedColumnGroups?.has(groupKey);
 
-            const isSelected = columnSelectionActive && !rowSelectionActive && (isActive || isInColumnGroup);
+            const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
+            const isGroupSelected = rowSelectionActive && isInColumnGroup;
             const isDropSelected = dropOn && dropTarget && (column >= dropTarget[0][0] && column <= dropTarget[1][0]);
 
-            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
+            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isGroupSelected || isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
 
             const style = {
@@ -266,10 +286,43 @@ export const renderSheet = (
             const left = columnToPixel(column);
             const right = columnToPixel(column, 1);
 
+            const top = rowToAbsolute(-1);
+            const bottom = rowToAbsolute(0);
+
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            const clickables = renderCell(context, imageRenderer, content, style, left, 0, right - left, indentY);
+            const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top);
             if (clickables) allClickables.push(...clickables);
+        }
+
+        // Column groups
+        for (let i = 0; i < maxColumnLevels; ++i) {
+            for (const column of columns) {
+                const span = columnHeaderSpans(column, i);
+                if (span <= 1) continue;
+
+                // Column selection mode
+                // (this is separate from the header selection shadow because we only want to highlight visible headers)
+                const isActive = isInRange(column, minX, maxX) && isInRange(column + span - 1, minX, maxX);
+                const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+
+                const style = {
+                    ...DEFAULT_COLUMN_HEADER_STYLE,
+                    ...columnHeaderGroupStyle(column, i),
+                    ...activeStyle,
+                };
+
+                const left = columnToPixel(column);
+                const right = columnToPixel(column + span - 1, 1);
+
+                const top = rowToAbsolute(i - maxColumnLevels - 1);
+                const bottom = rowToAbsolute(i - maxColumnLevels);
+
+                const content = columnHeaderGroups(column, i, style) ?? excelHeaderString(column + 1);
+
+                const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top);
+                if (clickables) allClickables.push(...clickables);
+            }
         }
     }
 
@@ -330,16 +383,18 @@ export const renderSheet = (
 
         if (dragColumns) {
             for (const column of dragColumns) {
+                const top = rowToAbsolute(-1);
                 const left = columnToPixel(column);
                 const right = columnToPixel(column, 1);
-                context.fillRect(left + shiftX, 0, right - left, height);
+                context.fillRect(left + shiftX, top, right - left, height);
             }
         }
         if (dragRows) {
             for (const row of dragRows) {
+                const left = columnToAbsolute(-1);
                 const top = rowToPixel(row);
                 const bottom = rowToPixel(row, 1);
-                context.fillRect(0, top + shiftY, width, bottom - top);
+                context.fillRect(left, top + shiftY, width, bottom - top);
             }
         }
     }

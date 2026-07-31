@@ -16,6 +16,7 @@ import {
     SheetBoxStyle,
     SheetBoxBasic,
     SheetBoxRender,
+    SheetBoxColumnGroups,
     SheetBoxGrouped,
     SheetBoxDropOn,
     SheetBoxFormatting,
@@ -82,6 +83,15 @@ const App = () => {
                         Sheet Happens uses different datasets for display and edit so you can apply different formatting
                         when displaying the cell and editing the cell.
                     </p>
+                </div>
+            </Wrap>
+            <Wrap>
+                <div className="box">
+                    <SheetBoxColumnGroups />
+                </div>
+                <div className="box">
+                    <h3>Column groups</h3>
+                    <p>You can add grouped headers to create column hierarchy.</p>
                 </div>
             </Wrap>
             <Wrap>
