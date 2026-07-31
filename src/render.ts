@@ -273,8 +273,8 @@ export const renderSheet = (
             const isGroupSelected = rowSelectionActive && isInColumnGroup;
             const isDropSelected = dropOn && dropTarget && (column >= dropTarget[0][0] && column <= dropTarget[1][0]);
 
-            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isGroupSelected || isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isGroupSelected || isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
 
             const style = {
                 ...DEFAULT_COLUMN_HEADER_STYLE,
@@ -295,33 +295,63 @@ export const renderSheet = (
             if (clickables) allClickables.push(...clickables);
         }
 
-        // Column groups
+        // Column header groups
         for (let i = 0; i < maxColumnLevels; ++i) {
-            for (const column of columns) {
-                const span = columnHeaderSpans(column, i);
-                if (span <= 1) continue;
+            const firstFrozen = columns[0];
+            const firstNonFrozen = freezeColumns ? columns[freezeColumns] : null;
+            
+            const renderColumnGroup = (start: number, partial: number = start) => {
+                const span = columnHeaderSpans(start, i);
+                if (span <= 1) return;
+                
+                const end = start + span - 1;
 
-                // Column selection mode
-                // (this is separate from the header selection shadow because we only want to highlight visible headers)
-                const isActive = isInRange(column, minX, maxX) && isInRange(column + span - 1, minX, maxX);
+                const isActive = isInRange(start, minX, maxX) && isInRange(end, minX, maxX);
+                const isSelected = columnSelectionActive && !rowSelectionActive && isActive && minY < (i - maxColumnLevels);
+
                 const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+                const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
 
                 const style = {
                     ...DEFAULT_COLUMN_HEADER_STYLE,
-                    ...columnHeaderGroupStyle(column, i),
+                    ...columnHeaderGroupStyle(start, i),
                     ...activeStyle,
+                    ...selectedStyle,
                 };
 
-                const left = columnToPixel(column);
-                const right = columnToPixel(column + span - 1, 1);
+                const left = columnToPixel(partial);
+                let right = columnToPixel(end, 1);
+                if (start < freezeColumns && end > freezeColumns) {
+                    right = Math.max(right, columnToPixel(freezeColumns - 1, 1))
+                }
 
                 const top = rowToAbsolute(i - maxColumnLevels - 1);
                 const bottom = rowToAbsolute(i - maxColumnLevels);
 
-                const content = columnHeaderGroups(column, i, style) ?? excelHeaderString(column + 1);
+                const content = columnHeaderGroups(start, i, style) ?? excelHeaderString(start + 1);
 
-                const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top);
+                const clipLeft = columnToPixel(start);
+                const clipWidth = right - clipLeft;
+
+                const clickables = renderCell(context, imageRenderer, content, style, left, top, right - left, bottom - top, clipLeft, undefined, clipWidth);
                 if (clickables) allClickables.push(...clickables);
+            };
+
+            const renderPartial = (column: number) => {
+                let start = column;
+                while (columnHeaderSpans(start, i) === 0) start--;
+                if (start >= 0 && start !== column) {
+                    renderColumnGroup(start, column);
+                }
+            };
+
+            // Handle partial first cell(s)
+            renderPartial(firstFrozen);
+            if (firstNonFrozen && firstFrozen + columnHeaderSpans(firstFrozen, i) < firstNonFrozen) renderPartial(firstNonFrozen);
+
+            // Draw full cells
+            for (const column of columns) {
+                renderColumnGroup(column);
             }
         }
     }
@@ -383,7 +413,7 @@ export const renderSheet = (
 
         if (dragColumns) {
             for (const column of dragColumns) {
-                const top = rowToAbsolute(-1);
+                const top = rowToAbsolute(minY);
                 const left = columnToPixel(column);
                 const right = columnToPixel(column, 1);
                 context.fillRect(left + shiftX, top, right - left, height);
@@ -391,7 +421,7 @@ export const renderSheet = (
         }
         if (dragRows) {
             for (const row of dragRows) {
-                const left = columnToAbsolute(-1);
+                const left = columnToAbsolute(minX);
                 const top = rowToPixel(row);
                 const bottom = rowToPixel(row, 1);
                 context.fillRect(left, top + shiftY, width, bottom - top);
@@ -479,6 +509,11 @@ export const renderCell = (
     yCoord: number,
     cellWidth: number,
     cellHeight: number,
+    
+    xClip: number = xCoord,
+    yClip: number = yCoord,
+    clipWidth: number = cellWidth,
+    clipHeight: number = cellHeight,
 ): CellContentRender[] | null => {
     if (cellContent === null) {
         return null;
@@ -502,13 +537,15 @@ export const renderCell = (
     const middleY = roundDpi(yCoord + marginTop + lineHeight / 2);
 
     if (style.backgroundColor !== '') {
-        context.fillStyle = style.backgroundColor;
-        context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
-        context.fillStyle = style.color;
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
+            context.fillStyle = style.backgroundColor;
+            context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
+            context.fillStyle = style.color;
+        });
     }
 
     if (typeof cellContent === 'string' || typeof cellContent === 'number') {
-        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
             wrapText(context, cellContent, style, undefined, innerX, middleY, innerWidth, innerHeight, fillText);
         });
         return null;
@@ -517,7 +554,7 @@ export const renderCell = (
         const renderedAbsolute = resolveCellAbsoluteLayout(cellContent, innerX, innerY, innerWidth, innerHeight);
         const rendered = [...renderedFlex, ...renderedAbsolute];
 
-        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
             for (const [i, render] of rendered.entries()) {
                 const { box, item } = render;
 
@@ -532,11 +569,11 @@ export const renderCell = (
                     context.strokeRect(left + 0.5, top + 0.5, width - 0.5, height - 0.5);
                 }
 
-                const clipLeft = i > 0 ? left : xCoord;
-                const clipRight = i < rendered.length ? right : yCoord + cellWidth;
-                const clipWidth = clipRight - clipLeft;
+                const clipLeft = i > 0 ? left : xClip;
+                const clipRight = i < rendered.length ? right : xClip + clipWidth;
+                const innerClipWidth = clipRight - clipLeft;
 
-                clipToBox(context, clipLeft, yCoord, clipWidth, cellHeight, () => {
+                clipToBox(context, clipLeft, yClip, innerClipWidth, clipHeight, () => {
                     if (item.display === 'inline') {
                         const { text } = item;
                         if (text != null) {

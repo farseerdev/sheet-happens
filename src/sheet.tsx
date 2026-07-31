@@ -470,6 +470,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         cellLayout,
         visibleCells,
         sheetStyle,
+        
+        columnHeaderSpans,
 
         columnGroupKeys,
         rowGroupKeys,

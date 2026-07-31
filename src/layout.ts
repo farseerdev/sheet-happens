@@ -85,7 +85,6 @@ export const makeCellLayout = (
         const { getStart, lookupIndex } = layout;
 
         const indent = getStart(0);
-        if (pixel < indent) return 0;
 
         const frozen = getStart(freeze);
         if (pixel < frozen) {

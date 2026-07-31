@@ -496,7 +496,7 @@ export function SheetBoxColumnGroups() {
     ];
 
     const maxColumns = columnHeaders.length;
-    const maxColumnLevels = 2;
+    const maxColumnLevels = columnHeaderSpans.length;
 
     const editData = (x, y) => {
         return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
@@ -551,6 +551,11 @@ export function SheetBoxColumnGroups() {
                 maxColumns={maxColumns}
                 maxColumnLevels={maxColumnLevels}
                 cacheLayout
+
+                sheetStyle={{
+                    freezeColumns: 2,
+                    freezeRows: 0,
+                }}
             />
         </div>
     );
