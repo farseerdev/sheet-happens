@@ -285,8 +285,8 @@ export const useMouse = (
                                 let dragIndices = indices;
                                 if (selectedColumnGroups) {
                                     const clickSelection: Rectangle = [
-                                        [index, -1],
-                                        [index, -1],
+                                        [index, minY],
+                                        [index, minY],
                                     ];
                                     const [[left], [right]] = expandSelectionToRowOrColumnGroups(
                                         clickSelection,
@@ -382,8 +382,8 @@ export const useMouse = (
                                 let dragIndices = indices;
                                 if (selectedRowGroups) {
                                     const clickSelection: Rectangle = [
-                                        [-1, index],
-                                        [-1, index],
+                                        [minX, index],
+                                        [minX, index],
                                     ];
                                     const [[, top], [, bottom]] = expandSelectionToRowOrColumnGroups(
                                         clickSelection,
@@ -417,7 +417,10 @@ export const useMouse = (
 
                 // Resize rows
                 if (onCellHeightChange) {
-                    for (const index of [-1, ...rows]) {
+                    const indices = [...rows];
+                    for (let i = 0; i <= maxColumnLevels; ++i) indices.push(-i - 1);
+
+                    for (const index of indices) {
                         const edge = rowToPixel(index, 1);
 
                         if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
@@ -788,7 +791,9 @@ export const useMouse = (
                         }
                     }
                     if (onCellHeightChange) {
-                        for (const index of [-1, ...rows]) {
+                        const indices = [...rows];
+                        for (let i = 0; i <= maxColumnLevels; ++i) indices.push(-i - 1);
+                        for (const index of indices) {
                             const edge = rowToPixel(index, 1);
                             if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
                                 window.document.body.style.cursor = 'row-resize';
@@ -1109,8 +1114,8 @@ export const useMouse = (
             if (onCellHeightChange && x < indentX) {
                 const autosized = [];
 
-                for (const index of [-1, ...rows]) {
-                    const edge = index < 0 ? rowToPixel(0) : rowToPixel(index, 1);
+                for (const index of rows) {
+                    const edge = rowToPixel(index, 1);
 
                     if (Math.abs(edge - y) < SIZES.resizeZone && canSizeRow(index)) {
                         const [[, minY], [, maxY]] = normalizeSelection(selection);
