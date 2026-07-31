@@ -49,6 +49,8 @@ export const useMouse = (
     editData: CellPropertyFunction<string>,
     sourceData: CellPropertyFunction<object | string | number | null>,
     cellReadOnly: CellPropertyFunction<boolean | null>,
+
+    maxColumnLevels: number,
     maxColumns: number,
     maxRows: number,
 
@@ -93,6 +95,8 @@ export const useMouse = (
     dontCommitEditOnSelectionChange?: boolean,
     dontChangeSelectionOnOrderChange?: boolean,
 ) => {
+    maxColumnLevels; // TODO
+    
     const [columnResize, setColumnResize] = useState<DragOp | null>(null);
     const [rowResize, setRowResize] = useState<DragOp | null>(null);
     const [columnDrag, setColumnDrag] = useState<DragOp | null>(null);

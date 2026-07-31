@@ -4,7 +4,7 @@ import { MouseEvent, PointerEvent, CSSProperties } from 'react';
 // Props
 ////////////////////////////////////////////////////////////////////////////////
 
-export type PropTypes = string | number | boolean | Style | CellContentType;
+export type PropTypes = string | number | boolean | Style | CellContentType | CellGroupContentType;
 
 export type CellPropertyStyledFunction<T extends PropTypes> = (x: number, y: number, style: Required<Style>) => T;
 export type RowOrColumnPropertyStyledFunction<T extends PropTypes> = (
@@ -24,6 +24,11 @@ export type RowOrColumnProperty<T extends PropTypes> = T | T[] | RowOrColumnProp
 ////////////////////////////////////////////////////////////////////////////////
 // Content
 ////////////////////////////////////////////////////////////////////////////////
+
+export type CellGroupContentType = {
+    content: CellContentType,
+    span: number,
+};
 
 export type CellContentType = null | number | string | CellContentContainer;
 

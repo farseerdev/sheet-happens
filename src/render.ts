@@ -1,5 +1,7 @@
 import {
     CellContentRender,
+    CellContentType,
+    CellGroupContentType,
     CellLayout,
     CellPropertyFunction,
     CellPropertyStyledFunction,
@@ -10,7 +12,6 @@ import {
     Rectangle,
     Selection,
     Style,
-    CellContentType,
     VisibleLayout,
     XY,
 } from './types';
@@ -50,8 +51,12 @@ export const renderSheet = (
     dropTarget: Rectangle | null,
     dropOn: boolean,
 
+    columnHeaderGroups: CellPropertyStyledFunction<CellGroupContentType | null>,
+    columnHeaderGroupStyle: CellPropertyFunction<Style>,
+
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
+
     displayData: CellPropertyStyledFunction<CellContentType>,
 
     columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
@@ -60,7 +65,12 @@ export const renderSheet = (
     selectedRowGroups: Set<string | number | null> | null,
 
     dataOffset: XY,
+    maxColumnLevels: number,
 ): CellContentRender[] => {
+    maxColumnLevels; // TODO
+    columnHeaderGroups; // TODO
+    columnHeaderGroupStyle; // TODO
+    
     const { canvas } = context;
     const { width, height } = canvas;
     const {
@@ -75,7 +85,7 @@ export const renderSheet = (
     } = sheetStyle;
     const { columns, rows } = visibleCells;
     const { columnToPixel, rowToPixel, columnToAbsolute, rowToAbsolute } = cellLayout;
-
+    
     const allClickables: CellContentRender[] = [];
     const freeze: XY = [freezeColumns, freezeRows];
 
