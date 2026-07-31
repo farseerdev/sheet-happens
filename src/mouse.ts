@@ -819,7 +819,7 @@ export const useMouse = (
                     const newWidth = Math.round(
                         Math.max(size + x - anchor[0] + scrollOffset, SIZES.minimumWidth * indices.length),
                     );
-                    onInvalidateColumn?.(indices[0] - 1);
+                    onInvalidateColumn?.(indices[0]);
                     onCellWidthChange(
                         indices,
                         indices.map((_) => Math.round(newWidth / indices.length)),
@@ -835,7 +835,7 @@ export const useMouse = (
                     const newHeight = Math.round(
                         Math.max(size + y - anchor[1] + scrollOffset, SIZES.minimumHeight * indices.length),
                     );
-                    onInvalidateRow?.(indices[0] - 1);
+                    onInvalidateRow?.(indices[0]);
                     onCellHeightChange(
                         indices,
                         indices.map((_) => newHeight / indices.length),
