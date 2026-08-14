@@ -471,6 +471,96 @@ export function SheetBoxFormatting() {
     );
 }
 
+export function SheetBoxColumnGroups() {
+    const [data, setData] = useState(initialDataBig);
+
+    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
+        [],
+        [],
+        getColumnOrder,
+        getRowOrder,
+    );
+
+    const onSelectionChanged = (x1, y1, x2, y2) => {};
+    const onRightClick = () => {};
+
+    const columnHeaders = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'];
+    const columnHeaderSpans = [
+        [4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0],
+        [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
+    ];
+    const columnHeaderGroups = [
+        ['A', null, null, null, 'B', null, null, null, 'C', null, null, null],
+        ['A1-2', null, 'A3-4', null, 'B1-2', null, 'B3-4', null, 'B1-2', null, 'B3-4', null],
+    ];
+
+    const maxColumns = columnHeaders.length;
+    const maxColumnLevels = columnHeaderSpans.length;
+
+    const editData = (x, y) => {
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+    };
+    const displayData = (x, y) => {
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+    };
+    const sourceData = (x, y) => {
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+    };
+    const editKeys = (x, y) => {
+        return `${x},${y}`;
+    };
+
+    const onChange = (changes) => {
+        const newData = [...data];
+        for (const change of changes) {
+            const cx = getColumnOrder(change.x);
+            const cy = getRowOrder(change.y);
+            if (!newData[cy]) {
+                newData[cy] = [];
+            }
+            newData[cy][cx] = change.value;
+        }
+        setData(newData);
+    };
+
+    const isReadOnly = (x, y) => {
+        return false;
+    };
+
+    return (
+        <div className="sheet-box">
+            <Sheet
+                onSelectionChanged={onSelectionChanged}
+                onRightClick={onRightClick}
+                columnHeaderSpans={columnHeaderSpans}
+                columnHeaderGroups={columnHeaderGroups}
+                columnHeaders={columnHeaders}
+                editData={editData}
+                displayData={displayData}
+                sourceData={sourceData}
+                cellWidth={cellWidth}
+                cellHeight={cellHeight}
+                onChange={onChange}
+                readOnly={isReadOnly}
+                onCellWidthChange={onCellWidthChange}
+                onCellHeightChange={onCellHeightChange}
+                onColumnOrderChange={onColumnOrderChange}
+                onRowOrderChange={onRowOrderChange}
+                editKeys={editKeys}
+                maxColumns={maxColumns}
+                maxColumnLevels={maxColumnLevels}
+                cacheLayout
+
+                sheetStyle={{
+                    freezeColumns: 2,
+                    freezeRows: 0,
+                }}
+            />
+        </div>
+    );
+}
+
 export function SheetBoxRender() {
     const [data, setData] = useState(JSON.parse(JSON.stringify(initialDataBasic)));
     const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl();
@@ -690,8 +780,7 @@ export function SheetBoxDropOn() {
     const onColumnDrop = () => {};
     const onRowDrop = () => {};
 
-    //const groupKeys = [1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8];
-    const groupKeys = data.map((_, i) => i);
+    const groupKeys = [1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8];
     const orderedGroupKeys = groupKeys.map((_, i) => groupKeys[getRowOrder(i)]);
 
     const alternatingGroups = orderedGroupKeys

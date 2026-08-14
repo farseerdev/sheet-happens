@@ -85,7 +85,6 @@ export const makeCellLayout = (
         const { getStart, lookupIndex } = layout;
 
         const indent = getStart(0);
-        if (pixel < indent) return 0;
 
         const frozen = getStart(freeze);
         if (pixel < frozen) {
@@ -188,37 +187,39 @@ export const makeCellLayout = (
 // Can do reverse lookup back to index with binary search, once warmed up.
 //
 // - caches sizer(i), each is only called once
-// - offset[0] = sizer(-1)
 // - adds up offset[i] = sizer(0) + sizer(1) + ... + sizer(i - 1)
+// - if negative is non-zero, then sizes/offsets start at sizer(-negative)
 // - cache can be truncated during resizing ops at split
-// - to replace sizer function, cache must be destroyed
-export const makeLayoutCache = (sizer: (index: number) => number): LayoutCache => {
+export const makeLayoutCache = (sizer: (index: number) => number, negative: number = 1): LayoutCache => {
     const offsets = makeIntMap(INITIAL_SIZE);
     const sizes = makeIntMap(INITIAL_SIZE);
 
     let version = 0;
-    offsets.set(0, sizer(-1));
 
     // Cache size lookup directly
     const getSize = (i: number): number => {
-        if (i < 0) return sizer(i);
+        i += negative;
+
+        if (i < 0) return 0;
         if (sizes.has(i)) return sizes.get(i)!;
 
-        const size = sizer(i) || 0;
+        const size = sizer(i - negative) || 0;
         sizes.set(i, size);
         return size;
     };
 
     // Cache offset sum recursively
     const getOffset = (i: number): number => {
-        if (i < 0) return 0;
+        i += negative;
+
+        if (i <= 0) return 0;
         if (offsets.has(i)) return offsets.get(i)!;
 
         let j = offsets.tail() || -1;
 
         // Use a while loop to avoid stack overflow
         while (j < i) {
-            const size = getSize(j);
+            const size = getSize(j - negative);
             const offset = (offsets.get(j) || 0) + size;
             offsets.set(++j, offset);
         }
@@ -236,22 +237,24 @@ export const makeLayoutCache = (sizer: (index: number) => number): LayoutCache =
         let last = offsets.tail() || 0;
 
         // Extend cache if value exceeds current end
-        while (getOffset(last) < x && getSize(last)) last += 64;
+        while (getOffset(last - negative) < x && getSize(last - negative)) last += 64;
 
         // Do binary search for exact position
         let start = 0;
         let end = last;
         while (start < end) {
             let mid = start + Math.floor((end - start) / 2) + 1;
-            let value = getOffset(mid) - (anchor ? anchor * getSize(mid - 1) : 0);
+            let value = getOffset(mid - negative) - (anchor ? anchor * getSize(mid - 1 - negative) : 0);
             if (value <= x) start = mid;
             else end = mid - 1;
         }
 
-        return start;
+        return start - negative;
     };
 
     const clearAfter = (index: number) => {
+        index += negative;
+
         index = Math.max(0, index);
         offsets.truncate(index);
         sizes.truncate(index);

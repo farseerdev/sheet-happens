@@ -19,8 +19,7 @@ export const useScroll = (
             const { absoluteToCell, cellToAbsolute } = cellLayout;
 
             // Zero scroll position is considered in the center of the top/left cell
-            const [nudgeX, nudgeY] = subXY(cellToAbsolute([0, 0], [0.5, 0.5]), cellToAbsolute([0, 0]));
-
+            const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
             const xy: XY = [e.target.scrollLeft + nudgeX, e.target.scrollTop + nudgeY];
 
             const cell = absoluteToCell(xy);
@@ -157,7 +156,7 @@ export const updateScrollPosition = (element: HTMLDivElement, dataOffset: XY, ce
     const { cellToAbsolute } = cellLayout;
 
     const scroll = cellToAbsolute(dataOffset);
-    const [nudgeX, nudgeY] = subXY(cellToAbsolute([0, 0], [0.5, 0.5]), cellToAbsolute([0, 0]));
+    const [nudgeX, nudgeY] = cellToAbsolute([0, 0], [0.5, 0.5]);
 
     const [scrollX, scrollY] = scroll;
     element.scrollLeft = scrollX - nudgeX;

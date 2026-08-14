@@ -1,5 +1,6 @@
 import {
     CellContentRender,
+    CellContentType,
     CellLayout,
     CellPropertyFunction,
     CellPropertyStyledFunction,
@@ -10,7 +11,6 @@ import {
     Rectangle,
     Selection,
     Style,
-    CellContentType,
     VisibleLayout,
     XY,
 } from './types';
@@ -50,8 +50,13 @@ export const renderSheet = (
     dropTarget: Rectangle | null,
     dropOn: boolean,
 
+    columnHeaderSpans: CellPropertyFunction<number>,
+    columnHeaderGroups: CellPropertyStyledFunction<CellContentType>,
+    columnHeaderGroupStyle: CellPropertyFunction<Style>,
+
     columnHeaders: RowOrColumnPropertyStyledFunction<CellContentType>,
     columnHeaderStyle: RowOrColumnPropertyFunction<Style>,
+
     displayData: CellPropertyStyledFunction<CellContentType>,
 
     columnGroupKeys: RowOrColumnPropertyFunction<string | number | null>,
@@ -60,6 +65,7 @@ export const renderSheet = (
     selectedRowGroups: Set<string | number | null> | null,
 
     dataOffset: XY,
+    maxColumnLevels: number,
 ): CellContentRender[] => {
     const { canvas } = context;
     const { width, height } = canvas;
@@ -126,8 +132,10 @@ export const renderSheet = (
         // Row header selection shadow
         if (selectionActive && !columnSelectionActive) {
             const [[, top], [, bottom]] = selected;
+            const left = columnToAbsolute(-1);
+            const right = columnToAbsolute(0);
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(0, top, indentX, bottom - top);
+            context.fillRect(left, top, right - left, bottom - top);
         }
     }
 
@@ -139,8 +147,10 @@ export const renderSheet = (
         // Column header selection shadow
         if (selectionActive && !rowSelectionActive) {
             const [[left], [right]] = selected;
+            const top = rowToAbsolute(-1);
+            const bottom = rowToAbsolute(0);
             context.fillStyle = COLORS.headerActive;
-            context.fillRect(left, 0, right - left, indentY);
+            context.fillRect(left, top, right - left, bottom - top);
         }
     }
 
@@ -151,16 +161,16 @@ export const renderSheet = (
     const gridRight = hideGridlines ? indentX : context.canvas.width;
     const gridBottom = hideGridlines ? indentY : context.canvas.height;
 
-    const drawGridLineX = (x: number, height: number) => {
+    const drawGridLineX = (x: number, height: number, y: number = 0) => {
         context.beginPath();
-        context.moveTo(x - 0.5, 0);
+        context.moveTo(x - 0.5, y);
         context.lineTo(x - 0.5, height);
         context.stroke();
     };
 
-    const drawGridLineY = (y: number, width: number) => {
+    const drawGridLineY = (y: number, width: number, x: number = 0) => {
         context.beginPath();
-        context.moveTo(0, y - 0.5);
+        context.moveTo(x, y - 0.5);
         context.lineTo(width, y - 0.5);
         context.stroke();
     };
@@ -169,8 +179,23 @@ export const renderSheet = (
     drawGridLineY(indentY, context.canvas.width);
 
     for (const column of columns) {
+        // Scan to find top of grid line
+        let y = 0;
+        for (let i = maxColumnLevels - 1; i >= 0; --i) {
+            const span = columnHeaderSpans(column + 1, i);
+            if (span === 0) {
+                y = rowToAbsolute(i - maxColumnLevels);
+                break;
+            }
+        }
+
         const right = columnToPixel(column, 1);
-        drawGridLineX(right, gridBottom);
+        drawGridLineX(right, gridBottom, y);
+    }
+
+    for (let i = 0; i < maxColumnLevels; ++i) {
+        const bottom = rowToAbsolute(i - maxColumnLevels, 1);
+        drawGridLineY(bottom, gridRight, indentX);
     }
 
     for (const row of rows) {
@@ -199,7 +224,7 @@ export const renderSheet = (
 
             const isSelfSelected = rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInRowGroup;
-            const isDropSelected = dropOn && dropTarget && (row >= dropTarget[0][1] && row <= dropTarget[1][1]);
+            const isDropSelected = dropOn && dropTarget && row >= dropTarget[0][1] && row <= dropTarget[1][1];
 
             const style = isSelfSelected
                 ? HEADER_SELECTED_STYLE
@@ -214,14 +239,17 @@ export const renderSheet = (
             const top = rowToPixel(row);
             const bottom = rowToPixel(row, 1);
 
+            const left = columnToAbsolute(-1);
+            const right = columnToAbsolute(0);
+
             const clickables = renderCell(
                 context,
                 imageRenderer,
                 content,
                 resolvedStyle,
-                0,
+                left,
                 top,
-                indentX,
+                right - left,
                 bottom - top,
             );
             if (clickables) allClickables.push(...clickables);
@@ -232,6 +260,7 @@ export const renderSheet = (
     if (!hideColumnHeaders) {
         context.textBaseline = 'middle';
 
+        // Individual columns
         for (const column of columns) {
             // Column selection mode
             // (this is separate from the header selection shadow because we only want to highlight visible headers)
@@ -240,11 +269,16 @@ export const renderSheet = (
             const groupKey = columnGroupKeys(column);
             const isInColumnGroup = groupKey != null && selectedColumnGroups?.has(groupKey);
 
-            const isSelected = columnSelectionActive && !rowSelectionActive && (isActive || isInColumnGroup);
-            const isDropSelected = dropOn && dropTarget && (column >= dropTarget[0][0] && column <= dropTarget[1][0]);
+            const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
+            const isGroupSelected = rowSelectionActive && isInColumnGroup;
+            const isDropSelected = dropOn && dropTarget && column >= dropTarget[0][0] && column <= dropTarget[1][0];
 
-            const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isDropSelected ? HEADER_GROUP_SELECTED_STYLE : NO_STYLE;
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+            const selectedStyle = isSelected
+                ? HEADER_SELECTED_STYLE
+                : isGroupSelected || isDropSelected
+                  ? HEADER_GROUP_SELECTED_STYLE
+                  : NO_STYLE;
 
             const style = {
                 ...DEFAULT_COLUMN_HEADER_STYLE,
@@ -256,10 +290,96 @@ export const renderSheet = (
             const left = columnToPixel(column);
             const right = columnToPixel(column, 1);
 
+            const top = rowToAbsolute(-1);
+            const bottom = rowToAbsolute(0);
+
             const content = columnHeaders(column, style) ?? excelHeaderString(column + 1);
 
-            const clickables = renderCell(context, imageRenderer, content, style, left, 0, right - left, indentY);
+            const clickables = renderCell(
+                context,
+                imageRenderer,
+                content,
+                style,
+                left,
+                top,
+                right - left,
+                bottom - top,
+            );
             if (clickables) allClickables.push(...clickables);
+        }
+
+        // Column header groups
+        for (let i = 0; i < maxColumnLevels; ++i) {
+            const firstFrozen = columns[0];
+            const firstNonFrozen = freezeColumns ? columns[freezeColumns] : null;
+
+            const renderColumnGroup = (start: number, partial: number = start) => {
+                const span = columnHeaderSpans(start, i);
+                if (span <= 1) return;
+
+                const end = start + span - 1;
+
+                const isActive = isInRange(start, minX, maxX) && isInRange(end, minX, maxX);
+                const isSelected =
+                    columnSelectionActive && !rowSelectionActive && isActive && minY < i - maxColumnLevels;
+
+                const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
+                const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
+
+                const style = {
+                    ...DEFAULT_COLUMN_HEADER_STYLE,
+                    ...columnHeaderGroupStyle(start, i),
+                    ...activeStyle,
+                    ...selectedStyle,
+                };
+
+                const left = columnToPixel(partial);
+                let right = columnToPixel(end, 1);
+                if (start < freezeColumns && end > freezeColumns) {
+                    right = Math.max(right, columnToPixel(freezeColumns - 1, 1));
+                }
+
+                const top = rowToAbsolute(i - maxColumnLevels - 1);
+                const bottom = rowToAbsolute(i - maxColumnLevels);
+
+                const content = columnHeaderGroups(start, i, style) ?? excelHeaderString(start + 1);
+
+                const clipLeft = columnToPixel(start);
+                const clipWidth = right - clipLeft;
+
+                const clickables = renderCell(
+                    context,
+                    imageRenderer,
+                    content,
+                    style,
+                    left,
+                    top,
+                    right - left,
+                    bottom - top,
+                    clipLeft,
+                    undefined,
+                    clipWidth,
+                );
+                if (clickables) allClickables.push(...clickables);
+            };
+
+            const renderPartial = (column: number) => {
+                let start = column;
+                while (columnHeaderSpans(start, i) === 0) start--;
+                if (start >= 0 && start !== column) {
+                    renderColumnGroup(start, column);
+                }
+            };
+
+            // Handle partial first cell(s)
+            renderPartial(firstFrozen);
+            if (firstNonFrozen && firstFrozen + columnHeaderSpans(firstFrozen, i) < firstNonFrozen)
+                renderPartial(firstNonFrozen);
+
+            // Draw full cells
+            for (const column of columns) {
+                renderColumnGroup(column);
+            }
         }
     }
 
@@ -320,16 +440,18 @@ export const renderSheet = (
 
         if (dragColumns) {
             for (const column of dragColumns) {
+                const top = rowToAbsolute(minY);
                 const left = columnToPixel(column);
                 const right = columnToPixel(column, 1);
-                context.fillRect(left + shiftX, 0, right - left, height);
+                context.fillRect(left + shiftX, top, right - left, height);
             }
         }
         if (dragRows) {
             for (const row of dragRows) {
+                const left = columnToAbsolute(minX);
                 const top = rowToPixel(row);
                 const bottom = rowToPixel(row, 1);
-                context.fillRect(0, top + shiftY, width, bottom - top);
+                context.fillRect(left, top + shiftY, width, bottom - top);
             }
         }
     }
@@ -414,6 +536,11 @@ export const renderCell = (
     yCoord: number,
     cellWidth: number,
     cellHeight: number,
+
+    xClip: number = xCoord,
+    yClip: number = yCoord,
+    clipWidth: number = cellWidth,
+    clipHeight: number = cellHeight,
 ): CellContentRender[] | null => {
     if (cellContent === null) {
         return null;
@@ -437,13 +564,15 @@ export const renderCell = (
     const middleY = roundDpi(yCoord + marginTop + lineHeight / 2);
 
     if (style.backgroundColor !== '') {
-        context.fillStyle = style.backgroundColor;
-        context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
-        context.fillStyle = style.color;
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
+            context.fillStyle = style.backgroundColor;
+            context.fillRect(xCoord, yCoord, cellWidth, cellHeight);
+            context.fillStyle = style.color;
+        });
     }
 
     if (typeof cellContent === 'string' || typeof cellContent === 'number') {
-        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
             wrapText(context, cellContent, style, undefined, innerX, middleY, innerWidth, innerHeight, fillText);
         });
         return null;
@@ -452,7 +581,7 @@ export const renderCell = (
         const renderedAbsolute = resolveCellAbsoluteLayout(cellContent, innerX, innerY, innerWidth, innerHeight);
         const rendered = [...renderedFlex, ...renderedAbsolute];
 
-        clipToBox(context, xCoord, yCoord, cellWidth, cellHeight, () => {
+        clipToBox(context, xClip, yClip, clipWidth, clipHeight, () => {
             for (const [i, render] of rendered.entries()) {
                 const { box, item } = render;
 
@@ -467,11 +596,11 @@ export const renderCell = (
                     context.strokeRect(left + 0.5, top + 0.5, width - 0.5, height - 0.5);
                 }
 
-                const clipLeft = i > 0 ? left : xCoord;
-                const clipRight = i < rendered.length ? right : yCoord + cellWidth;
-                const clipWidth = clipRight - clipLeft;
+                const clipLeft = i > 0 ? left : xClip;
+                const clipRight = i < rendered.length ? right : xClip + clipWidth;
+                const innerClipWidth = clipRight - clipLeft;
 
-                clipToBox(context, clipLeft, yCoord, clipWidth, cellHeight, () => {
+                clipToBox(context, clipLeft, yClip, innerClipWidth, clipHeight, () => {
                     if (item.display === 'inline') {
                         const { text } = item;
                         if (text != null) {

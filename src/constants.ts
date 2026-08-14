@@ -39,10 +39,10 @@ export const COLORS = {
 
 export const SIZES = {
     knobArea: 6,
-    headerWidth: 50,
-    headerHeight: 22,
+
     minimumWidth: 50,
     minimumHeight: 22,
+
     resizeZone: 4,
     scrollZone: 50,
     scrollSpeed: 30,

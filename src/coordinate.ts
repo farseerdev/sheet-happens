@@ -61,37 +61,37 @@ export const mapSelectionRows = (selection: Rectangle) => forToMap(forSelectionR
 // Selection is infinite horizontally
 export const isMaybeRowSelection = (selection: Rectangle) => {
     const [[left], [right]] = selection;
-    return left === -1 && right === -1;
+    return left < 0 && right < 0;
 };
 
 // Selection is infinite vertically
 export const isMaybeColumnSelection = (selection: Rectangle) => {
     const [[, top], [, bottom]] = selection;
-    return top === -1 && bottom === -1;
+    return top < 0 && bottom < 0;
 };
 
 // Selection is ONLY infinite horizontally
 export const isRowSelection = (selection: Rectangle) => {
     const [[left, top], [right, bottom]] = selection;
-    return left === -1 && right === -1 && top !== -1 && bottom !== -1;
+    return left < 0 && right < 0 && top >= 0 && bottom >= 0;
 };
 
 // Selection is ONLY infinite vertically
 export const isColumnSelection = (selection: Rectangle) => {
     const [[left, top], [right, bottom]] = selection;
-    return top === -1 && bottom === -1 && left !== -1 && right !== -1;
+    return top < 0 && bottom < 0 && left >= 0 && right >= 0;
 };
 
 // Selection is not infinite
 export const isCellSelection = (selection: Rectangle) => {
     const [[left, top], [right, bottom]] = selection;
-    return left !== -1 && right !== -1 && top !== -1 && bottom !== -1;
+    return left >= 0 && right >= 0 && top >= 0 && bottom >= 0;
 };
 
 // Selection is null
 export const isEmptySelection = (selection: Rectangle) => {
     const [[left, top], [right, bottom]] = selection;
-    return left === -1 && right === -1 && top === -1 && bottom === -1;
+    return left < 0 && right < 0 && top < 0 && bottom < 0;
 };
 
 // Test cell inside selection (inclusive edges)
@@ -108,8 +108,8 @@ export const validateSelection = (selection: Rectangle): Rectangle => {
     head = head.slice() as XY;
 
     const min = minXY(anchor, head);
-    if (min[0] === -1) anchor[0] = head[0] = -1;
-    if (min[1] === -1) anchor[1] = head[1] = -1;
+    if (min[0] < 0) anchor[0] = head[0] = min[0];
+    if (min[1] < 0) anchor[1] = head[1] = min[1];
 
     return [anchor, head];
 };
@@ -128,8 +128,8 @@ export const orientSelection = (normalized: Rectangle, to: Rectangle): Rectangle
     const [ax, ay] = anchor;
     const [hx, hy] = head;
 
-    const swapX = (ax - hx || 1) * (right - left || 1) < 0;
-    const swapY = (ay - hy || 1) * (bottom - top || 1) < 0;
+    const swapX = (hx - ax || 1) * (right - left || 1) < 0;
+    const swapY = (hy - ay || 1) * (bottom - top || 1) < 0;
 
     return [
         [swapX ? right : left, swapY ? bottom : top],

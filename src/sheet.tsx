@@ -15,10 +15,10 @@ import {
     XY,
     Rectangle,
     CellContentRender,
+    CellContentType,
     CellLayout,
     CellProperty,
     CellPropertyStyled,
-    CellContentType,
     ClipboardTable,
     RowOrColumnPropertyStyled,
     RowOrColumnProperty,
@@ -42,13 +42,7 @@ import {
     ORIGIN,
     ONE_ONE,
 } from './constants';
-import {
-    validateSelection,
-    isSameRectangle,
-    mapSelectionColumns,
-    mapSelectionRows,
-    addXY,
-} from './coordinate';
+import { validateSelection, isSameRectangle, mapSelectionColumns, mapSelectionRows, addXY } from './coordinate';
 import { useImageRenderer } from './image';
 import { useMouse } from './mouse';
 import { useKeyboard } from './keyboard';
@@ -78,6 +72,9 @@ export type SheetRenderProps = {
 export type SheetProps = {
     cellWidth?: RowOrColumnProperty<number>;
     cellHeight?: RowOrColumnProperty<number>;
+    columnHeaderSpans?: CellProperty<number>;
+    columnHeaderGroups?: CellPropertyStyled<CellContentType>;
+    columnHeaderGroupStyle?: CellProperty<Style>;
     columnHeaders?: RowOrColumnPropertyStyled<CellContentType>;
     columnHeaderStyle?: RowOrColumnProperty<Style>;
     cellStyle?: CellProperty<Style>;
@@ -98,6 +95,8 @@ export type SheetProps = {
 
     maxRows?: number;
     maxColumns?: number;
+    maxColumnLevels?: number;
+
     cacheLayout?: boolean | number;
     dontCommitEditOnSelectionChange?: boolean;
     dontChangeSelectionOnOrderChange?: boolean;
@@ -141,6 +140,8 @@ export type SheetRef = CellLayout & {
 };
 
 const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
+    const { maxColumns = Infinity, maxRows = Infinity, maxColumnLevels = 0 } = props;
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -173,10 +174,21 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
 
     const cellWidth = useMemo(() => createRowOrColumnProp(props.cellWidth, 100), [props.cellWidth]);
     const cellHeight = useMemo(() => createRowOrColumnProp(props.cellHeight, 22), [props.cellHeight]);
+
     const columnHeaders = useMemo(() => createRowOrColumnStyledProp(props.columnHeaders, null), [props.columnHeaders]);
     const columnHeaderStyle = useMemo(
         () => createRowOrColumnProp(props.columnHeaderStyle, {}),
         [props.columnHeaderStyle],
+    );
+
+    const columnHeaderSpans = useMemo(() => createCellProp(props.columnHeaderSpans, 1), [props.columnHeaderSpans]);
+    const columnHeaderGroups = useMemo(
+        () => createCellStyledProp(props.columnHeaderGroups, null),
+        [props.columnHeaderGroups],
+    );
+    const columnHeaderGroupStyle = useMemo(
+        () => createCellProp(props.columnHeaderGroupStyle, {}),
+        [props.columnHeaderGroupStyle],
     );
 
     const canSizeColumn = useMemo(() => createRowOrColumnProp(props.canSizeColumn, true), [props.canSizeColumn]);
@@ -224,8 +236,11 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     // Cached either per width/height pair, or permanently with invalidation on resize/reorder.
     const shouldCacheLayout = (props.cacheLayout ?? false) !== false;
     const layoutVersion = typeof props.cacheLayout === 'number' ? props.cacheLayout : 0;
-    const columnLayout = useMemo(() => makeLayoutCache(cellWidth), [shouldCacheLayout ? layoutVersion : cellWidth]);
-    const rowLayout = useMemo(() => makeLayoutCache(cellHeight), [shouldCacheLayout ? layoutVersion : cellHeight]);
+    const columnLayout = useMemo(() => makeLayoutCache(cellWidth, 1), [shouldCacheLayout ? layoutVersion : cellWidth]);
+    const rowLayout = useMemo(
+        () => makeLayoutCache(cellHeight, 1 + maxColumnLevels),
+        [shouldCacheLayout ? layoutVersion : cellHeight, maxColumnLevels],
+    );
     useMemo(() => {
         if (!shouldCacheLayout) return;
 
@@ -338,7 +353,12 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
             return;
         }
 
-        const hasCustomComponent = !!props.inputComponent?.(cellX, cellY, { ...inputProps, onChange: () => {} }, () => {});
+        const hasCustomComponent = !!props.inputComponent?.(
+            cellX,
+            cellY,
+            { ...inputProps, onChange: () => {} },
+            () => {},
+        );
 
         const editValue = editData(cellX, cellY) ?? '';
         const sourceValue = sourceData(cellX, cellY) ?? null;
@@ -361,7 +381,6 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     };
 
     // If max row or column count changes, keep sheet in view
-    const { maxColumns = Infinity, maxRows = Infinity } = props;
     useLayoutEffect(() => {
         const { current: overlay } = overlayRef;
         if (!overlay) return;
@@ -437,6 +456,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         editData,
         sourceData,
         cellReadOnly,
+
+        maxColumnLevels,
         maxColumns,
         maxRows,
 
@@ -448,6 +469,8 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         cellLayout,
         visibleCells,
         sheetStyle,
+
+        columnHeaderSpans,
 
         columnGroupKeys,
         rowGroupKeys,
@@ -535,6 +558,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 dropTarget,
                 dropOn,
 
+                columnHeaderSpans,
+                columnHeaderGroups,
+                columnHeaderGroupStyle,
                 columnHeaders,
                 columnHeaderStyle,
                 displayData,
@@ -545,6 +571,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 selectedRowGroups,
 
                 dataOffset,
+                maxColumnLevels,
             );
         });
 
