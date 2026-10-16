@@ -315,7 +315,7 @@ export const renderSheet = (
 
             const renderColumnGroup = (start: number, partial: number = start) => {
                 const span = columnHeaderSpans(start, i);
-                if (span <= 1) return;
+                if (span < 1) return;
 
                 const end = start + span - 1;
 
@@ -365,7 +365,7 @@ export const renderSheet = (
 
             const renderPartial = (column: number) => {
                 let start = column;
-                while (columnHeaderSpans(start, i) === 0) start--;
+                while (columnHeaderSpans(start, i) === 0 && start > 0) start--;
                 if (start >= 0 && start !== column) {
                     renderColumnGroup(start, column);
                 }

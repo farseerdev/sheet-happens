@@ -181,7 +181,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         [props.columnHeaderStyle],
     );
 
-    const columnHeaderSpans = useMemo(() => createCellProp(props.columnHeaderSpans, 1), [props.columnHeaderSpans]);
+    const columnHeaderSpans = useMemo(() => createCellProp(props.columnHeaderSpans, -1), [props.columnHeaderSpans]);
     const columnHeaderGroups = useMemo(
         () => createCellStyledProp(props.columnHeaderGroups, null),
         [props.columnHeaderGroups],
