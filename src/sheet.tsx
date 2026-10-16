@@ -115,9 +115,9 @@ export type SheetProps = {
     onSelectionChanged?: (anchorX: number, anchorY: number, headX: number, headY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
     onChange?: (changes: Array<Change>) => void;
-    onColumnOrderChange?: (indices: number[], order: number) => void;
+    onColumnOrderChange?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void;
     onRowOrderChange?: (indices: number[], order: number) => void;
-    onColumnDrop?: (indices: number[], order: number) => void;
+    onColumnDrop?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void;
     onRowDrop?: (indices: number[], order: number) => void;
     onCellWidthChange?: (indices: number[], values: number[]) => void;
     onCellHeightChange?: (indices: number[], values: number[]) => void;
@@ -156,6 +156,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
     const [dragIndices, setDragIndices] = useState<[number[] | null, number[] | null]>([null, null]);
     const [dropTarget, setDropTarget] = useState<Rectangle | null>(null);
     const [dropOn, setDropOn] = useState<boolean>(false);
+    const [dropBias, setDropBias] = useState<number>(0);
     const [editCell, setEditCell] = useState<XY>(NO_CELL);
 
     const [focused, setFocused] = useState(!!props.autoFocus);
@@ -297,9 +298,10 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         );
     };
 
-    const changeDropTarget = (newSelection: Rectangle | null, dropOn = false) => {
+    const changeDropTarget = (newSelection: Rectangle | null, dropOn = false, dropBias = 0) => {
         setDropTarget(newSelection);
         setDropOn(dropOn);
+        setDropBias(dropBias);
     };
 
     // Set selection with scrolling
@@ -515,6 +517,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         rawSelection,
         selection,
 
+        maxColumnLevels,
+        columnHeaderSpans,
+
         startEditingCell,
         commitEditingCell,
         cancelEditingCell,
@@ -557,6 +562,7 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
                 dragOffset,
                 dropTarget,
                 dropOn,
+                dropBias,
 
                 columnHeaderSpans,
                 columnHeaderGroups,

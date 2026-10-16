@@ -16,6 +16,8 @@ import {
     addXY,
 } from './coordinate';
 
+import { expandSelectionToColumnSpans } from './group';
+
 export const useKeyboard = (
     arrowKeyCommitMode: boolean,
     overlayRef: RefObject<HTMLDivElement>,
@@ -26,6 +28,9 @@ export const useKeyboard = (
     focused: boolean,
     rawSelection: Rectangle,
     selection: Rectangle,
+
+    maxColumnLevels: number,
+    columnHeaderSpans: CellPropertyFunction<number>,
 
     onEdit?: (cell: XY, arrowKeyCommitMode?: boolean) => void,
     onCommit?: () => void,
@@ -140,7 +145,7 @@ export const useKeyboard = (
                     ? isRowSelection(selection)
                         ? [-1, 0]
                         : isColumnSelection(selection)
-                          ? [0, -1]
+                          ? [0, -maxColumnLevels - 1]
                           : NEG_NEG
                     : ORIGIN;
                 head = maxXY(addXY(head, step), limit);
@@ -149,6 +154,8 @@ export const useKeyboard = (
             if (!shift) {
                 anchor = head;
             }
+
+            [anchor, head] = expandSelectionToColumnSpans([anchor, head], columnHeaderSpans, maxColumnLevels);
 
             onSelectionChange?.([anchor, head], true, true);
             return;

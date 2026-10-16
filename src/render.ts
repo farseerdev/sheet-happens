@@ -49,6 +49,7 @@ export const renderSheet = (
     dragOffset: XY | null,
     dropTarget: Rectangle | null,
     dropOn: boolean,
+    dropBias: number,
 
     columnHeaderSpans: CellPropertyFunction<number>,
     columnHeaderGroups: CellPropertyStyledFunction<CellContentType>,
@@ -271,7 +272,12 @@ export const renderSheet = (
 
             const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInColumnGroup;
-            const isDropSelected = dropOn && dropTarget && column >= dropTarget[0][0] && column <= dropTarget[1][0];
+            const isDropSelected =
+                dropOn &&
+                dropTarget &&
+                column >= dropTarget[0][0] &&
+                column <= dropTarget[1][0] &&
+                dropTarget[0][1] === -1;
 
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const selectedStyle = isSelected
@@ -322,9 +328,19 @@ export const renderSheet = (
                 const isActive = isInRange(start, minX, maxX) && isInRange(end, minX, maxX);
                 const isSelected =
                     columnSelectionActive && !rowSelectionActive && isActive && minY < i - maxColumnLevels;
+                const isDropSelected =
+                    dropOn &&
+                    dropTarget &&
+                    start >= dropTarget[0][0] &&
+                    start <= dropTarget[1][0] &&
+                    dropTarget[0][1] === -1 - maxColumnLevels + i;
 
                 const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
-                const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : NO_STYLE;
+                const selectedStyle = isSelected
+                    ? HEADER_SELECTED_STYLE
+                    : isDropSelected
+                      ? HEADER_GROUP_SELECTED_STYLE
+                      : NO_STYLE;
 
                 const style = {
                     ...DEFAULT_COLUMN_HEADER_STYLE,
@@ -443,7 +459,7 @@ export const renderSheet = (
                 const top = rowToAbsolute(minY);
                 const left = columnToPixel(column);
                 const right = columnToPixel(column, 1);
-                context.fillRect(left + shiftX, top, right - left, height);
+                context.fillRect(left + shiftX, top + shiftY, right - left, height);
             }
         }
         if (dragRows) {
@@ -451,7 +467,7 @@ export const renderSheet = (
                 const left = columnToAbsolute(minX);
                 const top = rowToPixel(row);
                 const bottom = rowToPixel(row, 1);
-                context.fillRect(left, top + shiftY, width, bottom - top);
+                context.fillRect(left + shiftX, top + shiftY, width, bottom - top);
             }
         }
     }
@@ -463,13 +479,18 @@ export const renderSheet = (
         context.strokeStyle = COLORS.dropTarget;
         context.lineWidth = 4;
 
+        let offsetX = 0;
+        let offsetY = 0;
         if (isColumnSelection(dropTarget)) {
+            offsetX = dropBias > 0 ? 4 : dropBias < 0 ? -3 : 0;
             right = left;
         }
         if (isRowSelection(dropTarget)) {
+            offsetY = dropBias > 0 ? 4 : dropBias < 0 ? -3 : 0;
             bottom = top;
         }
-        context.strokeRect(left - 1, top - 1, right - left, bottom - top);
+
+        context.strokeRect(left - 1 + offsetX, top - 1 + offsetY, right - left, bottom - top);
     }
 
     // Draw frozen row/col shadow
