@@ -78,7 +78,7 @@ export const useMouse = (
     onKnobAreaChange?: (knobArea: Rectangle | null) => void,
     onDragIndicesChange?: (indices: [number[] | null, number[] | null]) => void,
     onDragOffsetChange?: (dragOffset: XY | null) => void,
-    onDropTargetChange?: (selection: Rectangle | null, dropOn?: boolean) => void,
+    onDropTargetChange?: (selection: Rectangle | null, dropOn?: boolean, dropBias?: number) => void,
     onSelectionChange?: (selection: Rectangle, scrollTo?: boolean, toHead?: boolean) => void,
     onFocusChange?: (focus: boolean) => void,
 
@@ -86,9 +86,9 @@ export const useMouse = (
     onInvalidateRow?: (row: number) => void,
 
     onChange?: (changes: Change[]) => void,
-    onColumnOrderChange?: (indices: number[], order: number) => void,
+    onColumnOrderChange?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void,
     onRowOrderChange?: (indices: number[], order: number) => void,
-    onColumnDrop?: (indices: number[], order: number) => void,
+    onColumnDrop?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void,
     onRowDrop?: (indices: number[], order: number) => void,
     onCellWidthChange?: (indices: number[], values: number[]) => void,
     onCellHeightChange?: (indices: number[], values: number[]) => void,
@@ -566,6 +566,7 @@ export const useMouse = (
 
                     // On cell
                     const startX = pixelToColumn(x, 0);
+                    let startY = Math.min(-1, pixelToRow(y, 0));
 
                     // Between cells
                     const midX = pixelToColumn(x, 0.5);
@@ -574,25 +575,45 @@ export const useMouse = (
                     const leftX = pixelToColumn(x, 0.25);
                     const rightX = pixelToColumn(x, 0.75) - 1;
 
-                    // Avoid dropping between grouped rows
-                    const insideGroup = isBoundaryInsideGroup(midX, columnGroupKeys);
+                    // Avoid dropping between grouped columns
+                    const insideGroup =
+                        isBoundaryInsideGroup(midX, columnGroupKeys) ||
+                        (startY < -1 && columnHeaderSpans(midX, maxColumnLevels + startY + 1) === 0);
 
                     // Resolve drop-on vs drop-between
-                    const dropOn = (onColumnDrop && (insideGroup || leftX === rightX)) || !onColumnOrderChange;
-                    const dropX = dropOn ? startX : midX;
+                    const dropOn =
+                        (onColumnDrop && (insideGroup || leftX === rightX) && startX < maxColumns) ||
+                        !onColumnOrderChange;
+                    let dropX = dropOn ? startX : midX;
+
+                    // Only drop-on canonical header group cell
+                    if (dropOn && startY < -1) {
+                        // If drop-on cell is a continued span, move left
+                        while (columnHeaderSpans(dropX, maxColumnLevels + startY + 1) === 0) dropX--;
+                    }
+
+                    // When dropping-between a divider that continues up one or more levels,
+                    // calculate the drop bias left or right to resolve ambiguity.
+                    let dropBias = 0;
+                    if (!dropOn && maxColumnLevels) {
+                        if (startY > - maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
+                            // -1 (left) or 1 (right)
+                            dropBias = 1 - (midX - startX) * 2;
+                        }
+                    }
 
                     // Avoid dropping selection on selection
-                    const insideSelection = dropX >= minX && dropX <= maxX + +!dropOn;
+                    const insideSelection = (dropX >= minX + +(dropBias === -1)) && (dropX <= maxX + +!dropOn - +(dropBias === 1)) && startY >= minY;
 
                     if (!insideSelection && (dropOn || !insideGroup)) {
                         const preceding = indices.filter((i) => i < dropX);
                         const order = dropX - preceding.length;
                         dontChangeSelectionOnOrderChange ||
                             onSelectionChange?.([
-                                [order, minY],
-                                [order + (dropOn ? 0 : indices.length - 1), maxY],
+                                [order, -1],
+                                [order + (dropOn ? 0 : indices.length - 1), -1],
                             ]);
-                        (dropOn ? onColumnDrop : onColumnOrderChange)?.(indices, order);
+                        (dropOn ? onColumnDrop : onColumnOrderChange)?.(indices, order, minY, startY, dropBias);
                         onInvalidateColumn?.(Math.min(minX, order));
                     }
                 }
@@ -613,7 +634,8 @@ export const useMouse = (
                     const insideGroup = isBoundaryInsideGroup(midY, rowGroupKeys);
 
                     // Resolve drop-on vs drop-between
-                    const dropOn = (onRowDrop && (insideGroup || topY === bottomY)) || !onRowOrderChange;
+                    const dropOn =
+                        (onRowDrop && (insideGroup || topY === bottomY) && startY < maxRows) || !onRowOrderChange;
                     const dropY = dropOn ? startY : midY;
 
                     // Avoid dropping selection on selection
@@ -624,8 +646,8 @@ export const useMouse = (
                         const order = dropY - preceding.length;
                         dontChangeSelectionOnOrderChange ||
                             onSelectionChange?.([
-                                [minX, order],
-                                [maxX, order + (dropOn ? 0 : indices.length - 1)],
+                                [-1, order],
+                                [-1, order + (dropOn ? 0 : indices.length - 1)],
                             ]);
                         (dropOn ? onRowDrop : onRowOrderChange)?.(indices, order);
                         onInvalidateRow?.(Math.min(minY, order));
@@ -920,6 +942,7 @@ export const useMouse = (
 
                     // On cell
                     const startX = pixelToColumn(x, 0);
+                    const startY = Math.min(-1, pixelToRow(y, 0));
 
                     // Between cells
                     const midX = pixelToColumn(x, 0.5);
@@ -931,25 +954,42 @@ export const useMouse = (
                     // Avoid dropping between grouped columns
                     const insideGroup =
                         isBoundaryInsideGroup(midX, columnGroupKeys) ||
-                        (minY < -1 && columnHeaderSpans(midX, maxColumnLevels + minY + 1) === 0);
+                        (startY < -1 && columnHeaderSpans(midX, maxColumnLevels + startY + 1) === 0);
 
                     // Resolve drop-on vs drop-between
                     const dropOn =
                         (onColumnDrop && (insideGroup || leftX === rightX) && startX < maxColumns) ||
                         !onColumnOrderChange;
-                    const dropX = dropOn ? startX : midX;
+                    let dropX = dropOn ? startX : midX;
+
+                    // Only drop-on canonical header group cell
+                    if (dropOn && startY < -1) {
+                        // If drop-on cell is a continued span, move left
+                        while (columnHeaderSpans(dropX, maxColumnLevels + startY + 1) === 0) dropX--;
+                    }
+
+                    // When dropping-between a divider that continues up one or more levels,
+                    // calculate the drop bias left or right to resolve ambiguity.
+                    let dropBias = 0;
+                    if (!dropOn && maxColumnLevels) {
+                        if (startY > - maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
+                            // -1 (left) or 1 (right)
+                            dropBias = 1 - (midX - startX) * 2;
+                        }
+                    }
+
+                    // Avoid dropping selection on selection
+                    const insideSelection = (dropX >= minX + +(dropBias === -1)) && (dropX <= maxX + +!dropOn - +(dropBias === 1)) && startY >= minY;
 
                     // Resolve pixel offset for drag shadow
                     const { anchor, offset } = columnDrag;
-                    const shift = x - anchor[0];
+                    const shiftX = x - anchor[0];
+                    const shiftY = maxColumnLevels ? y - anchor[1] : 0;
                     const [scrollOffset] = getDragScrollOffset(offset);
 
-                    // Avoid dropping selection on selection
-                    const insideSelection = dropX >= minX && dropX <= maxX + +!dropOn;
-
                     let dropSelection: Rectangle = [
-                        [dropX, minY],
-                        [dropX, minY],
+                        [dropX, startY],
+                        [dropX, startY],
                     ];
                     if (dropOn) {
                         const dropOnColumnGroup = new Set([columnGroupKeys(dropX)]);
@@ -961,8 +1001,8 @@ export const useMouse = (
                         );
                     }
 
-                    onDragOffsetChange?.([shift + scrollOffset, 0]);
-                    onDropTargetChange?.(!insideSelection && (dropOn || !insideGroup) ? dropSelection : null, dropOn);
+                    onDragOffsetChange?.([shiftX + scrollOffset, shiftY]);
+                    onDropTargetChange?.(!insideSelection && (dropOn || !insideGroup) ? dropSelection : null, dropOn, dropBias);
                 }
                 if (rowDrag) {
                     // Extend selection range to grouped columns
@@ -991,13 +1031,13 @@ export const useMouse = (
                         (onRowDrop && (insideGroup || topY === bottomY) && startY < maxRows) || !onRowOrderChange;
                     const dropY = dropOn ? startY : midY;
 
+                    // Avoid dropping selection on selection
+                    const insideSelection = dropY >= minY && dropY <= maxY + +!dropOn;
+
                     // Resolve pixel offset for drag shadow
                     const { anchor, offset } = rowDrag;
                     const shift = y - anchor[1];
                     const [, scrollOffset] = getDragScrollOffset(offset);
-
-                    // Avoid dropping selection on selection
-                    const insideSelection = dropY >= minY && dropY <= maxY + +!dropOn;
 
                     let dropSelection: Rectangle = [
                         [minX, dropY],

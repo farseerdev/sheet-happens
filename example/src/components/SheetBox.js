@@ -474,16 +474,24 @@ export function SheetBoxFormatting() {
 export function SheetBoxColumnGroups() {
     const [data, setData] = useState(initialDataBig);
 
-    const { onColumnOrderChange, onRowOrderChange, getColumnOrder, getRowOrder } = useOrderControl();
+    const { onRowOrderChange, getRowOrder } = useOrderControl();
     const { onCellWidthChange, onCellHeightChange, cellWidth, cellHeight } = useWidthHeightControl(
         [],
         [],
-        getColumnOrder,
+        (i: number) => i,
         getRowOrder,
     );
 
     const onSelectionChanged = (x1, y1, x2, y2) => {};
     const onRightClick = () => {};
+
+    const onColumnOrderChange = (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => {
+        console.log('Moved columns', indices, 'at row', fromRow, 'to position', order, 'at row', toRow, 'with drop bias', dropBias);
+    };
+
+    const onColumnDrop = (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => {
+        console.log('Dropped columns', indices, 'at row', fromRow, 'onto position', order, 'at row', toRow, 'with drop bias', dropBias);
+    };
 
     const columnHeaders = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'];
     const columnHeaderSpans = [
@@ -499,13 +507,13 @@ export function SheetBoxColumnGroups() {
     const maxColumnLevels = columnHeaderSpans.length;
 
     const editData = (x, y) => {
-        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[x] : null;
     };
     const displayData = (x, y) => {
-        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[x] : null;
     };
     const sourceData = (x, y) => {
-        return x < maxColumns ? data?.[getRowOrder(y)]?.[getColumnOrder(x)] : null;
+        return x < maxColumns ? data?.[getRowOrder(y)]?.[x] : null;
     };
     const editKeys = (x, y) => {
         return `${x},${y}`;
@@ -514,12 +522,11 @@ export function SheetBoxColumnGroups() {
     const onChange = (changes) => {
         const newData = [...data];
         for (const change of changes) {
-            const cx = getColumnOrder(change.x);
             const cy = getRowOrder(change.y);
             if (!newData[cy]) {
                 newData[cy] = [];
             }
-            newData[cy][cx] = change.value;
+            newData[cy][change.x] = change.value;
         }
         setData(newData);
     };
@@ -546,6 +553,7 @@ export function SheetBoxColumnGroups() {
                 onCellWidthChange={onCellWidthChange}
                 onCellHeightChange={onCellHeightChange}
                 onColumnOrderChange={onColumnOrderChange}
+                onColumnDrop={onColumnDrop}
                 onRowOrderChange={onRowOrderChange}
                 editKeys={editKeys}
                 maxColumns={maxColumns}
