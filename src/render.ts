@@ -117,6 +117,7 @@ export const renderSheet = (
 
     // Get selection range
     const [selected, hideKnob] = resolveFrozenSelection(selection, cellLayout, freeze, dataOffset);
+    const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
     // Selection fill
     if (selectionActive) {
@@ -147,11 +148,31 @@ export const renderSheet = (
 
         // Column header selection shadow
         if (selectionActive && !rowSelectionActive) {
+            context.fillStyle = COLORS.headerActive;
+
+            // Column header
             const [[left], [right]] = selected;
             const top = rowToAbsolute(-1);
             const bottom = rowToAbsolute(0);
-            context.fillStyle = COLORS.headerActive;
             context.fillRect(left, top, right - left, bottom - top);
+
+            // Column header groups
+            for (let i = 0; i < maxColumnLevels; ++i) {
+                let start = minX;
+                let end = maxX;
+                while (columnHeaderSpans(start, i) === 0) start++;
+                while (columnHeaderSpans(end + 1, i) === 0) end--;
+
+                if (end >= start) {
+                    const y = -maxColumnLevels + i - 1;
+                    const top = rowToAbsolute(y);
+                    const bottom = rowToAbsolute(y + 1);
+
+                    const [selected] = resolveFrozenSelection([[start, 0], [end, 0]], cellLayout, freeze, dataOffset);
+                    const [[left], [right]] = selected;
+                    context.fillRect(left, top, right - left, bottom - top);
+                }
+            }
         }
     }
 
@@ -203,8 +224,6 @@ export const renderSheet = (
         const bottom = rowToPixel(row, 1);
         drawGridLineY(bottom, gridRight);
     }
-
-    const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
     // Row header text
     if (!hideRowHeaders) {
