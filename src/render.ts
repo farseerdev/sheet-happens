@@ -272,7 +272,12 @@ export const renderSheet = (
 
             const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
             const isGroupSelected = rowSelectionActive && isInColumnGroup;
-            const isDropSelected = dropOn && dropTarget && column >= dropTarget[0][0] && column <= dropTarget[1][0] && dropTarget[0][1] === -1;
+            const isDropSelected =
+                dropOn &&
+                dropTarget &&
+                column >= dropTarget[0][0] &&
+                column <= dropTarget[1][0] &&
+                dropTarget[0][1] === -1;
 
             const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
             const selectedStyle = isSelected
@@ -323,12 +328,19 @@ export const renderSheet = (
                 const isActive = isInRange(start, minX, maxX) && isInRange(end, minX, maxX);
                 const isSelected =
                     columnSelectionActive && !rowSelectionActive && isActive && minY < i - maxColumnLevels;
-                const isDropSelected = dropOn && dropTarget && start >= dropTarget[0][0] && start <= dropTarget[1][0] && dropTarget[0][1] === -1 - maxColumnLevels + i;
+                const isDropSelected =
+                    dropOn &&
+                    dropTarget &&
+                    start >= dropTarget[0][0] &&
+                    start <= dropTarget[1][0] &&
+                    dropTarget[0][1] === -1 - maxColumnLevels + i;
 
                 const activeStyle = isActive ? HEADER_ACTIVE_STYLE : NO_STYLE;
-                const selectedStyle = isSelected ? HEADER_SELECTED_STYLE : isDropSelected
-                  ? HEADER_GROUP_SELECTED_STYLE
-                  : NO_STYLE;
+                const selectedStyle = isSelected
+                    ? HEADER_SELECTED_STYLE
+                    : isDropSelected
+                      ? HEADER_GROUP_SELECTED_STYLE
+                      : NO_STYLE;
 
                 const style = {
                     ...DEFAULT_COLUMN_HEADER_STYLE,

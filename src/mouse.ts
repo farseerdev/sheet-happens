@@ -596,14 +596,17 @@ export const useMouse = (
                     // calculate the drop bias left or right to resolve ambiguity.
                     let dropBias = 0;
                     if (!dropOn && maxColumnLevels) {
-                        if (startY > - maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
+                        if (startY > -maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
                             // -1 (left) or 1 (right)
                             dropBias = 1 - (midX - startX) * 2;
                         }
                     }
 
                     // Avoid dropping selection on selection
-                    const insideSelection = (dropX >= minX + +(dropBias === -1)) && (dropX <= maxX + +!dropOn - +(dropBias === 1)) && startY >= minY;
+                    const insideSelection =
+                        dropX >= minX + +(dropBias === -1) &&
+                        dropX <= maxX + +!dropOn - +(dropBias === 1) &&
+                        startY >= minY;
 
                     if (!insideSelection && (dropOn || !insideGroup)) {
                         const preceding = indices.filter((i) => i < dropX);
@@ -972,14 +975,17 @@ export const useMouse = (
                     // calculate the drop bias left or right to resolve ambiguity.
                     let dropBias = 0;
                     if (!dropOn && maxColumnLevels) {
-                        if (startY > - maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
+                        if (startY > -maxColumnLevels - 1 && columnHeaderSpans(dropX, maxColumnLevels + startY) !== 0) {
                             // -1 (left) or 1 (right)
                             dropBias = 1 - (midX - startX) * 2;
                         }
                     }
 
                     // Avoid dropping selection on selection
-                    const insideSelection = (dropX >= minX + +(dropBias === -1)) && (dropX <= maxX + +!dropOn - +(dropBias === 1)) && startY >= minY;
+                    const insideSelection =
+                        dropX >= minX + +(dropBias === -1) &&
+                        dropX <= maxX + +!dropOn - +(dropBias === 1) &&
+                        startY >= minY;
 
                     // Resolve pixel offset for drag shadow
                     const { anchor, offset } = columnDrag;
@@ -1002,7 +1008,11 @@ export const useMouse = (
                     }
 
                     onDragOffsetChange?.([shiftX + scrollOffset, shiftY]);
-                    onDropTargetChange?.(!insideSelection && (dropOn || !insideGroup) ? dropSelection : null, dropOn, dropBias);
+                    onDropTargetChange?.(
+                        !insideSelection && (dropOn || !insideGroup) ? dropSelection : null,
+                        dropOn,
+                        dropBias,
+                    );
                 }
                 if (rowDrag) {
                     // Extend selection range to grouped columns
