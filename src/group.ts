@@ -60,13 +60,15 @@ export const expandSelectionToColumnSpans = (
 ) => {
     const [first, second] = normalizeSelection(selection);
 
-    const start = first[0];
-    const end = second[0];
+    // Expand columns left and right
+    const startRow = maxColumnLevels + Math.min(first[1], second[1]) + 1;
 
-    const row = maxColumnLevels + Math.min(first[1], second[1]) + 1;
-
-    const startIndex = scanColumnSpan(spans, row, start, -1);
-    const endIndex = scanColumnSpan(spans, row, end, 1);
+    let startIndex = first[0];
+    let endIndex = second[0];
+    for (let row = startRow; row < maxColumnLevels; row++) {
+        startIndex = Math.min(startIndex, scanColumnSpan(spans, row, startIndex, -1));
+        endIndex = Math.max(endIndex, scanColumnSpan(spans, row, endIndex, 1));
+    }
 
     const expanded: Rectangle = [first.slice() as XY, second.slice() as XY];
     expanded[0][0] = startIndex;

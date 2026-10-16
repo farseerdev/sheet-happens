@@ -517,6 +517,9 @@ const Sheet = forwardRef<SheetRef, SheetProps>((props, ref) => {
         rawSelection,
         selection,
 
+        maxColumnLevels,
+        columnHeaderSpans,
+
         startEditingCell,
         commitEditingCell,
         cancelEditingCell,

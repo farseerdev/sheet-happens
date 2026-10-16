@@ -493,14 +493,14 @@ export function SheetBoxColumnGroups() {
         console.log('Dropped columns', indices, 'at row', fromRow, 'onto position', order, 'at row', toRow, 'with drop bias', dropBias);
     };
 
-    const columnHeaders = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'];
+    const columnHeaders = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4', 'D1', 'D2', 'E1', 'E2'];
     const columnHeaderSpans = [
-        [4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0],
-        [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
+        [4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, -1, -1, -1, -1],
+        [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
     ];
     const columnHeaderGroups = [
-        ['A', null, null, null, 'B', null, null, null, 'C', null, null, null],
-        ['A1-2', null, 'A3-4', null, 'B1-2', null, 'B3-4', null, 'B1-2', null, 'B3-4', null],
+        ['A', null, null, null, 'B', null, null, null, 'C', null, null, null, null, null, null, null],
+        ['A1-2', null, 'A3-4', null, 'B1-2', null, 'B3-4', null, 'B1-2', null, 'B3-4', null, 'D1-2', null, 'E1-2', null],
     ];
 
     const maxColumns = columnHeaders.length;
