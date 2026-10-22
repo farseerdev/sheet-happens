@@ -105,8 +105,11 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
         // Remove old columns one by one (indices may be disjoint but are always increasing)
         for (let i = 0; i < indices.length; ++i) co.splice(indices[i] - i, 1);
 
+        // Calculate shift left
+        const preceding = indices.filter((i) => i < order).length;
+
         // Splice in new indices mapped to old order
-        co.splice(order, 0, ...indices.map((i) => columnOrder[i] ?? i));
+        co.splice(order - preceding, 0, ...indices.map((i) => columnOrder[i] ?? i));
 
         setColumnOrder(co);
     };
@@ -116,14 +119,16 @@ export function useOrderControl(initialColumns = [], initialRows = []) {
 
         // Extend row order to cover operation
         const n = Math.max(order + indices.length, order + indices.reduce((a, b) => Math.max(a, b), 0));
-
         while (ro.length < n) ro.push(ro.length);
 
         // Remove old rows one by one (indices may be disjoint but are always increasing)
         for (let i = 0; i < indices.length; ++i) ro.splice(indices[i] - i, 1);
 
+        // Calculate shift up
+        const preceding = indices.filter((i) => i < order).length;
+
         // Splice in new indices mapped to old order
-        ro.splice(order, 0, ...indices.map((i) => rowOrder[i] ?? i));
+        ro.splice(order - preceding, 0, ...indices.map((i) => rowOrder[i] ?? i));
 
         setRowOrder(ro);
     };

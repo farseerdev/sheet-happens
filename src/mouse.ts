@@ -616,7 +616,7 @@ export const useMouse = (
                                 [order, -1],
                                 [order + (dropOn ? 0 : indices.length - 1), -1],
                             ]);
-                        (dropOn ? onColumnDrop : onColumnOrderChange)?.(indices, order, minY, startY, dropBias);
+                        (dropOn ? onColumnDrop : onColumnOrderChange)?.(indices, dropX, minY, startY, dropBias);
                         onInvalidateColumn?.(Math.min(minX, order));
                     }
                 }
@@ -652,7 +652,7 @@ export const useMouse = (
                                 [-1, order],
                                 [-1, order + (dropOn ? 0 : indices.length - 1)],
                             ]);
-                        (dropOn ? onRowDrop : onRowOrderChange)?.(indices, order);
+                        (dropOn ? onRowDrop : onRowOrderChange)?.(indices, dropY);
                         onInvalidateRow?.(Math.min(minY, order));
                     }
                 }
