@@ -290,7 +290,7 @@ export const renderSheet = (
             const isInColumnGroup = groupKey != null && selectedColumnGroups?.has(groupKey);
 
             const isSelected = columnSelectionActive && !rowSelectionActive && isActive;
-            const isGroupSelected = rowSelectionActive && isInColumnGroup;
+            const isGroupSelected = columnSelectionActive && isInColumnGroup;
             const isDropSelected =
                 dropOn &&
                 dropTarget &&
