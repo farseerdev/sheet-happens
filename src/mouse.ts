@@ -559,14 +559,18 @@ export const useMouse = (
                 onDropTargetChange?.(null);
 
                 const [x, y] = xy;
-                const [[minX, minY], [maxX, maxY]] = normalizeSelection(selection);
 
                 if (columnDrag) {
                     const { indices } = columnDrag;
 
+                    // Extend selection range to grouped columns
+                    const [[minX, minY], [maxX]] = normalizeSelection(
+                        expandSelectionToRowOrColumnGroups(selection, columnGroupKeys, selectedColumnGroups, 0),
+                    );
+
                     // On cell
                     const startX = pixelToColumn(x, 0);
-                    let startY = Math.min(-1, pixelToRow(y, 0));
+                    const startY = Math.min(-1, pixelToRow(y, 0));
 
                     // Between cells
                     const midX = pixelToColumn(x, 0.5);
@@ -622,6 +626,11 @@ export const useMouse = (
                 }
                 if (rowDrag) {
                     const { indices } = rowDrag;
+
+                    // Extend selection range to grouped rows
+                    const [[, minY], [, maxY]] = normalizeSelection(
+                        expandSelectionToRowOrColumnGroups(selection, rowGroupKeys, selectedRowGroups, 1),
+                    );
 
                     // On cell
                     const startY = pixelToRow(y, 0);
@@ -936,11 +945,8 @@ export const useMouse = (
 
                 if (columnDrag) {
                     // Extend selection range to grouped columns
-                    const [[minX], [maxX]] = expandSelectionToRowOrColumnGroups(
-                        selection,
-                        columnGroupKeys,
-                        selectedColumnGroups,
-                        0,
+                    const [[minX], [maxX]] = normalizeSelection(
+                        expandSelectionToRowOrColumnGroups(selection, columnGroupKeys, selectedColumnGroups, 0),
                     );
 
                     // On cell
@@ -1015,12 +1021,9 @@ export const useMouse = (
                     );
                 }
                 if (rowDrag) {
-                    // Extend selection range to grouped columns
-                    const [[, minY], [, maxY]] = expandSelectionToRowOrColumnGroups(
-                        selection,
-                        rowGroupKeys,
-                        selectedRowGroups,
-                        1,
+                    // Extend selection range to grouped rows
+                    const [[, minY], [, maxY]] = normalizeSelection(
+                        expandSelectionToRowOrColumnGroups(selection, rowGroupKeys, selectedRowGroups, 1),
                     );
 
                     // On cell

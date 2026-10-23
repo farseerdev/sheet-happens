@@ -168,7 +168,15 @@ export const renderSheet = (
                     const top = rowToAbsolute(y);
                     const bottom = rowToAbsolute(y + 1);
 
-                    const [selected] = resolveFrozenSelection([[start, 0], [end, 0]], cellLayout, freeze, dataOffset);
+                    const [selected] = resolveFrozenSelection(
+                        [
+                            [start, 0],
+                            [end, 0],
+                        ],
+                        cellLayout,
+                        freeze,
+                        dataOffset,
+                    );
                     const [[left], [right]] = selected;
                     context.fillRect(left, top, right - left, bottom - top);
                 }
