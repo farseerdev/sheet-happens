@@ -1234,15 +1234,9 @@ export const useMouse = (
 
             // If click is not inside of selection, select the right clicked cell
             const cell = pixelToCell(xy);
-            if (!hideRowHeaders && x < getIndentX()) {
-                cell[0] = -1;
-            }
-            if (!hideColumnHeaders && y < getIndentY()) {
-                cell[1] = -1;
-            }
-
             if (!isPointInsideSelection(selection, cell)) {
-                onSelectionChange?.([cell, cell]);
+                const [anchor, head] = expandSelectionToColumnSpans([cell, cell], columnHeaderSpans, maxColumnLevels);
+                onSelectionChange?.([anchor, head]);
             }
 
             onPointerMove(e as any);
@@ -1255,7 +1249,7 @@ export const useMouse = (
             };
             onRightClick?.(event);
         },
-        [getMousePosition, onSelectionChange, onPointerMove, onRightClick],
+        [getMousePosition, onSelectionChange, onPointerMove, onRightClick, columnHeaderSpans, maxColumnLevels],
     );
 
     useLayoutEffect(() => {
