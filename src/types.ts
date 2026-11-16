@@ -168,6 +168,8 @@ export type Resizable = {
 export type ClipboardRawTable<T extends ClipboardTableCells = ClipboardTableCells> = {
     rows: string[][];
     payload?: ClipboardPayload<T>;
+    numbers?: ClipboardNumbers;
+    separators?: ClipboardSeparators;
 };
 
 export type ClipboardPayload<T> = {
@@ -180,6 +182,22 @@ export type ClipboardTable<T extends ClipboardTableCells = ClipboardTableCells> 
     rows: string[][];
     cut?: boolean;
     data?: T;
+
+    // What the application the table was copied from says about its numbers.
+    // Unlike `data`, these come from any source, so they are never tied to an origin.
+    numbers?: ClipboardNumbers;
+    separators?: ClipboardSeparators;
+};
+
+// Exact numeric value of cells, by row and then column of `rows`. Sparse: only cells
+// whose source attached a number next to the displayed text (Google Sheets, LibreOffice).
+export type ClipboardNumbers = Record<number, Record<number, number>>;
+
+// Characters the source formatted its numbers with (Excel declares them once per copy).
+// `group` is null when the source declares no grouping character.
+export type ClipboardSeparators = {
+    decimal: string;
+    group: string | null;
 };
 
 export type ClipboardTableCells = {
@@ -196,6 +214,8 @@ export type Change = {
     value: string | number | null;
     data?: object | string | number | null;
     source?: { x: number; y: number };
+    // Pasted cells only: the exact number behind `value`, when the source application gave one.
+    number?: number;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
