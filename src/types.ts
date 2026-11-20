@@ -170,6 +170,7 @@ export type ClipboardRawTable<T extends ClipboardTableCells = ClipboardTableCell
     payload?: ClipboardPayload<T>;
     numbers?: ClipboardNumbers;
     separators?: ClipboardSeparators;
+    ambiguousSeparator?: string;
 };
 
 export type ClipboardPayload<T> = {
@@ -187,6 +188,10 @@ export type ClipboardTable<T extends ClipboardTableCells = ClipboardTableCells> 
     // Unlike `data`, these come from any source, so they are never tied to an origin.
     numbers?: ClipboardNumbers;
     separators?: ClipboardSeparators;
+
+    // Set when nothing above is known and the numbers end in a `,` or `.` before three
+    // digits, so they read as either 1220 or 1.22: the character they share.
+    ambiguousSeparator?: string;
 };
 
 // Exact numeric value of cells, by row and then column of `rows`. Sparse: only cells

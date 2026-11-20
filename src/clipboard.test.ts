@@ -146,6 +146,44 @@ describe('exact numbers attached by the source', () => {
     });
 });
 
+describe('a separator nothing on the clipboard explains', () => {
+    const clipboard = (flavors: Record<string, string>) =>
+        ({ types: Object.keys(flavors), getData: (type: string) => flavors[type] }) as any;
+    const plain = async (text: string) =>
+        (await parseClipboardTable(clipboard({ 'text/plain': text })))?.ambiguousSeparator;
+
+    it('is the comma before three digits, in a paste of plain text', async () => {
+        expect(await plain('1,220\t2,500\t- 1,220\n')).toBe(',');
+    });
+
+    it('looks past the sign, brackets and currency around the number', async () => {
+        expect(await plain('-1,220\t(1,220)\t$1,220\n')).toBe(',');
+    });
+
+    it('is absent when the cells disagree on the character', async () => {
+        expect(await plain('1,220\t1.220\n')).toBeUndefined();
+    });
+
+    it('is absent when no cell has three digits after its separator', async () => {
+        expect(await plain('1,22\t12,5\tabc\n')).toBeUndefined();
+    });
+
+    it('is found in a table that carries no hints', async () => {
+        const html = '<table><tr><td>1,220</td></tr></table>';
+        expect((await parseClipboardTable(clipboard({ 'text/html': html })))?.ambiguousSeparator).toBe(',');
+    });
+
+    it('is absent when Excel declares its separators', async () => {
+        const parsed = await parseClipboardTable(clipboard({ 'text/html': EXCEL_MAC }));
+        expect(parsed?.ambiguousSeparator).toBeUndefined();
+    });
+
+    it('is absent when Google Sheets attaches the exact numbers', async () => {
+        const html = googleSheetsRange([`<td data-sheets-value="${attr({ '1': 3, '3': 1220 })}">1,220</td>`]);
+        expect((await parseClipboardTable(clipboard({ 'text/html': html })))?.ambiguousSeparator).toBeUndefined();
+    });
+});
+
 describe('a number too wide for its Excel column', () => {
     const html = `<table><tr><td>#######</td><td>12.35</td></tr><tr><td>#DIV/0!</td><td>####</td></tr></table>`;
     const clipboard = (plain: string) =>
@@ -234,5 +272,11 @@ describe('pasting into the sheet', () => {
         const [changes, table] = onChange.mock.calls[0];
         expect(changes.map((change) => change.value)).toContain('-1,220.00');
         expect(table?.separators).toEqual({ decimal: '.', group: ',' });
+    });
+
+    it('passes on a separator nothing on the clipboard explains', async () => {
+        const onChange = await paste('<table><tr><td>1,220</td></tr></table>');
+        const [, table] = onChange.mock.calls[0];
+        expect(table?.ambiguousSeparator).toBe(',');
     });
 });

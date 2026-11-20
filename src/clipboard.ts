@@ -247,13 +247,14 @@ const validateClipboardTable = <T extends ClipboardTableCells>(
     parsed: ClipboardRawTable<T>,
     clipboardOrigin: string,
 ): ClipboardTable<T> => {
-    const { rows, payload, numbers, separators } = parsed;
+    const { rows, payload, numbers, separators, ambiguousSeparator } = parsed;
 
     // What the source says about its numbers holds wherever the copy came from;
     // the payload is only meaningful to the application that wrote it.
     const table: ClipboardTable<T> = { rows };
     if (numbers) table.numbers = numbers;
     if (separators) table.separators = separators;
+    if (ambiguousSeparator) table.ambiguousSeparator = ambiguousSeparator;
     if (!payload) return table;
 
     const { origin, ...rest } = payload;
@@ -305,13 +306,31 @@ export const parseClipboardTable = async <T extends ClipboardTableCells>(
         if (has('text/plain') && parsed.rows.some((row) => row.some(isOverflowText))) {
             restoreOverflowText(parsed.rows, parsePastedText(await get('text/plain')));
         }
-        return parsed;
+        return withAmbiguousSeparator(parsed);
     }
     if (has('text/plain')) {
         const text = await get('text/plain');
-        return { rows: parsePastedText(text) };
+        return withAmbiguousSeparator({ rows: parsePastedText(text) });
     }
     return { rows: [] };
+};
+
+// 1,220 is 1220 or 1.22 depending on who reads it; sign, brackets and currency don't change that
+const AMBIGUOUS_NUMBER = /^\d{1,3}([,.])\d{3}$/;
+const NUMBER_DECORATION = /[\s()+\-\u2212\p{Sc}]/gu;
+
+const withAmbiguousSeparator = <T extends ClipboardTableCells>(table: ClipboardRawTable<T>) => {
+    if (table.payload || table.numbers || table.separators) return table;
+
+    const found = new Set<string>();
+    for (const row of table.rows) {
+        for (const text of row) {
+            const match = AMBIGUOUS_NUMBER.exec(text.replace(NUMBER_DECORATION, ''));
+            if (match) found.add(match[1]);
+        }
+    }
+    if (found.size === 1) table.ambiguousSeparator = Array.from(found)[0];
+    return table;
 };
 
 // Excel renders a number too wide for its column as "#####", and copies that rendering
