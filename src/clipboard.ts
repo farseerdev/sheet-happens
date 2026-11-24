@@ -1,6 +1,8 @@
 import {
+    ClipboardNumbers,
     ClipboardPayload,
     ClipboardRawTable,
+    ClipboardSeparators,
     ClipboardTable,
     ClipboardTableCells,
     CellPropertyFunction,
@@ -22,6 +24,7 @@ import {
 } from './coordinate';
 
 const NON_BREAKING_SPACE = ' ';
+const NON_BREAKING_SPACES = /[\u00a0\u202f]/g;
 
 // Type missing from TS <=4.3
 interface ClipboardItem {
@@ -109,7 +112,7 @@ export const useClipboardAPI = <T extends ClipboardTableCells = ClipboardTableCe
     addListener: boolean,
 
     onSelectionChange?: (selection: Rectangle) => void,
-    onChange?: (changes: Change[]) => void,
+    onChange?: (changes: Change[], paste?: ClipboardTable<T>) => void,
     onCopy?: (selection: Rectangle, cut: boolean) => ClipboardTable<T> | null | undefined,
     onPaste?: (
         selection: Rectangle,
@@ -121,7 +124,7 @@ export const useClipboardAPI = <T extends ClipboardTableCells = ClipboardTableCe
 
     const pasteIntoSelection = useCallback(
         async (selection: Rectangle, table: ClipboardTable<T>) => {
-            const { rows, data } = table;
+            const { rows, data, numbers } = table;
 
             const [min, max] = normalizeSelection(selection);
             const [minX, minY] = min;
@@ -149,7 +152,12 @@ export const useClipboardAPI = <T extends ClipboardTableCells = ClipboardTableCe
                                     const x = left + i + rx * width;
                                     const y = top + j + ry * height;
                                     const v = data?.cells?.[j]?.[i];
-                                    if (!cellReadOnly?.(x, y)) cells.push({ x, y, value, data: v });
+                                    const number = numbers?.[j]?.[i];
+                                    if (cellReadOnly?.(x, y)) continue;
+
+                                    const change: Change = { x, y, value, data: v };
+                                    if (number != null) change.number = number;
+                                    cells.push(change);
                                 }
                             }
                             return cells;
@@ -157,7 +165,7 @@ export const useClipboardAPI = <T extends ClipboardTableCells = ClipboardTableCe
                     )
                     .filter((change) => !!change) as Change[];
 
-                onChange?.(changes);
+                onChange?.(changes, table);
                 onSelectionChange?.(newSelection);
             }
         },
@@ -239,12 +247,18 @@ const validateClipboardTable = <T extends ClipboardTableCells>(
     parsed: ClipboardRawTable<T>,
     clipboardOrigin: string,
 ): ClipboardTable<T> => {
-    const { rows, payload } = parsed;
-    if (!payload) return { rows };
+    const { rows, payload, numbers, separators } = parsed;
+
+    // What the source says about its numbers holds wherever the copy came from;
+    // the payload is only meaningful to the application that wrote it.
+    const table: ClipboardTable<T> = { rows };
+    if (numbers) table.numbers = numbers;
+    if (separators) table.separators = separators;
+    if (!payload) return table;
 
     const { origin, ...rest } = payload;
-    if (origin === clipboardOrigin) return { rows, ...rest };
-    return { rows };
+    if (origin === clipboardOrigin) return { ...table, ...rest };
+    return table;
 };
 
 const copyClipboardTable = async (rows: string[][], payload?: ClipboardPayload<any> | null) => {
@@ -263,14 +277,16 @@ const copyClipboardTable = async (rows: string[][], payload?: ClipboardPayload<a
 };
 
 const pasteClipboardTable = async <T extends ClipboardTableCells>(): Promise<ClipboardTable<T> | null> => {
-    const items = await (navigator.clipboard as any).read();
+    // Chrome and Edge strip <style> from clipboard HTML unless asked not to, and that is
+    // where Excel declares its separators. Browsers without the option ignore it.
+    const items = await (navigator.clipboard as any).read({ unsanitized: ['text/html'] });
     const [item] = items;
     if (!item) return null;
 
     return await parseClipboardTable(item);
 };
 
-const parseClipboardTable = async <T extends ClipboardTableCells>(
+export const parseClipboardTable = async <T extends ClipboardTableCells>(
     item: ClipboardItem | DataTransfer,
 ): Promise<ClipboardRawTable<T> | null> => {
     // Work with both clipboard API (ClipboardItem) and onpaste event (DataTransfer)
@@ -284,17 +300,38 @@ const parseClipboardTable = async <T extends ClipboardTableCells>(
         return '';
     };
 
-    let rows, payload;
     if (has('text/html')) {
-        const pastedHtml = await get('text/html');
-        ({ rows, payload } = parsePastedHtml(pastedHtml));
-    } else if (has('text/plain')) {
-        const text = await get('text/plain');
-        rows = parsePastedText(text);
+        const parsed = parsePastedHtml(await get('text/html'));
+        if (has('text/plain') && parsed.rows.some((row) => row.some(isOverflowText))) {
+            restoreOverflowText(parsed.rows, parsePastedText(await get('text/plain')));
+        }
+        return parsed;
     }
-    if (!rows) return { rows: [] };
+    if (has('text/plain')) {
+        const text = await get('text/plain');
+        return { rows: parsePastedText(text) };
+    }
+    return { rows: [] };
+};
 
-    return { rows, payload };
+// Excel renders a number too wide for its column as "#####", and copies that rendering
+// into the HTML. The plain text flavor of the same copy can still hold the number.
+const isOverflowText = (text: string) => /^#+$/.test(text);
+
+const restoreOverflowText = (rows: string[][], plain: string[][]) => {
+    // Every plain text row ends in a line break, which reads as one empty row too many
+    const last = plain[plain.length - 1];
+    if (last?.length === 1 && last[0] === '') plain = plain.slice(0, -1);
+
+    // Only trust the plain text where it lines up with the table cell for cell
+    if (plain.length !== rows.length) return;
+    rows.forEach((row, j) => {
+        if (plain[j].length !== row.length) return;
+        row.forEach((text, i) => {
+            const replacement = plain[j][i].trim();
+            if (isOverflowText(text) && replacement !== '') row[i] = replacement;
+        });
+    });
 };
 
 const formatRowsAsTSV = (rows: string[][]) => rows.map((row) => row.join('\t')).join('\n');
@@ -377,19 +414,87 @@ const findTag = (element: any, tagName: string): any => {
     }
 };
 
-const parsePastedHtml = (
-    html: string,
-): {
-    rows: string[][];
-    payload: any;
-} => {
-    const div = document.createElement('div');
-    div.innerHTML = html.trim();
+// A number in the notation every source uses for its raw values: no grouping, period decimal
+const PLAIN_NUMBER = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 
-    const rows = [];
+const parsePlainNumber = (text: string): number | undefined => {
+    if (!PLAIN_NUMBER.test(text)) return undefined;
+    const number = Number(text);
+    return Number.isFinite(number) ? number : undefined;
+};
+
+// The exact number a source application attached to a cell, next to the text it displays.
+// The text alone is ambiguous ("1,220" is 1220 or 1.22 depending on who formatted it);
+// these attributes are not. Anything malformed counts as no number: the text is still there.
+const readCellNumber = (cell: Element): number | undefined => {
+    // LibreOffice: the raw value, never grouped, with the decimal mark of its own locale.
+    // It goes first because LibreOffice also writes Google's attribute, with fractions cut off.
+    const sdval = cell.getAttribute('sdval');
+    if (sdval != null) return parsePlainNumber(sdval.trim().replace(',', '.'));
+
+    // Google Sheets: {"1": <type>, "<type>": <value>}, where type 3 is a number
+    const sheetsValue = cell.getAttribute('data-sheets-value');
+    if (sheetsValue != null) {
+        try {
+            const json = JSON.parse(sheetsValue);
+            const number = json?.['1'] === 3 ? json['3'] : undefined;
+            return typeof number === 'number' && Number.isFinite(number) ? number : undefined;
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    // Excel: the raw value. Desktop Excel does not put it on the clipboard today, but files
+    // it saves as a web page and other applications writing for Excel do.
+    const excelNumber = cell.getAttribute('x:num');
+    if (excelNumber) return parsePlainNumber(excelNumber.trim());
+
+    return undefined;
+};
+
+// Value of a quoted CSS string property anywhere in the markup, with its escapes resolved
+const readCssString = (html: string, property: string): string | undefined => {
+    const match = new RegExp(`${property}\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`, 'i').exec(html);
+    if (!match) return undefined;
+
+    return match[1].replace(/\\(?:([0-9a-f]{1,6}) ?|(.))/gi, (_, hex, char) =>
+        hex ? String.fromCodePoint(parseInt(hex, 16)) : char,
+    );
+};
+
+// Excel declares the characters it formatted the copied numbers with, once, in its <style>:
+//   table {mso-displayed-decimal-separator:"\."; mso-displayed-thousand-separator:"\,";}
+// Read from the raw markup, because a CSS parser drops properties it does not know.
+const readSeparators = (html: string): ClipboardSeparators | undefined => {
+    const isSeparator = (s: string) => s.length === 1 && !/\d/.test(s);
+
+    const decimal = readCssString(html, 'mso-displayed-decimal-separator');
+    if (decimal == null || !isSeparator(decimal)) return undefined;
+
+    // Cell text has its non-breaking spaces replaced, so a grouping space is a plain one too
+    const group = readCssString(html, 'mso-displayed-thousand-separator')?.replace(NON_BREAKING_SPACES, ' ');
+    if (group == null || group === '') return { decimal, group: null };
+    if (!isSeparator(group) || group === decimal) return undefined;
+
+    return { decimal, group };
+};
+
+export const parsePastedHtml = (html: string): ClipboardRawTable<any> => {
+    // A document of its own, so nothing in the clipboard's markup loads or runs in the page
+    const root = new DOMParser().parseFromString(html.trim(), 'text/html').documentElement;
+
+    const rows: string[][] = [];
+    const numbers: ClipboardNumbers = {};
     let payload: any = undefined;
 
-    const sheetNode = findTag(div, 'SHEETHAPPENS');
+    const addNumber = (cell: Element, row: number, column: number) => {
+        const number = readCellNumber(cell);
+        if (number == null) return;
+        if (!numbers[row]) numbers[row] = {};
+        numbers[row][column] = number;
+    };
+
+    const sheetNode = findTag(root, 'SHEETHAPPENS');
     if (sheetNode) {
         const json = sheetNode.getAttribute('payload');
         try {
@@ -398,8 +503,8 @@ const parsePastedHtml = (
         } catch (e) {}
     }
 
-    const tableNode = findTag(div, 'TABLE');
-    const spanNode = findTag(div, 'SPAN');
+    const tableNode = findTag(root, 'TABLE');
+    const spanNode = findTag(root, 'SPAN');
 
     if (tableNode) {
         for (const tableChild of tableNode.children) {
@@ -421,8 +526,9 @@ const parsePastedHtml = (
                                     str = td.textContent.trim();
                                 }
                                 str = str.replaceAll(/[\r\n\t ]+/g, ' ');
-                                str = str.replaceAll(NON_BREAKING_SPACE, ' ');
+                                str = str.replaceAll(NON_BREAKING_SPACES, ' ');
 
+                                addNumber(td, rows.length, row.length);
                                 row.push(str);
                             }
                         }
@@ -432,21 +538,26 @@ const parsePastedHtml = (
             }
         }
     } else if (spanNode) {
+        // A single cell copied from Google Sheets is a bare span carrying the cell's attributes
         let str: string = '';
 
         str = spanNode.textContent.trim();
         str = str.replaceAll('\n', '');
         str = str.replaceAll(/\s\s+/g, ' ');
 
+        addNumber(spanNode, 0, 0);
         rows.push([str]);
     }
 
-    return {
-        rows,
-        payload,
-    };
+    const parsed: ClipboardRawTable<any> = { rows, payload };
+    if (Object.keys(numbers).length) parsed.numbers = numbers;
+
+    const separators = readSeparators(html);
+    if (separators) parsed.separators = separators;
+
+    return parsed;
 };
 
-const parsePastedText = (text: string): string[][] => {
+export const parsePastedText = (text: string): string[][] => {
     return text.split(/\r?\n/).map((line) => line.split('\t'));
 };

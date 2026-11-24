@@ -114,7 +114,8 @@ export type SheetProps = {
 
     onSelectionChanged?: (anchorX: number, anchorY: number, headX: number, headY: number) => void;
     onRightClick?: (e: SheetPointerEvent) => void;
-    onChange?: (changes: Array<Change>) => void;
+    // `paste` is the clipboard table the changes came from, when they came from a paste
+    onChange?: (changes: Array<Change>, paste?: ClipboardTable<any>) => void;
     onColumnOrderChange?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void;
     onRowOrderChange?: (indices: number[], order: number) => void;
     onColumnDrop?: (indices: number[], order: number, fromRow: number, toRow: number, dropBias: number) => void;
